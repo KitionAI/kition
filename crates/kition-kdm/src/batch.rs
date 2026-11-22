@@ -352,7 +352,8 @@ pub fn run(target: &mut dyn BatchTarget, request: &Value) -> Result<Value, Batch
     for (at, entry) in loads.iter().enumerate() {
         let read = |entry: &Value| match &projected {
             Some(view) => {
-                let text = entry["target"].as_str().ok_or_else(|| BatchError::new(BatchErrorCode::InvalidOp, None, "`target` is a string"))?;
+                let text =
+                    entry["target"].as_str().ok_or_else(|| BatchError::new(BatchErrorCode::InvalidOp, None, not_a_string("target", entry.get("target"))))?;
                 let id = refs.get(text).map_or_else(|| text.to_owned(), ToString::to_string);
                 let root = root_id(replica).map(|id| ObjectId::from_string(names.show(&id)));
                 view.load(root.as_ref(), &id, entry.get("fields"))
@@ -596,7 +597,25 @@ pub fn root_id(replica: &Replica) -> Option<ObjectId> {
 }
 
 fn str_field<'a>(index: usize, op: &'a Value, key: &str) -> Result<&'a str, BatchError> {
-    op.get(key).and_then(Value::as_str).ok_or_else(|| BatchError::op(index, format!("`{key}` is a string")))
+    op.get(key).and_then(Value::as_str).ok_or_else(|| BatchError::op(index, not_a_string(key, op.get(key))))
+}
+
+/// Why `key` was refused: it takes a string, and what it was given instead. An id given as a
+/// number (`target: 1`, as receipts show an integer tool id) is the same id as a string here:
+/// the agent tools pass it so; a direct `model.batch` caller writes `"1"`.
+fn not_a_string(key: &str, given: Option<&Value>) -> String {
+    let id = matches!(key, "target" | "item" | "node" | "parent" | "id");
+    match given {
+        None | Some(Value::Null) => format!("`{key}` is missing: give a string{}", if id { " naming an object by its id" } else { "" }),
+        Some(Value::Number(number)) if id && number.is_u64() => {
+            format!("`{key}` names an object by its id as a string: give \"{number}\" for the number {number}")
+        }
+        Some(Value::Number(number)) => format!("`{key}` is a string; got the number {number}"),
+        Some(Value::Bool(value)) => format!("`{key}` is a string; got {value}"),
+        Some(Value::Array(_)) => format!("`{key}` is a string; got an array"),
+        Some(Value::Object(_)) => format!("`{key}` is a string; got an object"),
+        Some(Value::String(_)) => format!("`{key}` is a string"),
+    }
 }
 
 fn usize_field(index: usize, op: &Value, key: &str) -> Result<usize, BatchError> {
@@ -871,7 +890,7 @@ fn apply(
             let id = match op.get("id") {
                 None | Some(Value::Null) => tx.create(ty, fields).map_err(kdm)?,
                 Some(Value::String(id)) => tx.create_with_id(ty, &ObjectId::from_string(id.clone()), fields).map_err(kdm)?,
-                Some(_) => return Err(BatchError::op(index, "`id` is a string")),
+                Some(given) => return Err(BatchError::op(index, not_a_string("id", Some(given)))),
             };
             if let Some((owner, field)) = container {
                 let owner_type = tx.object_type(&owner).map_err(kdm)?;
@@ -1177,7 +1196,10 @@ fn tree_parent(
 
 /// One `load` entry: `{ target, fields? }` → `{ id, type, fields }`.
 fn load(replica: &Replica, names: &ToolIds, entry: &Value, refs: &Refs) -> Result<Value, BatchError> {
-    let text = entry.get("target").and_then(Value::as_str).ok_or_else(|| BatchError::new(BatchErrorCode::InvalidOp, None, "`target` is a string"))?;
+    let text = entry
+        .get("target")
+        .and_then(Value::as_str)
+        .ok_or_else(|| BatchError::new(BatchErrorCode::InvalidOp, None, not_a_string("target", entry.get("target"))))?;
     let id = target_id(text, refs, names, |id| replica.exists(id), || root_id(replica), None)?;
     let ty = replica.object_type(&id).map_err(|error| BatchError::kdm(None, error))?;
     let def = replica.schema().type_def(&ty).map_err(|error| BatchError::kdm(None, error))?;

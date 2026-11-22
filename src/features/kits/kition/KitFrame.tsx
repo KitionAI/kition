@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoaderCircleIcon as Loader2 } from '@kition/tessera/icons/react'
-import { writeKitFile } from '@/api/kits'
-import { isTableFilePath, notifyTableFilesChanged } from '@/api/kitTables'
+import { notifyKitFileChanged, writeKitFile } from '@/api/kits'
 import { Button } from '@kition/tessera/ui'
 import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { FileNotice } from '@/components/states'
@@ -134,8 +133,8 @@ async function writeForKit(path: string, readOnly: boolean, { path: wanted, byte
   } catch (error) {
     throw new Error(saveFailureText(error))
   }
-  // Kition's own table pickers read the saved tables.
-  if (isTableFilePath(target)) notifyTableFilesChanged(target)
+  // The workspace tree reads the saved file's outline again.
+  notifyKitFileChanged(target)
   return { path: target, version: (await KITION_KIT_HOST.stamp(target)) ?? '' }
 }
 

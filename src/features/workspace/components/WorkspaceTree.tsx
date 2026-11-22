@@ -1,5 +1,5 @@
 import type { KitCreationItem } from '@/features/workspace/hooks/useKitCreations'
-import { ChevronRightIcon as ChevronRight, CopyIcon as Copy, CornerUpRightIcon as CornerUpRight, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FolderOpenIcon as FolderOpen, GripVerticalIcon as GripVertical, LayoutDashboardIcon as LayoutDashboard, MessageSquareDashedIcon as MessageSquareDashed, MessageSquarePlusIcon as MessageSquarePlus, EllipsisIcon as MoreHorizontal, PencilIcon as Pencil, PlusIcon as Plus, FaceSlightlySmilingIcon as Smile, Table2Icon as Table2, TrashIcon as Trash2 } from '@kition/tessera/icons/react'
+import { ChevronRightIcon as ChevronRight, CopyIcon as Copy, CornerUpRightIcon as CornerUpRight, FilePlusCornerIcon as FilePlus2, FileTextIcon as FileText, FolderOpenIcon as FolderOpen, GripVerticalIcon as GripVertical, MessageSquareDashedIcon as MessageSquareDashed, MessageSquarePlusIcon as MessageSquarePlus, EllipsisIcon as MoreHorizontal, PencilIcon as Pencil, PlusIcon as Plus, FaceSlightlySmilingIcon as Smile, BookmarkIcon as Bookmark, TrashIcon as Trash2 } from '@kition/tessera/icons/react'
 import type { DragEvent as ReactDragEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -19,7 +19,8 @@ import {
   type WorkspaceTreeNode,
 } from '@/features/workspace/lib/workspace'
 import { getChildFolderPathForNode } from '@/features/workspace/lib/workspaceTree'
-import { parseTableFileChildPath } from '@/features/workspace/lib/tableFileChildren'
+import { parseKitPartPath } from '@/features/workspace/lib/kitOutlineChildren'
+import { hasWorkspaceOutline } from '@/services/workspaceFormats'
 import { cn } from '@/lib/cn'
 import { useDismissableLayer } from '@kition/tessera/ui'
 
@@ -211,19 +212,16 @@ export function WorkspaceTree({
         const icon = icons[node.path]
         const isActive = node.type === 'file' && activePath === node.path
         const isModified = node.type === 'file' && modifiedPaths.has(node.path)
-        // A table or dashboard of a table file (the Table kit lists them; a click opens it there).
-        const tableFileChild = node.virtual ? parseTableFileChildPath(node.path) : null
-        const FormatIcon = tableFileChild
-          ? (tableFileChild.kind === 'dashboards' ? LayoutDashboard : Table2)
-          : getWorkspaceItemIcon(node.format)
-        const formatIconColorClass = tableFileChild
-          ? getWorkspaceItemIconColorClass(inferWorkspaceItemFormat(tableFileChild.filePath))
+        // A part of a file its kit's outline lists (a click opens the file there): Kition does not
+        // know what a part is, so every part has the same mark.
+        const kitPart = node.virtual ? parseKitPartPath(node.path) : null
+        const FormatIcon = kitPart ? Bookmark : getWorkspaceItemIcon(node.format)
+        const formatIconColorClass = kitPart
+          ? getWorkspaceItemIconColorClass(inferWorkspaceItemFormat(kitPart.filePath))
           : getWorkspaceItemIconColorClass(node.format)
         const isEditable = isEditableWorkspaceFormat(node.format)
-        // A table file opens in the Table kit; expanded, it lists its tables and dashboards.
-        const isTableFile = node.type === 'file'
-          && !node.virtual
-          && node.name.toLowerCase().endsWith('.ktable')
+        // A file whose kit has an outline expands to list its parts.
+        const hasOutline = node.type === 'file' && !node.virtual && hasWorkspaceOutline(node.path)
         // A plain file that has absorbed a same-named sibling folder tracks its
         // expansion under the FOLDER path (which is what expandedPaths and
         // persisted tree metadata key on), not the file path. Folders already
@@ -231,7 +229,7 @@ export function WorkspaceTree({
         const disclosureKey = node.folderPath ?? node.path
         const expanded = expandedPaths.has(disclosureKey)
         const visibleChildren = node.children
-        const hasDisclosure = visibleChildren.length > 0 || node.type === 'folder' || isTableFile
+        const hasDisclosure = visibleChildren.length > 0 || node.type === 'folder' || hasOutline
         const canCreateInside = !node.virtual && (node.type === 'folder' || isEditable)
         const canDelete = !node.virtual && (node.type === 'folder' || isSupportedWorkspaceFormat(node.format || inferWorkspaceItemFormat(node.path)))
         const canSetIcon = !node.virtual

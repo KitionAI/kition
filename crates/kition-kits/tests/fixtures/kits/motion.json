@@ -4,7 +4,7 @@
   "level": "basic",
   "id": "kit.motion",
   "name": "Motion",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "license": "Apache-2.0",
   "distribution": "plugin",
   "engine": {
@@ -118,6 +118,7 @@
     "features": [
       "view.describe",
       "document.check",
+      "document.identity",
       "model.open",
       "model.import",
       "model.export",

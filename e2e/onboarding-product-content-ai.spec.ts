@@ -2,7 +2,7 @@ import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 
 import { openInKitFrame } from './helpers/embeddedKit'
 import { canReadBlobBodies } from './helpers/requestBody'
-import { configureModel, mockGenerate, onboardingTable, promptText, recordCount, savedTables, serveKitTables } from './helpers/tableAi'
+import { configureModel, mockGenerate, onboardingTable, promptText, recordCount, savedTables } from './helpers/tableAi'
 
 /** A 1×1 PNG: the image a mocked image model answers. */
 const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
@@ -72,7 +72,6 @@ test('AI-SCENE-006: Product Content Studio runs only the asked cells, keeps the 
   let requests: Array<Record<string, any>> = []
   let refuseText = false
   const routes = async (page: Page) => {
-    await serveKitTables(page)
     let images = 0
     requests = await mockGenerate(page, (request) => {
       const index = request.output === 'image' ? images++ : -1

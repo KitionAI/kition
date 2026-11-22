@@ -364,6 +364,19 @@
         }
       }
     },
+    "outline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command"],
+      "description": "Kition platform (K24): the document's outline, the parts of a file a host lists under it and opens the file at (a table file's tables, a deck's slides).",
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The engine command that answers the outline. It takes no parameters, changes nothing, and answers { items: [{ id, title, kind?, view }] }; view is the place as document.view and document/reveal take it."
+        }
+      }
+    },
     "extras": {
       "type": "object",
       "description": "Methods beyond the contract, reachable through invoke (platform K6).",

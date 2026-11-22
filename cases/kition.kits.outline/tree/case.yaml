@@ -1,0 +1,29 @@
+format: 1
+id: kition.kits.outline/tree
+feature: kition.kits.outline
+intent: >-
+  The workspace tree lists the parts of a file whose kit has an outline (kit.json outline.command,
+  platform K24), without knowing the kit. The kit catalog reads `outline` from the manifest; a
+  file of such a kit expands, and only expanded files are read. A part is a child whose path
+  carries the Kit UI view its kit gave, so a click opens the file in its kit there; a path that is
+  no part's, or whose view is not an object, is none. The parts come before the file's own child
+  pages, in the kit's order. A changed file whose kit has an outline tells the tree to read its
+  outline again. In the app with the Table kit's package, the tree lists a table file's tables and
+  dashboards from `GET /v1/kits/outline` once the file is expanded, and a click on one opens the
+  file in the kit at it.
+layer: gate
+source:
+  kind: synthetic
+  from: src/features/workspace/lib/kitOutlineChildren.ts
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, vitest, run, --config, tooling/vitest.config.ts, src/features/workspace/lib/kitOutlineChildren.spec.ts, src/lib/kitCatalog.spec.ts, src/api/invalidation.spec.ts]
+  - exec:
+      cmd: [pnpm, test:ktable:e2e]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-22"

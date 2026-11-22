@@ -4,7 +4,7 @@
   "level": "basic",
   "id": "kit.table",
   "name": "Table",
-  "version": "0.5.6",
+  "version": "0.1.0",
   "license": "Apache-2.0",
   "distribution": "default",
   "capabilities": [
@@ -51,6 +51,9 @@
       "command": "table.file.export"
     }
   ],
+  "outline": {
+    "command": "table.file.outline"
+  },
   "extras": {
     "call": {
       "params": [
@@ -122,11 +125,11 @@
         "epoch",
         "keys",
         "dpr",
-        "icons",
-        "tilesJson"
+        "session",
+        "draft"
       ],
       "returns": "Uint8Array",
-      "description": "The grid's bands (layer, column band, row band triples) as display lists (format v1), with the icons from an id on and the emoji tiles the page lacks, in one batch."
+      "description": "The grid's bands (layer, column band, row band triples, as a Uint32Array) of arrangement epoch at dpr as display lists (format v1), drafts when draft, with the resources (icon and emoji tiles, pictures) page session session does not hold yet, in one batch."
     },
     "gridRaster": {
       "params": [
@@ -153,6 +156,28 @@
       ],
       "returns": "string",
       "description": "How the grid splits text into runs of one face and how wide each run is, as JSON, for the width test."
+    },
+    "gridSpecimen": {
+      "params": [
+        "asksJson",
+        "dpr"
+      ],
+      "returns": "Uint8Array",
+      "description": "Text of any size and weight ([{text, weight, size}]) set one line each by the grid's shaping and text ops, as one display list (format v1), and that list rasterized as gridRaster rasterizes a band (list length u32, the list padded to 4 bytes, width, height, RGBA8), for the parity test: the grid's own text is under Inter's optical size floor."
+    },
+    "gridOpticalSizing": {
+      "params": [
+        "sizing"
+      ],
+      "returns": "boolean",
+      "description": "The optical sizing the grid measures and draws Inter with, the one the page's Canvas uses: auto (the default; the optical size follows the font size) or fixed-default (Inter's default optical size at every size); its bands, drafts, gridMeasure and gridRaster use it. Answers whether it changed; an error for another name."
+    },
+    "gridSummary": {
+      "params": [
+        "paramsJson"
+      ],
+      "returns": "string",
+      "description": "The numbers of some fields over the editor's arrangement ({fields}): [{field, count, sum}] as JSON, for the footer's sums and averages."
     }
   },
   "ui": {
@@ -197,6 +222,7 @@
     "features": [
       "view.describe",
       "document.check",
+      "document.identity",
       "model.open",
       "model.import",
       "model.export",

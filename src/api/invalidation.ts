@@ -12,7 +12,8 @@ import type { QueryClient } from '@tanstack/react-query'
 
 import { queryKeys, workspaceRootKey } from '@/api/queryKeys'
 import { subscribeWorkspaceDocumentExternalChanges, type WorkspaceDocumentExternalChange } from '@/services/desktop'
-import { isTableFilePath, notifyTableFilesChanged } from './kitTables'
+import { notifyKitFileChanged } from './kits'
+import { hasWorkspaceOutline } from '@/services/workspaceFormats'
 
 export const WORKSPACE_RELOAD_EVENT = 'kition:workspace-reload'
 
@@ -32,7 +33,8 @@ export function invalidateForWorkspaceChange(queryClient: QueryClient, change: W
   if (change.eventType !== 'change') {
     tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.workspaceTree(root) }))
   }
-  if (isTableFilePath(change.path) && typeof window !== 'undefined') notifyTableFilesChanged(change.path)
+  // The tree reads an expanded file's outline again.
+  if (hasWorkspaceOutline(change.path) && typeof window !== 'undefined') notifyKitFileChanged(change.path)
   return Promise.all(tasks)
 }
 

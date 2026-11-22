@@ -56,7 +56,7 @@ fn owner() -> ObjectId {
 
 pub fn schema() -> &'static str {
     if *crate::paragraphs::PARAGRAPHS {
-        return crate::paragraphs::SCHEMA;
+        return crate::paragraphs::schema();
     }
     if *crate::comments::COMMENTS {
         return crate::comments::schema();
@@ -232,7 +232,7 @@ pub fn under(replica: &Replica, command: &str, params: &Map<String, Value>) -> R
     let (from, to) = match command {
         "order.index" => (from, from + 1),
         "order.reverse" => items.len().checked_sub(from + 1).map_or((items.len(), items.len()), |i| (i, i + 1)),
-        "order.window" => (from, from + 2),
+        "order.window" => (from, window_end(params, from)),
         _ => (from, from),
     };
     let objects: Vec<_> = items.iter().skip(from).take(to - from).map(ObjectId::as_str).collect();
@@ -318,7 +318,7 @@ pub fn edit(replica: &mut Replica, command: &str, params: &Map<String, Value>, o
                     }
                 }
             } else {
-                let ids = items_for_command(current.clone(), command, at);
+                let ids = items_for_command(current.clone(), command, at, window_end(params, at));
                 for id in ids {
                     tx.set(&id, "name", json!("Agent"))?;
                 }
@@ -333,11 +333,16 @@ fn index(params: &Map<String, Value>) -> usize {
     params["at"].as_u64().map(|n| n as usize).unwrap_or_else(|| params["at"].as_str().unwrap().trim_start_matches('#').parse::<usize>().unwrap() - 1)
 }
 
-fn items_for_command(mut ids: Vec<ObjectId>, command: &str, at: usize) -> Vec<ObjectId> {
+/// The end (exclusive) of `order.window`'s window: its `to`, else two items from `at`.
+fn window_end(params: &Map<String, Value>, at: usize) -> usize {
+    params.get("to").and_then(Value::as_u64).map_or(at + 2, |to| (to as usize).max(at))
+}
+
+fn items_for_command(mut ids: Vec<ObjectId>, command: &str, at: usize, end: usize) -> Vec<ObjectId> {
     if command == "order.reverse" {
         ids.reverse();
     }
-    ids.into_iter().skip(at).take(if command == "order.window" { 2 } else { 1 }).collect()
+    ids.into_iter().skip(at).take(if command == "order.window" { end - at } else { 1 }).collect()
 }
 
 pub fn commands() -> Vec<(&'static str, &'static str, bool, Value)> {
@@ -382,6 +387,9 @@ pub fn commands() -> Vec<(&'static str, &'static str, bool, Value)> {
                 _ => "order.move",
             };
             let mut properties = json!({"at":at});
+            if kind == "window" {
+                properties["to"] = json!({"type":"integer","minimum":0});
+            }
             if kind == "move" {
                 properties["item"] = json!({"type":"string","x-khp-role":"targets","x-khp-types":["Item"]});
             }

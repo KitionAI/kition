@@ -31,6 +31,7 @@ impl FromRef<KitsState> for AuthConfig {
 pub fn router(state: KitsState) -> Router {
     Router::new()
         .route("/kits", get(list))
+        .route("/kits/outline", get(outline))
         .route("/kits/documents", post(open))
         .route("/kits/documents/new", post(create))
         .route(
@@ -199,6 +200,26 @@ pub fn app_error(error: KitError) -> AppError {
 
 async fn list(State(state): State<KitsState>, _user: CurrentUser) -> Response {
     ok(json!({ "kits": state.kits.statuses() }))
+}
+
+#[derive(Deserialize)]
+struct OutlineQuery {
+    path: String,
+}
+
+/// `GET /kits/outline?path=`: the parts of the workspace file `path` the workspace tree lists
+/// under it, as its kit's outline command answers them (`kit.json` `outline`, platform K24):
+/// `items`, each `{ id, title, kind?, view }`, from the file's open editor when it has one, else
+/// from the headless kit. `items` is `null` for a kit that declares no outline.
+async fn outline(
+    State(state): State<KitsState>,
+    _user: CurrentUser,
+    Query(query): Query<OutlineQuery>,
+) -> AppResult<Response> {
+    let items = kition_kits::outline::outline(&state.kits, &query.path)
+        .await
+        .map_err(app_error)?;
+    Ok(ok(json!({ "path": query.path, "items": items })))
 }
 
 #[derive(Deserialize)]

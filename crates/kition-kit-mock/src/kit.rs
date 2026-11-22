@@ -212,6 +212,10 @@ static PART_NOUN: LazyLock<String> = LazyLock::new(|| {
 
 /// The render command of documents with a timeline ([`TIMELINE`]), the kit's `agent.render`.
 const RENDER: &str = "file.render";
+/// The outline command of documents with a timeline ([`TIMELINE`]), the kit's `outline.command`
+/// (platform K24): one item a sequence, `{ id, title, kind: "sequence", view: { sequence } }`,
+/// counted from 1, titled by the sequence's first object.
+const OUTLINE: &str = "file.outline";
 /// The length of every sequence, in seconds.
 const SEQUENCE_SECONDS: f64 = 10.0;
 /// Frames a second.
@@ -1099,6 +1103,15 @@ impl Kit {
                                 json!({"command":"clip.opacity","params":{"clip":"target","opacity":"value"}});
                         }
                     }
+                    // Only the object holding a list declares a contract, for one operation on it
+                    // (as a motion kit's comp declares `list.move.layers`): a nested holder path
+                    // from its owner must find it there.
+                    if IDENTITY.0 == "kit.heldcontract" {
+                        for def in described["types"].as_object_mut().into_iter().flat_map(|types| types.values_mut()) {
+                            def.as_object_mut().map(|def| def.remove("batchOps"));
+                        }
+                        described["types"]["TextBody"]["batchOps"] = json!({"list.move.paragraphs":{"direct":true}});
+                    }
                     Ok(described)
                 })
             }
@@ -1585,7 +1598,7 @@ impl Kit {
         if params.command == PROBE {
             return to_value(CommandsExecuteResult { changed: false, result: Some(probe()) });
         }
-        if *TIMELINE && matches!(params.command.as_str(), "playhead.set" | "sequence.open" | RENDER) {
+        if *TIMELINE && matches!(params.command.as_str(), "playhead.set" | "sequence.open" | RENDER | OUTLINE) {
             return self.execute_on_timeline(&params);
         }
         if *TIMELINE && params.command == "sequence.append" {
@@ -1918,6 +1931,17 @@ impl Kit {
                         .ok_or_else(|| invalid("/sequence", format!("`sequence` is counted from 1 (the document has {count})"), "a whole number"))?;
                     document.current = sequence as usize - 1;
                     Ok(None)
+                }
+                OUTLINE => {
+                    let items: Vec<Value> = slides_of(&document.text)
+                        .iter()
+                        .enumerate()
+                        .map(|(index, objects)| {
+                            let number = index + 1;
+                            json!({ "id": number.to_string(), "title": objects.first().cloned().unwrap_or_default(), "kind": "sequence", "view": { "sequence": number } })
+                        })
+                        .collect();
+                    Ok(Some(json!({ "items": items })))
                 }
                 _ => render_view(&document.text, given).map(Some),
             }
@@ -2593,6 +2617,13 @@ fn timeline_commands() -> Vec<CommandInfo> {
             "Opens a sequence (`sequence`, counted from 1) in the editor.",
             json!({ "type": "object", "additionalProperties": false, "required": ["sequence"], "properties": { "sequence": { "type": "integer", "minimum": 1 } } }),
             None,
+        ),
+        command(
+            OUTLINE,
+            "Outline",
+            "Lists the document's sequences as its outline: `items`, each `{ id, title, kind, view }`. Never an edit.",
+            json!({ "type": "object", "additionalProperties": false, "properties": {} }),
+            Some(json!({ "type": "object", "required": ["items"], "properties": { "items": { "type": "array" } } })),
         ),
         command(
             RENDER,

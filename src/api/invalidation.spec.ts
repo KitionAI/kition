@@ -52,13 +52,13 @@ afterEach(() => {
 })
 
 describe('invalidateForWorkspaceChange', () => {
-  it('a changed table file invalidates that document only, and tells the table pickers', async () => {
+  it('a changed file whose kit has an outline invalidates that document only, and tells the tree to read its outline again', async () => {
     const keys = seed(client)
     const heard = vi.fn()
-    window.addEventListener('kition:table-files:changed', heard)
+    window.addEventListener('kition:kit-file:changed', heard)
 
     await invalidateForWorkspaceChange(client, { path: 'a/b.ktable', eventType: 'change' })
-    window.removeEventListener('kition:table-files:changed', heard)
+    window.removeEventListener('kition:kit-file:changed', heard)
 
     expect(heard).toHaveBeenCalledOnce()
     expect(isInvalidated(client, keys.table)).toBe(true)

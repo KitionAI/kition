@@ -2641,7 +2641,13 @@ async fn ordered_place_matrix() {
                                         return vec![ids.len().checked_sub(5 - from).and_then(|at| ids.get(at)).cloned()];
                                     }
                                     let range = if matches!(command, "gap" | "move" | "source") { from.saturating_sub(1)..to + 1 } else { from..to };
-                                    range.map(|i| ids.get(i).cloned()).collect::<Vec<_>>()
+                                    let mut held = range.map(|i| ids.get(i).cloned()).collect::<Vec<_>>();
+                                    // A window holds which items are at its positions, not their
+                                    // order among themselves (docs/platform/data-model.md).
+                                    if command == "window" {
+                                        held.sort_by_key(|id| id.as_ref().map(Value::to_string));
+                                    }
+                                    held
                                 };
                                 let source_changed = command == "source" && old_ids.iter().position(|id| id == "C") != new_ids.iter().position(|id| id == "C");
                                 let should_refuse = relevant(&old_ids) != relevant(&new_ids) || source_changed;
@@ -2682,6 +2688,88 @@ async fn ordered_place_matrix() {
     while let Some(result) = tasks.join_next().await {
         if let Some(failure) = result.unwrap() {
             failures.push(failure);
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// A told ordinal window holds which items are at its positions `[from, to)` (data-model.md,
+/// "List windows hold membership"): another writer's reorder among the members applies; an
+/// item moved in or out, created or deleted inside, or shifted across an end by an insertion or
+/// removal before the window refuses; edits after it apply. An empty window is an insertion gap
+/// and holds its neighbours; a window of positions ending at the list's end holds an append only
+/// when `to` passes the last item.
+#[tokio::test]
+async fn window_membership_matrix() {
+    let mut failures = Vec::new();
+    // (label, window, change, the index it changes, expected reason or None to apply)
+    type Case = (&'static str, (usize, usize), &'static str, usize, Option<&'static str>);
+    let cases: [Case; 18] = [
+        ("reorder-inside", (1, 4), "reorder", 1, None),
+        ("reorder-inside-last", (1, 4), "reorder", 2, None),
+        ("reorder-whole-list", (0, 6), "reorder", 0, None),
+        ("reorder-across-end", (1, 4), "reorder", 3, Some("relocated")),
+        ("move-in", (1, 4), "move-in", 2, Some("relocated")),
+        ("move-out", (1, 4), "move-out", 2, Some("relocated")),
+        ("insert-before", (1, 4), "insert", 0, Some("relocated")),
+        ("insert-inside", (1, 4), "insert", 2, Some("relocated")),
+        ("insert-after", (1, 4), "insert", 4, None),
+        ("remove-before", (1, 4), "delete", 0, Some("relocated")),
+        ("remove-inside", (1, 4), "delete", 2, Some("deleted")),
+        ("remove-after", (1, 4), "delete", 4, None),
+        ("empty-insert-at", (2, 2), "insert", 2, Some("relocated")),
+        ("empty-insert-after", (2, 2), "insert", 4, None),
+        ("end-append", (3, 5), "insert", 5, None),
+        ("end-slot-append", (3, 6), "insert", 5, Some("relocated")),
+        ("end-reorder", (3, 5), "reorder", 3, None),
+        ("whole-list-remove-last", (0, 6), "delete", 4, Some("deleted")),
+    ];
+    for outside in [false, true] {
+        for (label, (from, to), kind, at, expected) in cases {
+            let label = format!("{outside}/{label}");
+            let original =
+                json!({"items": (["A","B","C","D","E"].map(|id| json!({"id":id,"name":id}))), "other":[{"id":"Z","name":"Z"},{"id":"Y","name":"Y"}]});
+            let f = Fixture::new(&format!("wm{}", label.replace(['/', '-'], "")), "KITION_KIT_MOCK_ORDER=list", &original.to_string())
+                .expect("build the mock kit first");
+            let basis = f.revision(ME).await;
+            let mut changed = original.clone();
+            let list = changed["items"].as_array_mut().unwrap();
+            match kind {
+                "insert" => list.insert(at, json!({"id":"X","name":"X"})),
+                "delete" | "move-out" => {
+                    list.remove(at);
+                }
+                "move-in" => list.insert(at, json!({"id":"Z","name":"Z"})),
+                _ => list.swap(at, at + 1),
+            }
+            if kind == "move-in" {
+                changed["other"].as_array_mut().unwrap().remove(0);
+            }
+            if kind == "move-out" {
+                changed["other"].as_array_mut().unwrap().push(original["items"][at].clone());
+            }
+            matrix_change(&f, outside, &changed, order_change(false, kind, at, &original, &changed)).await;
+            let saved = f.read();
+            let answer = f.call(ME, "run", json!({"basis":basis,"steps":[{"command":"order.window","params":{"at":from,"to":to}}]})).await;
+            let valid = match (&answer, expected) {
+                (Ok(_), None) => {
+                    // The window's items now are the ones the write renamed.
+                    let written: Value = serde_json::from_str(&f.read()).unwrap();
+                    let items = written["items"].as_array().unwrap();
+                    items.iter().enumerate().all(|(index, item)| (item["name"] == "Agent") == (from..to).contains(&index))
+                }
+                (Err(error), Some(reason)) => {
+                    error["error"]["code"] == "conflict"
+                        && error["conflicts"].as_array().is_some_and(|cs| cs.iter().any(|c| c["reason"] == reason))
+                        && f.read() == saved
+                }
+                _ => false,
+            };
+            println!("MATRIX {label}: {} {}", expected.unwrap_or("apply"), if valid { "PASS" } else { "FAIL" });
+            if !valid {
+                failures.push(format!("{label}: expected {}, got {answer:?}", expected.unwrap_or("apply")));
+            }
+            f.shutdown().await;
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));

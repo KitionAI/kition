@@ -867,6 +867,84 @@ fn previous_list(now: &[String], place: &Place, changes: &Value) -> Option<Vec<S
     Some(before)
 }
 
+/// What others did to the membership of the ordinal window `[from, to)` of `place`, the list
+/// `now` holds (`None`: it cannot be read). A window's indexes name the same positions in every
+/// version of the list, so each entry by others is read in the list as it was just before it and
+/// just after it: the objects it created or deleted inside the window, moved or shifted across
+/// one of its ends (in or out), or whose position field it changed while inside. An object that
+/// stays inside (a reorder among the members) and edits that leave the window's positions alone
+/// apply. Each found object is named when the list it was in can be rebuilt. `None` when others
+/// changed the list and it cannot be read now.
+#[allow(clippy::too_many_arguments)]
+fn window_membership(
+    place: &Place,
+    from: usize,
+    to: usize,
+    now: Option<&[String]>,
+    entries: &[Entry],
+    edits: &[HashMap<Place, ListEdit>],
+    by_others: impl Fn(&Entry) -> bool,
+    positional: impl Fn(&Value) -> bool,
+) -> Option<Vec<(Option<String>, &'static str)>> {
+    let inside = |index: usize| (from..to).contains(&index);
+    let others_here = entries.iter().enumerate().any(|(at, entry)| by_others(entry) && edits[at].contains_key(place));
+    if now.is_none() && others_here {
+        return None;
+    }
+    let mut found = Vec::new();
+    let mut after: Option<Vec<String>> = now.map(<[String]>::to_vec);
+    let mut length_after = now.map_or(0, <[String]>::len);
+    for (at, entry) in entries.iter().enumerate().rev() {
+        let edit = edits[at].get(place);
+        let before = match edit {
+            Some(_) => after.as_ref().zip(entry.changes.as_ref()).and_then(|(list, changes)| previous_list(list, place, changes)),
+            None => after.clone(),
+        };
+        let length_before = edit.map_or(length_after, |edit| (length_after + edit.removed.len()).saturating_sub(edit.added.len()));
+        if let (true, Some(changes)) = (by_others(entry), &entry.changes) {
+            let here = |item: &Value, side: &str| item.get(side).and_then(place_of_position).filter(|(was, _)| was == place).map(|(_, index)| index);
+            if edit.is_some() {
+                for item in changes["created"].as_array().into_iter().flatten() {
+                    if here(item, "at").is_some_and(inside) {
+                        found.push((id_text(&item["id"]), "relocated"));
+                    }
+                }
+                for item in changes["deleted"].as_array().into_iter().flatten() {
+                    if here(item, "at").is_some_and(inside) {
+                        found.push((id_text(&item["id"]), "deleted"));
+                    }
+                }
+                for item in changes["moved"].as_array().into_iter().flatten() {
+                    let (was, is) = (here(item, "from").map(inside), here(item, "to").map(inside));
+                    if was.unwrap_or(false) != is.unwrap_or(false) {
+                        found.push((id_text(&item["id"]), "relocated"));
+                    }
+                }
+            }
+            // The objects it kept, shifted across an end of the window by what it put in or
+            // took out before them.
+            if let Some(edit) = edit {
+                for index in (0..length_before).filter(|index| !edit.removed.contains(index)) {
+                    if edit.forward(index).is_some_and(|moved| inside(moved) != inside(index)) {
+                        found.push((before.as_ref().and_then(|list| list.get(index).cloned()), "relocated"));
+                    }
+                }
+            }
+            // A member whose position field it changed: where it is, not only which list holds it.
+            for item in changes["changed"].as_array().into_iter().flatten().filter(|item| positional(item)) {
+                let Some(id) = id_text(&item["id"]) else { continue };
+                let index_in = |list: &Option<Vec<String>>| list.as_ref().and_then(|list| list.iter().position(|listed| *listed == id));
+                if index_in(&before).is_some_and(inside) || index_in(&after).is_some_and(inside) {
+                    found.push((Some(id), "relocated"));
+                }
+            }
+        }
+        after = before;
+        length_after = length_before;
+    }
+    Some(found)
+}
+
 async fn relative_order(kits: &KitManager, view: Reader<'_>, order: &Value, entries: &[Entry], agent: &str) -> Vec<Conflict> {
     let unknown = || vec![Conflict::unknown().because(Unavailable::Place)];
     let (Some(parent), Some(field), Some(objects)) = (id_text(&order["parent"]), order["field"].as_str(), order["objects"].as_array()) else {
@@ -1266,6 +1344,46 @@ async fn batch_place(kits: &KitManager, view: Reader<'_>, premises: &mut Premise
         }
     }
     None
+}
+
+/// The object a nested field path (`comp.layers`, `layers.2.props.children`) of `target` (of type
+/// `ty`) ends in, its type, and the rest of the path from that object: followed through owned
+/// refs, lists (by index) and maps of objects (by key), as the object model resolves a held
+/// path. `None` when the path names no held object first (a plain field, a JSON member, the
+/// kit's own words) or cannot be read.
+async fn nested_holder(kits: &KitManager, view: Reader<'_>, described: &Value, target: &str, ty: &str, path: &str) -> Option<(String, String, String)> {
+    let segments: Vec<&str> = path.split('.').collect();
+    if segments.first().is_none_or(|first| first.contains(['/', '#'])) {
+        return None;
+    }
+    let (mut holder, mut ty, mut position) = (target.to_owned(), ty.to_owned(), 0);
+    while position + 1 < segments.len() {
+        let name = segments[position];
+        let def = &described["types"][&ty]["fields"][name];
+        let followed = match def["kind"].as_str() {
+            Some("ref") if def["owns"] == true => 0,
+            Some("list" | "map") if position + 2 < segments.len() => 1,
+            _ => break,
+        };
+        let of = def["of"].as_str()?.to_owned();
+        let loaded = view.load(kits, json!([{"target":holder,"fields":[name]}])).await?;
+        let value = &loaded["loaded"][0]["fields"][name];
+        let next = match followed {
+            0 => id_text(value),
+            _ => {
+                let key = segments[position + 1];
+                match value {
+                    Value::Array(items) => key.parse::<usize>().ok().and_then(|index| items.get(index)).and_then(id_text),
+                    Value::Object(members) => members.get(key).and_then(id_text),
+                    _ => None,
+                }
+            }
+        }?;
+        holder = next;
+        ty = of;
+        position += 1 + followed;
+    }
+    (position > 0).then(|| (holder, ty, segments[position..].join(".")))
 }
 
 async fn batch_windows(kits: &KitManager, view: Reader<'_>, premises: &mut Premises, entries: &[Entry]) -> bool {
@@ -2320,15 +2438,31 @@ pub(crate) async fn batch_contract(kits: &KitManager, view: Reader<'_>, ops: &[V
         {
             aliases.insert(alias.to_owned(), ty.clone());
         }
+        let mut mapped_op = op.clone();
+        let (written_on, mut nested) = (ty.clone(), false);
+        // A nested holder path (`target: 1, field: "comp.layers"`, the place a receipt's move
+        // names) is checked with the contract of the object holding its last field, on that
+        // object (`list.move.layers` of the comp), as the object model applies it: no new
+        // declaration (data-model.md, "Positional Batches And Replay").
+        if name != "create"
+            && let Some(path) = op["field"].as_str().filter(|path| path.contains('.'))
+            && let Some(target) = id_text(&op["target"])
+            && let Some((holder, holder_type, field)) = nested_holder(kits, view, &described, &target, &ty, path).await
+        {
+            mapped_op["target"] = json!(holder);
+            mapped_op["field"] = json!(field);
+            ty = holder_type;
+            nested = true;
+        }
         let mut def = &described["types"][&ty];
-        if def["readOnly"] == true || op["field"].as_str().is_some_and(|field| def["fields"][field]["readOnly"] == true) {
+        if def["readOnly"] == true || mapped_op["field"].as_str().is_some_and(|field| def["fields"][field]["readOnly"] == true) {
             guarded.push(op.clone());
             continue;
         }
         // Validate literal register values before contract admission. This reads only the
         // schema: neither the kit nor a scratch command can write through a stale premise.
         if name == "set"
-            && let (Some(schema), Some(field)) = (&schema, op["field"].as_str())
+            && let (Some(schema), Some(field)) = (&schema, mapped_op["field"].as_str())
             && schema.field(&ty, field).is_ok_and(|field| field.kind != kition_kdm::FieldKind::Ref)
             && let Err(error @ kition_kdm::KdmError::InvalidValue { .. }) = schema.check_value(&ty, field, &op["value"])
         {
@@ -2336,13 +2470,14 @@ pub(crate) async fn batch_contract(kits: &KitManager, view: Reader<'_>, ops: &[V
                 super::KitToolError::new(super::ErrorCode::Batch(kition_kdm::batch::BatchErrorCode::InvalidValue), error.to_string()).at(Some(index)),
             ));
         }
-        let mut mapped_op = op.clone();
-        if let Some(field) = op["field"].as_str() {
+        if let Some(field) = mapped_op["field"].as_str().map(str::to_owned) {
+            let field = field.as_str();
             let field_def = &def["fields"][field];
             if let Some(child) = field_def["of"].as_str().filter(|child| described["types"][*child]["projected"] == true)
                 && (name.starts_with("list.") || name.starts_with("tree.") || name == "set" && field_def["kind"] == "ref" && field_def["owns"] == true)
             {
                 // Container edits use the projected child's contract, just as projection routing does.
+                let holder = mapped_op["target"].clone();
                 let mut item = op.get("item").or_else(|| op.get("node")).cloned();
                 if field_def["kind"] == "ref" {
                     item = item.or_else(|| op.get("value").cloned());
@@ -2353,13 +2488,13 @@ pub(crate) async fn batch_contract(kits: &KitManager, view: Reader<'_>, ops: &[V
                     && let Some(index) = op[if name == "list.move" { "from" } else { "index" }].as_u64()
                 {
                     item = view
-                        .load(kits, json!([{"target":op["target"],"fields":[field]}]))
+                        .load(kits, json!([{"target":holder,"fields":[field]}]))
                         .await
                         .and_then(|loaded| loaded["loaded"][0]["fields"][field].get(index as usize).cloned());
                 }
                 if let Some(item) = item {
                     mapped_op["target"] = item;
-                    mapped_op["in"] = json!(format!("{}.{field}", id_text(&op["target"]).ok_or(())?));
+                    mapped_op["in"] = json!(format!("{}.{field}", id_text(&holder).ok_or(())?));
                 }
                 ty = child.to_owned();
                 def = &described["types"][&ty];
@@ -2367,7 +2502,18 @@ pub(crate) async fn batch_contract(kits: &KitManager, view: Reader<'_>, ops: &[V
         }
         let keyed = mapped_op["field"].as_str().map(|field| format!("{name}.{field}"));
         let mappings = if def["projected"] == true { &def["projectedOps"] } else { &def["batchOps"] };
-        let mapping = keyed.as_ref().and_then(|key| mappings.get(key)).or_else(|| mappings.get(name)).or_else(|| mappings.get("*"));
+        let mut mapping = keyed.as_ref().and_then(|key| mappings.get(key)).or_else(|| mappings.get(name)).or_else(|| mappings.get("*"));
+        // A nested path the holder declares nothing for keeps a contract its owner declares for
+        // the whole path (`list.move.comp.layers`, `list.move` or `*` on the item).
+        if mapping.is_none() && nested {
+            let owner = &described["types"][&written_on];
+            let mappings = if owner["projected"] == true { &owner["projectedOps"] } else { &owner["batchOps"] };
+            let keyed = op["field"].as_str().map(|field| format!("{name}.{field}"));
+            mapping = keyed.as_ref().and_then(|key| mappings.get(key)).or_else(|| mappings.get(name)).or_else(|| mappings.get("*"));
+            if mapping.is_some() {
+                mapped_op = op.clone();
+            }
+        }
         let Some(mapping) = mapping else {
             // Ask the actual model to validate a rejected raw prefix in an isolated fork.
             // Its literal-field rules may differ from KDM's held paths. Never execute a
@@ -3118,6 +3264,8 @@ async fn conflicts_at(
                     Some((place, from, to, window.get("time").and_then(Span::of)))
                 })
                 .collect();
+            // Windows the kit told (`within`) hold membership; without one, each object's place.
+            let told = !windows.is_empty();
             if windows.is_empty() {
                 // The kit names no window: each object's place in a list others changed.
                 windows = objects.iter().filter_map(|id| position(id)).map(|(place, index)| (place, index, index + 1, None)).collect();
@@ -3208,7 +3356,33 @@ async fn conflicts_at(
                     add_to(&mut found, conflict(&id, reason));
                 }
             }
-            if !windows.iter().all(exact) {
+            if told {
+                // A told window told by indexes alone (not by time, not an index spelling, not
+                // an insertion gap) holds which objects are at its positions: an object others
+                // put in or took out (created, deleted, moved or shifted across an end), or whose
+                // position field they changed while inside, refuses; a reorder among the
+                // members and edits that leave its positions alone apply.
+                for (place, from, to, _) in windows.iter().filter(|window| !exact(window)) {
+                    match window_membership(place, *from, *to, lists.get(place).map(Vec::as_slice), entries, &edits, by_others, positional) {
+                        Some(changed) => {
+                            for (id, reason) in changed {
+                                match id {
+                                    Some(id) => add_to(&mut found, conflict(&id, reason)),
+                                    None => add_to(&mut found, Conflict { id: None, reason, now: None, place: Some(place_of.clone()), ty: None, cause: None }),
+                                }
+                            }
+                        }
+                        None => {
+                            let mut place = place_of.clone();
+                            place["unknown"] = json!("the list holding this window cannot be read");
+                            add_to(
+                                &mut found,
+                                Conflict { id: None, reason: "unknown", now: None, place: Some(place), ty: None, cause: Some(Unavailable::Place) },
+                            );
+                        }
+                    }
+                }
+            } else if !windows.iter().all(exact) {
                 // An object under the place now that others put there: created, moved, its
                 // position changed, or (for a kit that marks no position) its index shifted.
                 let mut selected = Vec::new();
@@ -3242,10 +3416,9 @@ async fn conflicts_at(
                     }
                 }
             }
-            // A window told by indexes alone (not by time, not an index spelling): an object
-            // that was inside the window at `basis` and that others deleted, moved
-            // away or moved along its list.
-            for window in windows.iter().filter(|window| !exact(window)) {
+            // An object's own place (no window told): an object that was there at `basis` and
+            // that others deleted, moved away or moved along its list.
+            for window in windows.iter().filter(|window| !told && !exact(window)) {
                 let (place, from, to, _) = window;
                 let listed = lists.get(place).cloned().unwrap_or_default();
                 let near = |index: Option<usize>| index.is_some_and(|index| (*from..*to).contains(&index));
@@ -4507,6 +4680,12 @@ pub(crate) fn remap_batch(input: &Value, references: &HashMap<String, String>) -
     for list in ["ops", "load"] {
         for op in input[list].as_array_mut().into_iter().flatten() {
             for key in ["target", "item", "node", "parent"] {
+                // An integer tool id may be given as the number receipts and reads show (a
+                // move's `parent: 1`); the object model and the kit's planning copy take ids as
+                // strings (call-context.md, "Ids in receipts and `others`").
+                if let Some(number) = op.get(key).filter(|value| value.is_u64()).map(Value::to_string) {
+                    op[key] = json!(number);
+                }
                 if let Some(next) = op[key].as_str().and_then(|id| references.get(id)).cloned() {
                     op[key] = json!(next);
                 }

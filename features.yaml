@@ -367,7 +367,7 @@ features:
       - regressions/issue-notices-loro-repository
     since: "2026-10-31"
   - id: kition.kits.table-host
-    title: Host features (scenarios, triggers, attachments) read and write table files through the Table kit's commands
+    title: The scenario builder writes table files through the Table kit's commands
     dimension: [function, data-safety]
     priority: P1
     status: has
@@ -544,7 +544,7 @@ features:
       - scripts/check-kit-neutral.mjs
       - scripts/check-kit-neutral.spec.ts
       - tooling/kit-neutral.known.json
-    gap: 14 places in 11 files still name a kit (tooling/kit-neutral.known.json); the check does not find a kit's engine command named in host code, or a kit named only by its format word.
+    gap: 11 places in 8 files still name a kit (tooling/kit-neutral.known.json); the check does not find a kit's engine command named in host code, or a kit named only by its format word.
     cases:
       - kition.kits.host-names-no-kit/list
     since: "2026-11-22"
@@ -565,4 +565,23 @@ features:
     gap: The unit tests of the renderer and of the desktop shell install the manifests kept for the Rust kit host's tests, not the pinned packages' own; the desktop shell's reading of the manifests at startup (bundled assets, or public/kits in a development build) has no test of its own.
     cases:
       - kition.kits.catalog/manifests
+    since: "2026-11-22"
+  - id: kition.kits.outline
+    title: The workspace tree lists the parts of a file whose kit has an outline (a table file's tables and dashboards) and opens the file at one, through the kit's outline command and without knowing the kit
+    dimension: [platform, function]
+    priority: P1
+    status: has
+    paths:
+      - src/features/workspace/lib/kitOutlineChildren.ts
+      - src/features/workspace/lib/kitOutlineChildren.spec.ts
+      - src/features/workspace/hooks/useKitOutlines.ts
+      - src/api/kits.ts
+      - crates/kition-kits-http/src/lib.rs
+      - crates/kition-kits/src/outline.rs
+      - contracts/runtime/kits.schema.json
+      - e2e/table-kit.spec.ts
+      - docs/kits.md
+    gap: The end-to-end test answers the outline route itself, so the path from the route to the kit's command is tested in kition-sdk (kition-kits tests/outline.rs, copied here) and the command in kition-table, not across all three; every part has one mark in the tree, whatever its kind.
+    cases:
+      - kition.kits.outline/tree
     since: "2026-11-22"

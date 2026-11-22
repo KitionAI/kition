@@ -4,7 +4,7 @@
   "level": "basic",
   "id": "kit.scene",
   "name": "Scene",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "license": "Apache-2.0",
   "distribution": "plugin",
   "engine": {
@@ -259,7 +259,8 @@
       "model.export",
       "model.save",
       "model.describe",
-      "model.batch"
+      "model.batch",
+      "document.identity"
     ]
   },
   "model": {

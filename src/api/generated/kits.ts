@@ -24,6 +24,36 @@ export type KitsKitList = {
   kits: KitsKitStatus[]
 }
 
+/**
+ * One part of a document, as its kit's outline command answers it (kit.json outline, platform K24).
+ */
+export type KitsOutlineItem = {
+  /**
+   * The part's id in the document, as the kit names it.
+   */
+  id: string
+  /**
+   * What people call it.
+   */
+  title: string
+  /**
+   * What it is, in the kit's own words (table, dashboard).
+   */
+  kind?: string
+  /**
+   * The Kit UI view that opens the document at it (document.view, document/reveal).
+   */
+  view: Record<string, unknown>
+}
+
+/**
+ * GET /v1/kits/outline?path=: the parts of a workspace file the workspace tree lists under it, from the file's open editor when it has one, else from the headless kit. items is null for a kit that declares no outline.
+ */
+export type KitsOutline = {
+  path: KitsWorkspacePath
+  items: KitsOutlineItem[] | null
+}
+
 export type KitsOpenRequest = {
   path: KitsWorkspacePath
 }

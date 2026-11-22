@@ -54,6 +54,10 @@ pub struct KitDefinition {
     pub version: &'static str,
     /// The manifest as it was found, served as `khp://kits/<id>/kit.json` (KHP K20).
     pub manifest: &'static str,
+    /// The engine command that answers the document's outline (`kit.json` `outline.command`,
+    /// platform K24; `outline.rs`): the parts of a file a host lists under it. `None` when the kit
+    /// has none.
+    pub outline: Option<&'static str>,
     /// How the agent's tools for this kit read (`kit.json` `agent`).
     pub agent: KitAgent,
 }
@@ -259,6 +263,7 @@ impl KitDefinition {
             protocol: manifest.pointer("/headless/protocol").and_then(Value::as_str).map(|protocol| leak(protocol.to_owned())),
             version: leak(text_or(manifest, "version", "0.0.0")),
             manifest: leak(source),
+            outline: manifest.pointer("/outline/command").and_then(Value::as_str).filter(|command| !command.is_empty()).map(|command| leak(command.to_owned())),
             agent: KitAgent {
                 prefix: leak(prefix),
                 drafts: agent.get("drafts").and_then(Value::as_bool).unwrap_or(false),

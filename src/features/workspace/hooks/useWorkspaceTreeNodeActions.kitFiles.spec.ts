@@ -28,11 +28,6 @@ vi.mock('@/services/workspaceEditSessions', () => ({
   flushWorkspaceEditSessions: vi.fn(async () => {}),
 }))
 
-vi.mock('@/api/kitTables', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/api/kitTables')>()),
-  reportTableFileRenamed: vi.fn(async () => ({ updated: 0 })),
-}))
-
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const ROOT = 'browser-local-workspace'

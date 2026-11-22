@@ -11,7 +11,6 @@
 //! Requests are the kit's engine commands `table.<method>` (kition-table `docs/engine-commands.md`):
 //! each answers `{ "result", "change" }`; the client answers `result`.
 
-pub mod routes;
 pub mod scenario;
 
 use std::collections::HashMap;

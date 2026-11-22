@@ -49,8 +49,11 @@ describe('the kit catalog', () => {
       text: false,
       agentPrefix: 'ink',
       noun: 'ink drawing',
+      outline: false,
     })
-    expect(kitByName('memo')).toMatchObject({ id: 'kit.memo', text: true, agentPrefix: null, noun: 'Memo', creates: [] })
+    expect(kitByName('memo')).toMatchObject({ id: 'kit.memo', text: true, agentPrefix: null, noun: 'Memo', creates: [], outline: false })
+    installKitCatalog([{ ...MEMO, outline: { command: 'memo.outline' } }])
+    expect(kitByName('memo')?.outline).toBe(true)
   })
 
   it('finds the kit that edits an extension, and a kit that views it only when none edits it', () => {

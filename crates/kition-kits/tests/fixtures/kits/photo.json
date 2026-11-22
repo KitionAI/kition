@@ -4,7 +4,7 @@
   "level": "basic",
   "id": "kit.photo",
   "name": "Photo",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "license": "Apache-2.0",
   "distribution": "plugin",
   "engine": {
@@ -179,6 +179,7 @@
     "features": [
       "view.describe",
       "document.check",
+      "document.identity",
       "model.open",
       "model.import",
       "model.export",

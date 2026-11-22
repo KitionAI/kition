@@ -230,3 +230,39 @@ async fn guarded_close_cancellation_keeps_later_steps() {
     assert_eq!(f.read(), "Original after");
     f.shutdown().await;
 }
+
+/// A receipt names an owned list by its holder's tool id and the nested path (a move of items
+/// without tool ids is a change of `1` at `body.paragraphs`; a motion kit's layer move is
+/// `{parent: 1, field: "comp.layers"}`); that place is a batch target as given, the number
+/// or the string (call-context.md, "Ids in receipts and `others`"), and its raw operation is
+/// checked with the contract of the object holding the last field (`list.move.paragraphs` of the
+/// text body), with no declaration on the holder's owner (data-model.md, "Positional Batches And
+/// Replay"). An operation that object declares no contract for still refuses.
+#[tokio::test]
+async fn nested_holder_receipts_replay_as_batch_targets() {
+    let texts = |f: &Fixture| -> Vec<String> {
+        let saved: Value = serde_json::from_str(&f.read()).unwrap();
+        saved["paragraphs"].as_array().unwrap().iter().map(|p| p["text"].as_str().unwrap().to_owned()).collect()
+    };
+    for spelling in [json!(1), json!("1")] {
+        for basis in [false, true] {
+            let f = Fixture::new("heldcontract", "KITION_KIT_MOCK_ORDER=paragraphs KITION_KIT_MOCK_PARAGRAPHS=numbered", &paragraphs().to_string())
+                .expect("build mock");
+            let moved = f.ok(ME, "batch", json!({"ops":[{"op":"list.move","target":BODY,"field":"paragraphs","from":0,"to":2}]})).await;
+            let changed = &moved["changes"]["changed"][0];
+            assert_eq!((&changed["id"], &changed["fields"]), (&json!(1), &json!(["body.paragraphs"])), "the receipt names the holder by its number: {moved}");
+            assert_eq!(texts(&f)[..2], ["Paragraph 1", "Paragraph 0"]);
+            let mut input = json!({"ops":[{"op":"list.move","target":spelling,"field":"body.paragraphs","from":1,"to":0}]});
+            if basis {
+                input["basis"] = json!(f.revision(ME).await);
+            }
+            f.ok(ME, "batch", input).await;
+            assert_eq!(texts(&f)[..2], ["Paragraph 0", "Paragraph 1"], "{spelling}/{basis}: the receipt's place replays");
+            let before = f.read();
+            let refused = f.refused(ME, "batch", json!({"ops":[{"op":"list.remove","target":spelling,"field":"body.paragraphs","index":0}]})).await;
+            assert!(refused.to_string().contains("no premise contract"), "{spelling}/{basis}: an undeclared operation still refuses: {refused}");
+            assert_eq!(f.read(), before);
+            f.shutdown().await;
+        }
+    }
+}

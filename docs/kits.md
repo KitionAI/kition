@@ -489,22 +489,28 @@ items with `primary`.
 `kit.table` (`KitionAI/kition-table`, package `public/kits/table-ui`) is a
 normal kit: `.ktable` files open in its own editor in `KitFrame`, and its
 engine and editor live in its repository. Kition has no table engine or
-table editor of its own. Kition's host features (the scenario builder, the
-workspace tree) read and write tables through
-the host table client, `crates/kition-tableclient`: through the Kit AI bridge
-when an editor has the file open, so the edit arrives live, and through the
-headless `kition-table` otherwise. Its writes carry a `system:<feature>` origin
-and never join the person's undo. The renderer reaches it through `/v1/kit-tables*`
-(`contracts/runtime/kit-tables.schema.json`, `src/api/kitTables.ts`), and
-host features name a table by its file path (`documentPath`) and table id. The
-renderer reports a rename or move (`/v1/kit-tables/renamed`) and a delete
-(`/v1/kit-tables/deleted`), so the client reads the file again at its new path
-or forgets it. An expanded table file in the
-workspace tree lists its tables and dashboards, read through the kit
-(`/v1/kit-tables?path=`); a click opens the file in the kit at that one with
-the Kit UI view `{ "path": "tables/<id>" }` or `{ "path": "dashboards/<id>" }`
-(`document.view` for a new editor, `document/reveal` for an open one;
-`revealInKit` in `src/features/kits/kition/kitViews.ts`). `pnpm test:ktable:e2e`
+table editor of its own. One host feature, the scenario builder, still writes
+tables itself, through the host table client, `crates/kition-tableclient`:
+through the Kit AI bridge when an editor has the file open, so the edit
+arrives live, and through the headless `kition-table` otherwise. Its writes
+carry a `system:<feature>` origin and never join the person's undo.
+
+### A file's outline in the workspace tree
+
+A kit whose documents have parts names the engine command that lists them in
+its manifest (`kit.json` `outline.command`, platform K24): a table file's
+tables and dashboards (`table.file.outline`), a deck's slides. The kit catalog
+reads that (`outline`), and the workspace tree lets any such file expand. The
+tree reads an expanded file's outline through `GET /v1/kits/outline?path=`
+(`contracts/runtime/kits.schema.json` `outline`; `fetchKitOutline` in
+`src/api/kits.ts`; `kition_kits::outline` asks the file's open editor, else
+the headless kit), and again when the file is saved or changes. Each part is
+`{ id, title, kind?, view }`; a click opens the file in its kit at the part's
+`view` (`document.view` for a new editor, `document/reveal` for an open one;
+`revealInKit` in `src/features/kits/kition/kitViews.ts`). Kition does not know
+what a part is: every part has the same mark in the tree, and nothing here
+names a kit (`src/features/workspace/lib/kitOutlineChildren.ts`,
+`src/features/workspace/hooks/useKitOutlines.ts`). `pnpm test:ktable:e2e`
 (`e2e/table-kit.spec.ts`) covers what Kition adds around the kit; the
 editor's own behavior is tested in the kit's repository.
 

@@ -50,10 +50,6 @@ export async function configureModel(page: Page, extra: string[] = []) {
   }, ['gpt-test', ...extra])
 }
 
-/** The table file list host features read (`/v1/kit-tables`): this workspace has none to report. */
-export async function serveKitTables(page: Page) {
-  await page.route(/\/api\/v1\/kit-tables(\?.*)?$/, (route) => fulfillJson(route, { code: 200, message: 'success', data: { files: [] } }))
-}
 
 export type GenerateAnswer = { text: string } | { image: { mime: string; data: string } } | { refuse: 'timeout' | 'failed' | 'quota'; message: string }
 

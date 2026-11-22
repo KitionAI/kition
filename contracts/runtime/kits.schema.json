@@ -67,6 +67,57 @@
         }
       }
     },
+    "outlineItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One part of a document, as its kit's outline command answers it (kit.json outline, platform K24).",
+      "required": [
+        "id",
+        "title",
+        "view"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The part's id in the document, as the kit names it."
+        },
+        "title": {
+          "type": "string",
+          "description": "What people call it."
+        },
+        "kind": {
+          "type": "string",
+          "description": "What it is, in the kit's own words (table, dashboard)."
+        },
+        "view": {
+          "type": "object",
+          "description": "The Kit UI view that opens the document at it (document.view, document/reveal)."
+        }
+      }
+    },
+    "outline": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "GET /v1/kits/outline?path=: the parts of a workspace file the workspace tree lists under it, from the file's open editor when it has one, else from the headless kit. items is null for a kit that declares no outline.",
+      "required": [
+        "path",
+        "items"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/workspacePath"
+        },
+        "items": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/outlineItem"
+          }
+        }
+      }
+    },
     "openRequest": {
       "type": "object",
       "additionalProperties": false,

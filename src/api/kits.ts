@@ -25,6 +25,8 @@ import type {
   KitsDraftList,
   KitsDraftMergeResult,
   KitsHeadlessDraft,
+  KitsOutline,
+  KitsOutlineItem,
 } from './generated/kits'
 import { runtimeFetch, signRuntimeURL } from '@/services/runtimeAuth'
 
@@ -185,4 +187,30 @@ export function kitDraftRefusal(error: unknown): string | null {
   const body = (error as { response?: { data?: { data?: { reason?: unknown } } } })?.response?.data
   const reason = body?.data?.reason
   return typeof reason === 'string' ? reason : null
+}
+
+export type { KitsOutlineItem }
+
+/**
+ * The parts of the workspace file `path` its kit lists (`kit.json` `outline`, platform K24): from
+ * the file's open editor when it has one, else from the headless kit. Null for a kit without an
+ * outline.
+ */
+export async function fetchKitOutline(path: string, options?: { signal?: AbortSignal }): Promise<KitsOutlineItem[] | null> {
+  const answer = await request.get<KitsOutline>('/v1/kits/outline', { params: { path }, signal: options?.signal, suppressErrorMessage: true })
+  return Array.isArray(answer?.items) ? answer.items : null
+}
+
+/** Fired on `window` when a kit's file was saved or changed in this window, or changed on disk. */
+const KIT_FILE_CHANGED_EVENT = 'kition:kit-file:changed'
+
+export function notifyKitFileChanged(path?: string) {
+  window.dispatchEvent(new CustomEvent(KIT_FILE_CHANGED_EVENT, { detail: { path } }))
+}
+
+/** Listens for `KIT_FILE_CHANGED_EVENT`; answers the unsubscribe. */
+export function onKitFileChanged(listener: (path?: string) => void) {
+  const handle = (event: Event) => listener((event as CustomEvent<{ path?: string }>).detail?.path)
+  window.addEventListener(KIT_FILE_CHANGED_EVENT, handle)
+  return () => window.removeEventListener(KIT_FILE_CHANGED_EVENT, handle)
 }

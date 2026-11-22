@@ -125,6 +125,21 @@
       "error": { "code": "not-found", "index": null, "message": "load 0: no object has the id `frame:3/cell:7`; the ids starting `frame:3/cell:` are `frame:3/cell:1`" }
     },
     {
+      "$comment": "An id given as a JSON number (as receipts show an integer tool id) is refused here with what was given and what is taken: the object model takes ids as strings; the agent tools pass a number as its string.",
+      "request": { "ops": [{ "op": "delete", "target": 3 }] },
+      "error": { "code": "invalid-op", "index": 0, "message": "`target` names an object by its id as a string: give \"3\" for the number 3" }
+    },
+    {
+      "$comment": "A field that names no object says what it got.",
+      "request": { "ops": [{ "op": "set", "target": "root", "field": 2, "value": "x" }] },
+      "error": { "code": "invalid-op", "index": 0, "message": "`field` is a string; got the number 2" }
+    },
+    {
+      "$comment": "A load's target given as a number.",
+      "request": { "ops": [], "load": [{ "target": 3 }] },
+      "error": { "code": "invalid-op", "index": null, "message": "load 0: `target` names an object by its id as a string: give \"3\" for the number 3" }
+    },
+    {
       "$comment": "Deleting by a parent's tool id; the comparison names the deleted object as it was named before.",
       "request": { "ops": [{ "op": "delete", "target": "frame:2/cell:1" }], "load": [{ "target": "frame:2", "fields": ["cells"] }] },
       "result": { "refs": {}, "results": [null], "loaded": [{ "id": "frame:2", "type": "Frame", "fields": { "cells": [] } }] },

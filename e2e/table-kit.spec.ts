@@ -69,11 +69,6 @@ async function configureModel(page: Page) {
   })
 }
 
-/** The table file list host features read (`/v1/kit-tables`): this workspace has none to report. */
-async function serveKitTables(page: Page) {
-  await page.route(/\/api\/v1\/kit-tables(\?.*)?$/, (route) => fulfillJson(route, { code: 200, message: 'success', data: { files: [] } }))
-}
-
 const records = (kit: FrameLocator) => kit.locator('.data-inline-footer')
 const stage = (kit: FrameLocator) => kit.locator('.data-inline-grid-canvas [data-ktable-grid-stage="true"]')
 
@@ -92,7 +87,7 @@ test('the Table kit is packaged with Kition', () => {
 
 test('creates a table file from the New menu and opens it in the Table kit’s editor', async ({ page, baseURL }) => {
   test.setTimeout(120_000)
-  const { host, saves } = await openKitWorkspace(page, baseURL!, {}, { persist: true, routes: serveKitTables })
+  const { host, saves } = await openKitWorkspace(page, baseURL!, {}, { persist: true })
   try {
     // On a loaded machine the first-run panel can open after openKitWorkspace dismissed it: once
     // the tree shows, it is up if it is coming, and it would take the new file's tab.
@@ -121,7 +116,6 @@ test('creates a second table and opens it through a valid desktop file signature
   const token = 'k'.repeat(64)
   const reads: string[] = []
   const routes = async (page: Page) => {
-    await serveKitTables(page)
     // The runtime checks signed paths before considering a token header.
     await page.route(/\/_signed\/.*\/workspace-files\//, async (route) => {
       const match = /^\/_signed\/(\d+)\.(\d+)\.([0-9a-f]+)(\/.*)$/.exec(new URL(route.request().url()).pathname)
@@ -163,7 +157,6 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
   const generated: Array<Record<string, unknown>> = []
   // Over the workspace mocks: these answers come last.
   const routes = async (page: Page) => {
-    await serveKitTables(page)
     await page.route('**/v1/kits/bridge', async (route: Route) => {
       if (route.request().method() !== 'GET') return route.fallback()
       streams += 1
@@ -241,7 +234,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
 test('Kition serves no design action, so the record menu offers none (host/action)', async ({ page, baseURL }) => {
   test.setTimeout(120_000)
   const { bytes } = await leadsFixture()
-  const { host, kit } = await openInKitFrame(page, baseURL!, 'Leads.ktable', bytes, {}, { routes: serveKitTables })
+  const { host, kit } = await openInKitFrame(page, baseURL!, 'Leads.ktable', bytes)
   try {
     await expect(records(kit)).toContainText('1 record', { timeout: 60_000 })
     await recordMenu(kit)
@@ -285,7 +278,6 @@ test('Kition serves host/generate for a rewrite of the person’s selection, and
   await configureModel(page)
   const generated: Array<Record<string, unknown>> = []
   const routes = async (page: Page) => {
-    await serveKitTables(page)
     await page.route('**/api/v1/ai/generate', async (route) => {
       const body = route.request().postDataJSON() as Record<string, unknown>
       generated.push(body)
@@ -344,16 +336,16 @@ test('the tree lists a table file’s tables and dashboards, and opens the file 
   test.setTimeout(120_000)
   const { bytes, leads, people, dashboard } = await baseFixture()
   const described: string[] = []
-  // What the runtime answers through the Table kit for the one file the tree reads.
+  // The file's outline, as the runtime answers it from the Table kit (`table.file.outline`) for the one file the tree reads.
   const routes = async (page: Page) => {
-    await serveKitTables(page)
-    await page.route(/\/api\/v1\/kit-tables\?path=/, async (route) => {
-      described.push(new URL(route.request().url()).searchParams.get('path') ?? '')
-      const table = (id: number, title: string) => ({ id: String(id), name: title.toLowerCase(), title, meta: {}, fields: [] })
+    await page.route(/\/api\/v1\/kits\/outline\?path=/, async (route) => {
+      const path = new URL(route.request().url()).searchParams.get('path') ?? ''
+      described.push(path)
+      const part = (kind: string, id: number | string, title: string) => ({ id: String(id), title, kind, view: { path: `${kind}s/${id}` } })
       await fulfillJson(route, {
         code: 200,
         message: 'success',
-        data: { files: [{ path: 'Base.ktable', documentId: null, tables: [table(leads, 'Leads'), table(people, 'People')], dashboards: [{ id: dashboard, name: 'Overview' }] }], unreadable: [] },
+        data: { path, items: [part('table', leads, 'Leads'), part('table', people, 'People'), part('dashboard', dashboard, 'Overview')] },
       })
     })
   }
@@ -361,7 +353,7 @@ test('the tree lists a table file’s tables and dashboards, and opens the file 
   try {
     const row = page.locator('.document-tree-row', { hasText: 'Base' }).first()
     await expect(row).toBeVisible({ timeout: 30_000 })
-    // A table file is read for the tree only once it is expanded.
+    // A file's outline is read for the tree only once it is expanded.
     expect(described).toEqual([])
     await row.locator('.document-tree-lead-toggle').click()
     const child = (title: string) => page.locator('.document-tree-row', { hasText: title }).first()

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 import { openInKitFrame } from './helpers/embeddedKit'
 import { canReadBlobBodies } from './helpers/requestBody'
-import { configureModel, mockGenerate, onboardingTable, promptText, recordCount, recordMenu, savedTables, serveKitTables } from './helpers/tableAi'
+import { configureModel, mockGenerate, onboardingTable, promptText, recordCount, recordMenu, savedTables } from './helpers/tableAi'
 
 /**
  * AI-SCENE-004 (docs/kition-onboarding-core-scenarios.csv): in the onboarding Reading Tracker,
@@ -19,7 +19,6 @@ test('AI-SCENE-004: the Reading Tracker summarizes the asked row once, keeps the
 
   let requests: Array<Record<string, any>> = []
   const routes = async (page: import('@playwright/test').Page) => {
-    await serveKitTables(page)
     requests = await mockGenerate(page, [
       { text: 'Kition fills AI fields from a row. You decide when each one runs.' },
       { text: 'AI fields run when you ask. The source row stays as it was.' },

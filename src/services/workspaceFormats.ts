@@ -75,3 +75,10 @@ export function kitOwningWorkspacePath(path: string): KitCatalogEntry | undefine
 export function hostFormatExtensions(formats: Iterable<WorkspaceDocumentFormat>): string[] {
   return [...formats].flatMap((format) => hostFormats.get(format)?.extensions ?? [])
 }
+
+/** Whether the kit that opens the path has an outline: parts of the file the workspace tree lists under it. */
+export function hasWorkspaceOutline(path: string | null | undefined) {
+  if (!path) return false
+  const extension = workspacePathExtension(path)
+  return Boolean((kitEditingExtension(extension) ?? kitViewingExtension(extension))?.outline)
+}

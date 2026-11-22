@@ -3,7 +3,6 @@ import path from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { openKitWorkspace, openTreeFile } from './helpers/embeddedKit'
-import { mockKitTables } from './helpers/kitTables'
 import { caretAfter, openNote } from './helpers/noteKit'
 
 /**
@@ -27,7 +26,6 @@ const kitFrame = (page: Page) => page.frameLocator('[data-testid="kit-frame"][da
 test('an empty workspace invites a first document, and a failed Getting Started setup offers Retry', async ({ page, baseURL }) => {
   const { host } = await openKitWorkspace(page, baseURL!, {}, {
     routes: async (p) => {
-      await mockKitTables(p, [])
       await p.route('**/onboarding/manifest.json', (route) => route.fulfill({ status: 500, body: 'unavailable' }))
     },
   })
@@ -47,7 +45,7 @@ test('an empty workspace invites a first document, and a failed Getting Started 
 })
 
 test("a file opened while Kition's file service is unreachable is not called damaged, and opens once it answers", async ({ page, baseURL }) => {
-  const { host } = await openKitWorkspace(page, baseURL!, { 'Note.md': Buffer.from('# Note\n\nKept.\n') }, { routes: async (p) => { await mockKitTables(p, []) } })
+  const { host } = await openKitWorkspace(page, baseURL!, { 'Note.md': Buffer.from('# Note\n\nKept.\n') })
   try {
     await page.route(RUNTIME, (route) => route.abort('connectionrefused'))
     await page.locator('.document-tree-row', { hasText: 'Note' }).first().click()
@@ -68,7 +66,6 @@ test("an editor whose engine can't load says so, keeps the file, and opens on Tr
   const engine = /\/kits\/note-ui\/engine\/.*\.wasm/
   const { host } = await openKitWorkspace(page, baseURL!, { 'Note.md': Buffer.from('# Note\n') }, {
     routes: async (p) => {
-      await mockKitTables(p, [])
       await p.route(engine, (route) => route.fulfill({ status: 500, body: '' }))
     },
   })
@@ -89,7 +86,6 @@ test("an editor whose engine can't load says so, keeps the file, and opens on Tr
 
 test('a damaged file says so in plain words and keeps the reader error under Technical details', async ({ page, baseURL }) => {
   const { host } = await openKitWorkspace(page, baseURL!, { 'Broken.docx': Buffer.from('PK\u0003\u0004 not a real document'), 'Fine.md': Buffer.from('# Fine\n') }, {
-    routes: async (p) => { await mockKitTables(p, []) },
   })
   try {
     await page.locator('.document-tree-row', { hasText: 'Broken' }).first().click()
@@ -112,7 +108,7 @@ test('a damaged file says so in plain words and keeps the reader error under Tec
 
 test('a save the disk refuses says why in plain words, keeps the edit, and saves once there is room', async ({ page, baseURL }) => {
   let full = true
-  const { host, kit } = await openNote(page, baseURL!, 'Note.md', '# Note\n\nHello.\n', {}, { persist: true, routes: async (p) => { await mockKitTables(p, []) } })
+  const { host, kit } = await openNote(page, baseURL!, 'Note.md', '# Note\n\nHello.\n', {}, { persist: true })
   try {
     await page.route('**/api/v1/kits/files?**', (route) => (full
       ? route.fulfill({ status: 507, contentType: 'application/json', body: JSON.stringify({ code: 507, message: 'No space left on device (os error 28)' }) })
@@ -133,7 +129,7 @@ test('a save the disk refuses says why in plain words, keeps the edit, and saves
 })
 
 test('the agent without a model says so and offers Configure', async ({ page, baseURL }) => {
-  const { host } = await openKitWorkspace(page, baseURL!, { 'Note.md': Buffer.from('# Note\n') }, { routes: async (p) => { await mockKitTables(p, []) } })
+  const { host } = await openKitWorkspace(page, baseURL!, { 'Note.md': Buffer.from('# Note\n') })
   try {
     await page.getByRole('button', { name: 'Open AI Chat' }).click()
     await expect(page.getByText('No model configured')).toBeVisible({ timeout: 30_000 })

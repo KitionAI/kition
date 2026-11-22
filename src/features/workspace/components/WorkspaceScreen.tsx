@@ -8,8 +8,8 @@
 import { setInvalidationWorkspaceRoot } from '@/api/invalidation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { expandedTableFiles, withTableFileChildren } from '@/features/workspace/lib/tableFileChildren'
-import { useTableFileChildren } from '@/features/workspace/hooks/useTableFileChildren'
+import { expandedOutlineFiles, withOutlineChildren } from '@/features/workspace/lib/kitOutlineChildren'
+import { useKitOutlines } from '@/features/workspace/hooks/useKitOutlines'
 import {
   buildPrivateSectionTreeNodes,
 } from '@/features/workspace/lib/workspaceTree'
@@ -105,15 +105,15 @@ export function WorkspaceScreen({
     () => buildPrivateSectionTreeNodes(treeItems, treeMetadata),
     [treeItems, treeMetadata],
   )
-  // An expanded table file lists its tables and dashboards, read through the Table kit.
-  const expandedTables = useMemo(
-    () => expandedTableFiles(fileTreeNodes, workspaceTree.expandedPaths),
+  // An expanded file whose kit has an outline lists its parts, read through the kit.
+  const expandedOutlines = useMemo(
+    () => expandedOutlineFiles(fileTreeNodes, workspaceTree.expandedPaths),
     [fileTreeNodes, workspaceTree.expandedPaths],
   )
-  const tableFileChildren = useTableFileChildren(expandedTables)
+  const kitOutlines = useKitOutlines(expandedOutlines)
   const workspaceTreeNodes = useMemo(
-    () => withTableFileChildren(fileTreeNodes, tableFileChildren),
-    [fileTreeNodes, tableFileChildren],
+    () => withOutlineChildren(fileTreeNodes, kitOutlines),
+    [fileTreeNodes, kitOutlines],
   )
   useEffect(() => {
     setInvalidationWorkspaceRoot(rootPath)

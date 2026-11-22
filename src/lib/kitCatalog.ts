@@ -18,6 +18,7 @@ export type KitManifest = {
   formats: readonly { id: string; extensions: readonly string[]; mime?: string; role?: 'edit' | 'view' }[]
   creates?: readonly KitCreate[]
   agent?: { prefix?: string; describe?: { noun?: string } }
+  outline?: { command?: string }
 }
 
 /** What a kit creates (`kit.json` `creates[]`): an empty document of `size`, named `<baseName>.<extension>`. */
@@ -46,6 +47,8 @@ export type KitCatalogEntry = {
   agentPrefix: string | null
   /** What one of its files is, for example `layered image` (`agent.describe.noun`); the kit's name without one. */
   noun: string
+  /** Its documents have an outline (`outline.command`, platform K24): parts the workspace tree lists under a file. */
+  outline: boolean
 }
 
 const KIT_ID_PREFIX = 'kit.'
@@ -83,6 +86,7 @@ function kitCatalogEntry(manifest: KitManifest): KitCatalogEntry | null {
     text: editable.length > 0 && editable.every((format) => format.mime?.startsWith('text/')),
     agentPrefix: manifest.agent?.prefix || null,
     noun: manifest.agent?.describe?.noun || manifest.name || name,
+    outline: Boolean(manifest.outline?.command),
   }
 }
 

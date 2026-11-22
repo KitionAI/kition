@@ -1,4 +1,4 @@
-import { isTableFilePath } from '@/api/kitTables'
+import { hasWorkspaceOutline } from '@/services/workspaceFormats'
 import { useCallback, useMemo, useState } from 'react'
 import type { SetStateAction, Dispatch } from 'react'
 import {
@@ -88,9 +88,9 @@ export function useWorkspaceTreeState(): UseWorkspaceTreeStateResult {
         next.add(path)
       }
     })
-    // A table file expands too: it lists its tables and dashboards.
+    // A file whose kit has an outline expands too: it lists its parts.
     files.forEach((file) => {
-      if (isTableFilePath(file.path) && expandedFolders.has(file.path)) {
+      if (hasWorkspaceOutline(file.path) && expandedFolders.has(file.path)) {
         next.add(file.path)
       }
     })

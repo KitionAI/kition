@@ -187,11 +187,6 @@ export async function mockLocalWorkspaceApi(page: Page, options: MockLocalWorksp
     const path = url.pathname
     const method = request.method()
 
-    // No table files unless a spec mocks them (helpers/kitTables.ts, registered after this).
-    if (method === 'GET' && path === '/api/v1/kit-tables') {
-      return fulfill(route, { code: 200, data: { files: [], unreadable: [] } })
-    }
-
     if (method === 'GET' && path === '/api/v1/auth/me') {
       return fulfill(route, {
         code: 200,

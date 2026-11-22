@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isTableFilePath, reportTableFileDeleted, reportTableFileRenamed } from '@/api/kitTables'
 import { useConfirm } from '@kition/tessera/ui'
 import { openFilesWithUnsavedEdits, openWithUnsavedEdits } from '@/features/kits/public'
 import {
@@ -63,31 +62,6 @@ type UseWorkspaceTreeNodeActionsOptions = {
     UseWorkspaceTreeStateResult,
     'expandFolders' | 'flatTreeNodes' | 'updateTreeMetadata'
   >
-}
-
-// The runtime's table client knows table files by path: a renamed or moved table file (or a folder
-// holding some) is read again at its new path. Fire-and-forget by design — failure here mustn't
-// roll back the disk op.
-function followMovedTableFiles(fromPath: string, toPath: string) {
-  if (!fromPath || !toPath || fromPath === toPath) {
-    return
-  }
-  reportTableFileRenamed(fromPath, toPath).catch((cleanupError) => {
-    console.warn('[workspace] failed to follow a moved table file', cleanupError)
-  })
-}
-
-// The runtime's table client forgets a deleted table file (or the table files of a deleted
-// folder). Fire-and-forget, as for moves: the file is already in the Trash.
-function followDeletedTableFiles(node: WorkspaceTreeNode) {
-  const gone = new Set<string>()
-  if (node.type === 'folder' || isTableFilePath(node.path)) gone.add(node.path)
-  if (node.type === 'file' && node.folderPath) gone.add(node.folderPath)
-  for (const path of gone) {
-    reportTableFileDeleted(path).catch((cleanupError) => {
-      console.warn('[workspace] failed to follow a deleted table file', cleanupError)
-    })
-  }
 }
 
 function getWorkspaceDeleteConfirmationMessage(
@@ -168,7 +142,6 @@ export function useWorkspaceTreeNodeActions({
         ? await deleteWorkspaceFolder(node.path)
         : await deleteWorkspaceDocument(node.path)
       await (isFolder ? syncDocumentFolderDeleted(rootPath, node.path) : syncDocumentFileDeleted(rootPath, node.path))
-      followDeletedTableFiles(node)
       updateTreeMetadata((current) => removeWorkspaceTreeBranchMetadata(current, node.path, childFolderPath))
       setAgentModifiedDocumentPaths(
         (current) => new Set([...current].filter((path) => path !== node.path && !path.startsWith(childPrefix))),
@@ -337,7 +310,6 @@ export function useWorkspaceTreeNodeActions({
         path: draggedNode.path,
         target_folder: destinationFolder,
       })
-      followMovedTableFiles(draggedNode.path, movedDocument.path)
       await syncDocumentFileMoved(rootPath, draggedNode.path, movedDocument.path)
       updateTreeMetadata((current) => applyMovedMetadata(current, movedDocument.path))
       remapWorkspaceTabPaths(draggedNode.path, movedDocument.path)
@@ -448,7 +420,6 @@ export function useWorkspaceTreeNodeActions({
 
       const targetName = renameWorkspaceDocumentPath(node.path, trimmed).split('/').pop() || ''
       const moved = await moveWorkspaceDocument({ path: node.path, target_name: targetName })
-      followMovedTableFiles(node.path, moved.path)
       await syncDocumentFileMoved(rootPath, node.path, moved.path)
       updateTreeMetadata((current) => (
         renameWorkspaceTreeBranchMetadata(current, flatTreeNodes, node, moved.path)
@@ -539,7 +510,6 @@ export function useWorkspaceTreeNodeActions({
     setFeedback('')
     try {
       const moved = await moveWorkspaceDocument({ path: node.path, target_folder: destinationFolder })
-      followMovedTableFiles(node.path, moved.path)
       await syncDocumentFileMoved(rootPath, node.path, moved.path)
       updateTreeMetadata((current) => moveWorkspaceTreeBranchMetadata(current, node, moved.path))
       remapWorkspaceTabPaths(node.path, moved.path)

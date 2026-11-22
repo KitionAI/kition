@@ -179,7 +179,9 @@ async fn held_order_forms_matrix() {
                         || match mode {
                             "exact" => region != "above" && edit != "move",
                             "anchored" => region == "between" && edit != "insert",
-                            "window" => region != "above" && !(region == "below" && edit == "move"),
+                            // A window holds which nodes are at [3, 7), not their order: a move
+                            // from 4 to 5 stays inside it.
+                            "window" => region != "above" && edit != "move",
                             _ => false,
                         };
                     if conflict {

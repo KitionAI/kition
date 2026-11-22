@@ -79,7 +79,7 @@ Examples:
 - Keep workspace screen-level composition inside `src/features/workspace/components`, not in `src/app`.
 - Keep workspace tab state, activation flow, and tab persistence hooks inside `src/features/workspace`.
 - Never build a Markdown editor in Kition: `.md` files open in the Note kit's own editor in `KitFrame` (`src/features/kits`), and the agent changes notes with `note_run`.
-- Never build a table editor in Kition: table editing belongs to the Table kit, and Kition's host features reach tables through `src/api/kitTables.ts`.
+- Never build a table editor in Kition: table editing belongs to the Table kit. Kition's own code names no kit (`scripts/check-kit-neutral.mjs`); what it shows of a kit's file (its parts in the workspace tree) it reads through the kit's outline (`fetchKitOutline` in `src/api/kits.ts`).
 - Keep Agent-specific config, timeline formatting, and chat UI inside `src/features/agent`.
 - Keep Agent session state, streaming lifecycle, and model-selection hooks inside `src/features/agent`.
 - Keep desktop settings subscription and synchronization hooks inside `src/features/settings/hooks`.

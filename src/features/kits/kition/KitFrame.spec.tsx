@@ -175,7 +175,7 @@ vi.mock('./kitionHost', () => ({
 }))
 
 const writes: Array<{ path: string; document?: string }> = []
-vi.mock('@/api/kits', () => ({ writeKitFile: vi.fn(async (path: string, _bytes: Uint8Array, options?: { document?: string }) => void writes.push({ path, ...options })) }))
+vi.mock('@/api/kits', () => ({ notifyKitFileChanged: () => undefined, writeKitFile: vi.fn(async (path: string, _bytes: Uint8Array, options?: { document?: string }) => void writes.push({ path, ...options })) }))
 vi.mock('./kitBridge', () => ({ registerBridgeEditor: () => () => undefined, reportBridgeChange: () => undefined }))
 vi.mock('./kitTestBridge', () => ({ registerKitTestFrame: () => () => undefined }))
 vi.mock('./pickWorkspaceFile', () => ({ pickWorkspaceFile: async () => null }))

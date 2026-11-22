@@ -13,6 +13,7 @@ pub mod definitions;
 pub mod drafts;
 pub mod manager;
 pub mod mcp;
+pub mod outline;
 pub mod resources;
 pub mod serve;
 pub mod supply;
