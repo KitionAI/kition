@@ -358,7 +358,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Get the engine and the build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: engine
           path: kition-${{ inputs.kit }}
@@ -380,7 +380,7 @@ jobs:
 
       - name: Cache the browsers
         if: steps.playwright.outputs.version != ''
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
