@@ -7,23 +7,28 @@
 //! of a 100,000-record column ran out of memory. Undo and redo of writes to registers and map
 //! keys now write back the values the write replaced, which the replica noted when it committed.
 //!
-//! The memory a step keeps is measured as the process's resident memory: this file holds one
-//! test, so no other test allocates while it runs.
+//! The memory a step keeps is the heap it leaves allocated: this test binary's global allocator
+//! counts the bytes allocated and not yet freed, so each step's growth is exact and the same on
+//! every machine. (The process's resident memory, read before, depends on the C allocator: the
+//! free memory the document's creation left behind absorbs a step's growth or not, so the steps
+//! measured differently on different Linux runners.) This file holds one test, so no other test
+//! allocates while it runs.
 
-#![cfg(unix)]
+use std::alloc::System;
 
-use std::process::Command;
-
+use cap::Cap;
 use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica};
 use serde_json::json;
 
 mod common;
 use common::{fields, person, schema};
 
-/// This process's resident memory in bytes, as `ps` reports it.
-fn resident() -> i64 {
-    let output = Command::new("ps").args(["-o", "rss=", "-p", &std::process::id().to_string()]).output().expect("ps runs");
-    String::from_utf8_lossy(&output.stdout).trim().parse::<i64>().expect("ps prints the resident set in KiB") * 1024
+#[global_allocator]
+static HEAP: Cap<System> = Cap::new(System, usize::MAX);
+
+/// The heap bytes allocated and not yet freed, by every thread of this process.
+fn live() -> i64 {
+    i64::try_from(HEAP.allocated()).expect("the heap fits in an i64")
 }
 
 const SHEETS: usize = 4_000;
@@ -64,13 +69,13 @@ fn clear_column(replica: &mut Replica, ids: &[ObjectId]) {
 #[test]
 fn undo_and_redo_of_a_large_write_keep_little_more_than_the_write_itself() {
     let (mut replica, ids) = opened();
-    let opened = resident();
+    let opened = live();
     clear_column(&mut replica, &ids);
-    let wrote = resident();
+    let wrote = live();
     assert!(replica.undo().unwrap());
-    let undone = resident();
+    let undone = live();
     assert!(replica.redo().unwrap());
-    let redone = resident();
+    let redone = live();
     for (id, value) in [(&ids[0], json!(null)), (&ids[SHEETS - 1], json!(null))] {
         assert_eq!(replica.map_get(id, "cells", "k0").unwrap(), value);
     }

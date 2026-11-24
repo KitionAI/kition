@@ -29,6 +29,9 @@ reproducible-ids = []
 [dev-dependencies]
 # The crate's own tests count ids when they ask for it (tests/reproducible_ids.rs).
 kition-kdm = { path = ".", features = ["reproducible-ids"] }
+# A global allocator that counts the heap bytes in use: tests/bulk_undo_memory.rs measures the
+# memory an undo keeps with it (a test cannot implement `GlobalAlloc`: the lints forbid `unsafe`).
+cap = "0.1.2"
 
 # Browsers have no OS randomness: ids draw theirs from `crypto.getRandomValues`.
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
