@@ -166,6 +166,20 @@ pub fn check_input(input: &CheckpointInput) -> io::Result<()> {
     Ok(())
 }
 
+/// The replica version a stored version (hex) encodes, when it is one.
+fn decoded(version: &str) -> Option<kition_kdm::Version> {
+    kition_kdm::Version::decode(&hex::decode(version).ok()?).ok()
+}
+
+/// Whether two stored versions name the same replica version. They are compared decoded: the
+/// KDM's canonical bytes (Kit UI protocol UI-R7) and the older encoders' bytes, whose entries
+/// follow a hash map's order, are two spellings of one version, and a document's checkpoints
+/// come from both (the page's `versionOf`, a kit engine's `replica/version`). Strings that are
+/// not versions compare as they are.
+fn same_version(a: &str, b: &str) -> bool {
+    a == b || matches!((decoded(a), decoded(b)), (Some(a), Some(b)) if a == b)
+}
+
 fn load(root: &Path, dir: &Path) -> io::Result<History> {
     let Some(bytes) = read_confined(root, &dir.join(HISTORY_FILE))? else {
         return Ok(History::default());
@@ -267,9 +281,9 @@ pub fn record(
     let version = check_text(input.version, MAX_TEXT)?;
     let mut history = load(root, dir)?;
     if let Some(last) = history.checkpoints.last_mut()
-        && version.is_some()
+        && let (Some(stored), Some(asked)) = (&last.version, &version)
         && last.available
-        && last.version == version
+        && same_version(stored, asked)
     {
         if label.is_none() {
             return Ok(last.clone());
@@ -565,6 +579,39 @@ mod tests {
         assert_eq!(
             ok(record(&root, &dir, input("save", "01"), None, None)),
             named
+        );
+    }
+
+    #[test]
+    fn compares_versions_decoded_not_as_bytes() {
+        // One version of three actors as the engine's hash map ordered it and in the canonical
+        // order (crates/kition-kdm/tests/fixtures/version-bytes.json), and a later version.
+        let reordered = "0381808080808080108002ac020a0100";
+        let canonical = "030100ac020a81808080808080108002";
+        let later = "030100ac020c81808080808080108002";
+        assert!(decoded(canonical).is_some());
+        assert_eq!(decoded(canonical), decoded(reordered));
+        assert!(same_version(canonical, reordered));
+        assert!(!same_version(canonical, later));
+        assert!(same_version("not hex", "not hex"));
+        assert!(!same_version("not hex", "also not"));
+
+        // So a label at the newest version upgrades its checkpoint whichever encoder wrote either.
+        let (_temp, root, dir) = store();
+        let saved = ok(record(&root, &dir, input("save", reordered), None, None));
+        let named = ok(record(
+            &root,
+            &dir,
+            labelled("Draft", canonical),
+            None,
+            None,
+        ));
+        assert_eq!(named.id, saved.id);
+        assert_eq!(ok(list(&root, &dir)).len(), 1);
+        // And a write at a later version is a new checkpoint.
+        assert_ne!(
+            ok(record(&root, &dir, input("save", later), None, None)).id,
+            saved.id
         );
     }
 

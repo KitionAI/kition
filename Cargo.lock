@@ -3191,6 +3191,7 @@ dependencies = [
  "kition-api",
  "kition-core",
  "kition-http",
+ "kition-kdm",
  "kition-kits",
  "libc",
  "notify",

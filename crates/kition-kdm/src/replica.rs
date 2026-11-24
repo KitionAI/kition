@@ -51,8 +51,22 @@ impl Version {
         Self(VersionVector::default())
     }
 
+    /// The version's canonical bytes: equal versions encode to the same bytes, here and in the
+    /// TypeScript KDM, so a host may compare and store them as they are (docs/platform/data-model.md,
+    /// "Version bytes"). The engine's own encoding writes its entries in the order of its hash
+    /// map, which two equal versions need not share. These are the same format, a postcard map
+    /// (an entry count, then each actor id and counter as varints, the counter zigzagged), with
+    /// the entries sorted by actor id; the engine decodes them, and they decode bytes it wrote.
     pub fn encode(&self) -> Vec<u8> {
-        self.0.encode()
+        let mut entries: Vec<(u64, i32)> = self.0.iter().map(|(actor, counter)| (*actor, *counter)).collect();
+        entries.sort_unstable();
+        let mut bytes = Vec::with_capacity(1 + entries.len() * 12);
+        varint(&mut bytes, entries.len() as u64);
+        for (actor, counter) in entries {
+            varint(&mut bytes, actor);
+            varint(&mut bytes, u64::from(((counter << 1) ^ (counter >> 31)) as u32));
+        }
+        bytes
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self> {
@@ -64,6 +78,15 @@ impl Version {
     pub fn includes(&self, other: &Version) -> bool {
         self.0.includes_vv(&other.0)
     }
+}
+
+/// `value` as an unsigned LEB128 varint, as postcard writes integers.
+fn varint(bytes: &mut Vec<u8>, mut value: u64) {
+    while value >= 0x80 {
+        bytes.push((value as u8) | 0x80);
+        value >>= 7;
+    }
+    bytes.push(value as u8);
 }
 
 /// One change of a replica's history, as [`Replica::history_since`] lists it.
@@ -757,7 +780,7 @@ impl Replica {
         let actor = self.actor.get();
         let next = birth.get(&actor).copied().unwrap_or(0);
         birth.insert(actor, next);
-        self.doc.get_map(BIRTH).insert(BIRTH_ROOT, LoroValue::Binary(birth.encode().into())).map_err(engine)?;
+        self.doc.get_map(BIRTH).insert(BIRTH_ROOT, LoroValue::Binary(Version(birth).encode().into())).map_err(engine)?;
         self.doc.set_next_commit_origin(OriginKind::System.as_str());
         self.doc.set_next_commit_message(&Origin::system(REBIRTH).encode_commit(self.schema.schema_version));
         self.doc.commit();
@@ -1476,7 +1499,7 @@ impl Replica {
         let next = birth.get(&actor.get()).copied().unwrap_or(0);
         birth.insert(actor.get(), next + 1);
         doc.get_map(META).insert("docId", doc_id.to_string()).map_err(engine)?;
-        doc.get_map(BIRTH).insert(BIRTH_ROOT, LoroValue::Binary(birth.encode().into())).map_err(engine)?;
+        doc.get_map(BIRTH).insert(BIRTH_ROOT, LoroValue::Binary(Version(birth).encode().into())).map_err(engine)?;
         doc.set_next_commit_origin(OriginKind::System.as_str());
         doc.set_next_commit_message(&Origin::system(NEW_DOCUMENT).encode_commit(self.schema.schema_version));
         doc.commit();

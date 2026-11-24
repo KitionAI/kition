@@ -23,6 +23,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 kition-api = { workspace = true }
 kition-kits = { workspace = true }
+kition-kdm = { workspace = true }
 kition-core = { workspace = true }
 kition-http = { workspace = true }
 tracing = { workspace = true }
