@@ -10,13 +10,17 @@ const store = vi.hoisted(() => ({
   readKitCheckpoint: vi.fn(),
   readViewState: vi.fn(),
   writeViewState: vi.fn(),
+  servesKitCheckpoints: vi.fn(() => true),
+  servesViewState: vi.fn(() => true),
 }))
+const writeKitReplica = vi.hoisted(() => vi.fn())
+vi.mock('./kitionHost', () => ({ writeKitReplica }))
 const bindDocumentId = vi.hoisted(() => vi.fn())
 vi.mock('@/services/desktop', () => store)
 vi.mock('@/lib/docstore/documentIndex', () => ({ bindDocumentId }))
 
 import { KitRpcError } from '@kition/sdk/protocol'
-import { KITION_CHECKPOINTS, KITION_VIEW_STATE, kitStoreError, replicaWriteCheckpoint } from './kitCheckpoints'
+import { KITION_CHECKPOINTS, KITION_VIEW_STATE, kitHistoryHandlers, kitStoreError, replicaWriteCheckpoint } from './kitCheckpoints'
 
 const DOC = '0199c2a4-7b3e-7cde-8f00-1234567890ab'
 const checkpoint = { id: 'c1', time: 1, origin: 'kit', label: 'Draft', version: 'AQI=', available: true }
@@ -27,7 +31,10 @@ function reason(error: unknown) {
 
 afterEach(() => {
   for (const mock of Object.values(store)) mock.mockReset()
+  store.servesKitCheckpoints.mockImplementation(() => true)
+  store.servesViewState.mockImplementation(() => true)
   bindDocumentId.mockReset()
+  writeKitReplica.mockReset()
 })
 
 describe('kit checkpoints over the document store', () => {
@@ -109,5 +116,43 @@ describe('kit view state over the app data', () => {
     await expect(KITION_VIEW_STATE.read({ path: 'b.kdesign' })).resolves.toEqual({ state: null })
     await KITION_VIEW_STATE.write({ path: 'b.kdesign', state: null })
     expect(store.writeViewState).not.toHaveBeenCalled()
+  })
+})
+
+describe("the kit editor's history handlers", () => {
+  const checkPath = (wanted: string, path: string) => {
+    if (wanted !== path) throw new Error(`${wanted} is not this editor's document`)
+    return wanted
+  }
+  const replica = { snapshot: new ArrayBuffer(1), blobs: new ArrayBuffer(0), fileStamp: 's' }
+
+  it('records the checkpoint a replica write asks for and answers it', async () => {
+    const handlers = kitHistoryHandlers({ path: 'a.kdesign', kitId: 'kit.design', preview: false, lastBy: () => 'person', checkPath })
+    writeKitReplica.mockResolvedValue({ checkpoint })
+    await expect(handlers.replicaWrite?.({ path: 'a.kdesign', ...replica, checkpoint: { origin: 'kit', label: 'Draft' } })).resolves.toEqual({ checkpoint })
+    expect(writeKitReplica).toHaveBeenCalledWith('a.kdesign', 'kit.design', replica, { checkpoint: { origin: 'kit', author: 'user:local', label: 'Draft' } })
+    await handlers.replicaWrite?.({ path: 'a.kdesign', ...replica })
+    expect(writeKitReplica).toHaveBeenLastCalledWith('a.kdesign', 'kit.design', replica, { checkpoint: { origin: 'save', author: 'user:local' } })
+  })
+
+  it("serves only this editor's document", async () => {
+    const handlers = kitHistoryHandlers({ path: 'a.kdesign', kitId: 'kit.design', preview: false, lastBy: () => 'agent', checkPath })
+    expect(() => handlers.checkpoints?.list({ path: 'other.kdesign' })).toThrow(/not this editor's document/)
+    expect(() => handlers.viewState?.read({ path: 'other.kdesign' })).toThrow(/not this editor's document/)
+    store.readDocumentIndex.mockResolvedValue({ entries: {}, version: null })
+    await expect(handlers.viewState?.read({ path: 'a.kdesign' })).resolves.toEqual({ state: null })
+  })
+
+  it('offers a preview, or a page without the desktop shell, neither checkpoints nor view state', async () => {
+    const preview = kitHistoryHandlers({ path: 'a.kdesign', kitId: 'kit.design', preview: true, lastBy: () => 'person', checkPath })
+    expect(preview.checkpoints).toBeUndefined()
+    expect(preview.viewState).toBeUndefined()
+    await expect(preview.replicaWrite?.({ path: 'a.kdesign', ...replica })).resolves.toEqual({})
+    expect(writeKitReplica).not.toHaveBeenCalled()
+    store.servesKitCheckpoints.mockImplementation(() => false)
+    store.servesViewState.mockImplementation(() => false)
+    const browser = kitHistoryHandlers({ path: 'a.kdesign', kitId: 'kit.design', preview: false, lastBy: () => 'person', checkPath })
+    expect(browser.checkpoints).toBeUndefined()
+    expect(browser.viewState).toBeUndefined()
   })
 })

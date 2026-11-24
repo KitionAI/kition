@@ -1,6 +1,7 @@
 /**
  * The desktop bridge as the renderer sees it: the `window.kitionDesktop` surface and every payload type it exchanges.
  */
+import type { KitCheckpoint } from '@kition/sdk/protocol'
 import type { AgentLocalSource } from '@/types/agentLocalSource'
 
 type KitionDesktopBridge = {
@@ -37,11 +38,11 @@ type KitionDesktopBridge = {
   RecordDocumentCheckpoint?: (request: DocumentStoreRequest & { checkpoint: DocumentCheckpointInput }) => Promise<{ checkpoint: DocumentCheckpoint }>
   ReadDocumentCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: DocumentCheckpoint; blobs_base64?: string } | null>
   /** A document's checkpoints as kits see them (Kit UI protocol section 7m), newest first. */
-  ListKitCheckpoints?: (request: DocumentStoreRequest & KitCheckpointQuery) => Promise<{ checkpoints: KitStoreCheckpoint[]; more: boolean }>
-  FindKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<KitStoreCheckpoint | null>
-  UpdateKitCheckpoint?: (request: DocumentStoreRequest & { id: string; label?: string; description?: string }) => Promise<{ checkpoint: KitStoreCheckpoint }>
+  ListKitCheckpoints?: (request: DocumentStoreRequest & KitCheckpointQuery) => Promise<{ checkpoints: KitCheckpoint[]; more: boolean }>
+  FindKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<KitCheckpoint | null>
+  UpdateKitCheckpoint?: (request: DocumentStoreRequest & { id: string; label?: string; description?: string }) => Promise<{ checkpoint: KitCheckpoint }>
   DeleteKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<void | null>
-  ReadKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: KitStoreCheckpoint; blobs_base64: string }>
+  ReadKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: KitCheckpoint; blobs_base64: string }>
   /** A document's view state, kept in the app's own data (Kit UI protocol section 7n). */
   ReadViewState?: (request: DocumentStoreRequest) => Promise<{ state: Record<string, unknown> | null; bytes_base64?: string }>
   WriteViewState?: (request: DocumentStoreRequest & { state: Record<string, unknown> | null; bytes_base64?: string }) => Promise<void | null>
@@ -281,18 +282,6 @@ export type DocumentCheckpoint = {
   available?: boolean
 }
 
-/** A checkpoint as a kit sees it (Kit UI protocol `KitCheckpoint`): `version` in base64. */
-export type KitStoreCheckpoint = {
-  id: string
-  time: number
-  origin: string
-  author?: string
-  label?: string
-  description?: string
-  version: string
-  available: boolean
-}
-
 /** One page of a document's checkpoints: newest first, at most `limit` (200), only labelled ones, only older than `before`. */
 export type KitCheckpointQuery = {
   labelled?: boolean
@@ -323,7 +312,7 @@ export type DocumentStoreWritten = {
   compact: boolean
   checkpoint?: DocumentCheckpoint
   /** The same checkpoint as a kit sees it (Kit UI protocol `host/replicaWrite`). */
-  kit_checkpoint?: KitStoreCheckpoint
+  kit_checkpoint?: KitCheckpoint
 }
 
 /**

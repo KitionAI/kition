@@ -14,9 +14,9 @@ import {
   type DocumentStoreWritten,
   type KitCheckpointQuery,
   type KitReplicaMeta,
-  type KitStoreCheckpoint,
   getDesktopBridge,
 } from './bridge'
+import type { KitCheckpoint } from '@kition/sdk/protocol'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
 import { uint8ArrayToBase64 } from './workspaceFiles'
 
@@ -401,20 +401,20 @@ function kitBridge() {
 }
 
 /** One page of `docId`'s checkpoints as a kit sees them, newest first; an unknown `before` fails with `DOCUMENT_CHECKPOINT_NOT_FOUND`. */
-export async function listKitCheckpoints(docId: string, query: KitCheckpointQuery, options?: DocumentStoreOptions): Promise<{ checkpoints: KitStoreCheckpoint[]; more: boolean }> {
+export async function listKitCheckpoints(docId: string, query: KitCheckpointQuery, options?: DocumentStoreOptions): Promise<{ checkpoints: KitCheckpoint[]; more: boolean }> {
   checkDocumentId(docId)
   const answer = await kitBridge().ListKitCheckpoints({ doc_id: docId, ...query, ...rootRequest(options) })
   return { checkpoints: answer?.checkpoints ?? [], more: answer?.more === true }
 }
 
 /** The checkpoint `id` of `docId`, or `null`. */
-export async function findKitCheckpoint(docId: string, id: string, options?: DocumentStoreOptions): Promise<KitStoreCheckpoint | null> {
+export async function findKitCheckpoint(docId: string, id: string, options?: DocumentStoreOptions): Promise<KitCheckpoint | null> {
   checkDocumentId(docId)
   return (await kitBridge().FindKitCheckpoint({ doc_id: docId, id, ...rootRequest(options) })) ?? null
 }
 
 /** Renames the kit's checkpoint `id` (an absent field is kept, an empty one removed). */
-export async function updateKitCheckpoint(docId: string, id: string, edit: { label?: string; description?: string }, options?: DocumentStoreOptions): Promise<KitStoreCheckpoint> {
+export async function updateKitCheckpoint(docId: string, id: string, edit: { label?: string; description?: string }, options?: DocumentStoreOptions): Promise<KitCheckpoint> {
   checkDocumentId(docId)
   return (await kitBridge().UpdateKitCheckpoint({ doc_id: docId, id, ...edit, ...rootRequest(options) })).checkpoint
 }
@@ -426,7 +426,7 @@ export async function deleteKitCheckpoint(docId: string, id: string, options?: D
 }
 
 /** The checkpoint `id` and the blobs the replica named then; `DOCUMENT_CHECKPOINT_HISTORY_MISSING` when the store no longer reaches it. */
-export async function readKitCheckpoint(docId: string, id: string, options?: DocumentStoreOptions): Promise<{ checkpoint: KitStoreCheckpoint; blobs: Uint8Array }> {
+export async function readKitCheckpoint(docId: string, id: string, options?: DocumentStoreOptions): Promise<{ checkpoint: KitCheckpoint; blobs: Uint8Array }> {
   checkDocumentId(docId)
   const answer = await kitBridge().ReadKitCheckpoint({ doc_id: docId, id, ...rootRequest(options) })
   return { checkpoint: answer.checkpoint, blobs: base64ToBytes(answer.blobs_base64 ?? '', 'blobs') }

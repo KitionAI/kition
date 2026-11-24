@@ -679,7 +679,9 @@ of origin `kit`. Labelled checkpoints are never thinned for unlabelled ones
 (at most 200 of those, autosaves first) and have their own cap of 1000; a
 replica of a new lineage drops the unlabelled ones and keeps the labelled ones
 as `available: false`. `history.json` keeps versions in hex; kits get them in
-base64.
+base64. `KitFrame` passes both to `mountKit` on the desktop shell
+(`src/features/kits/kition/kitCheckpoints.ts`, which confines every call to the
+editor's own document); a preview and the browser preview are offered neither.
 
 A kit's view state of a document (section 7n: the page, zoom, panels) is the
 person's, not the document's, so it is not in the store: it is in the app's

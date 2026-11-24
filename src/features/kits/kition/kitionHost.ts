@@ -9,11 +9,10 @@ import {
   writeDocumentStore,
   type DocumentCheckpointInput,
   type KitReplicaMeta,
-  type KitStoreCheckpoint,
 } from '@/services/desktop'
 import { resolveKitFilesRootURL, resolveKitFileURL, resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import { stampFromHeaders, type KitHost } from '../engine/kitHost'
-import type { StoredReplica } from '@kition/sdk/host'
+import type { KitCheckpoint, StoredReplica } from '@kition/sdk/host'
 import { saveFailureText } from './kitFailures'
 import { runtimeFetch } from '@/services/runtimeAuth'
 
@@ -113,7 +112,7 @@ export async function readKitReplica(path: string, kitId: string): Promise<Store
  * elsewhere) replaces it and starts its version history over. `checkpoint` records the save in that history, and the
  * answer names it as a kit sees it (Kit UI protocol `host/replicaWrite`).
  */
-export async function writeKitReplica(path: string, kitId: string, replica: StoredReplica, options: { checkpoint?: DocumentCheckpointInput } = {}): Promise<{ checkpoint?: KitStoreCheckpoint }> {
+export async function writeKitReplica(path: string, kitId: string, replica: StoredReplica, options: { checkpoint?: DocumentCheckpointInput } = {}): Promise<{ checkpoint?: KitCheckpoint }> {
   const docId = await bindDocumentId(path, () => crypto.randomUUID())
   const snapshot = new Uint8Array(replica.snapshot)
   const blobs = new Uint8Array(replica.blobs)

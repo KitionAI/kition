@@ -5,7 +5,8 @@
  * and moves. Checkpoints live in the workspace's `.kition/docs/<docId>/history.json`; view state in the app's own data,
  * per person and device, never in the workspace. The store's refusals reach the kit as the protocol's reasons.
  */
-import { KitRpcError } from '@kition/sdk/protocol'
+import type { KitHostHandlers } from '@kition/sdk/host'
+import { KitRpcError, type KitCheckpoint } from '@kition/sdk/protocol'
 import { bindDocumentId } from '@/lib/docstore/documentIndex'
 import {
   deleteKitCheckpoint,
@@ -15,11 +16,13 @@ import {
   readDocumentStore,
   readKitCheckpoint,
   readViewState,
+  servesKitCheckpoints,
+  servesViewState,
   updateKitCheckpoint,
   writeViewState,
   type DocumentCheckpointInput,
-  type KitStoreCheckpoint,
 } from '@/services/desktop'
+import { writeKitReplica } from './kitionHost'
 
 /** The store's errors and the protocol reasons they are (`error.data.reason` of a `-32000` refusal). */
 const REASONS: ReadonlyArray<readonly [string, string]> = [
@@ -93,7 +96,7 @@ export function replicaWriteCheckpoint(asked: { label?: string; description?: st
 
 /** `checkpoints` of `mountKit`'s handlers. */
 export const KITION_CHECKPOINTS = {
-  find: ({ path, id }: { path: string; id: string }): Promise<KitStoreCheckpoint | null> =>
+  find: ({ path, id }: { path: string; id: string }): Promise<KitCheckpoint | null> =>
     refused(async () => {
       const docId = await docIdOf(path)
       return docId ? findKitCheckpoint(docId, id) : null
@@ -103,7 +106,7 @@ export const KITION_CHECKPOINTS = {
       const docId = await docIdOf(path)
       if (!docId) {
         if (before) throw refusal('not-found', `no checkpoint ${before}`)
-        return { checkpoints: [] as KitStoreCheckpoint[], more: false }
+        return { checkpoints: [] as KitCheckpoint[], more: false }
       }
       return listKitCheckpoints(docId, { ...(labelled ? { labelled } : {}), ...(before ? { before } : {}), ...(limit ? { limit } : {}) })
     }),
@@ -153,4 +156,26 @@ export const KITION_VIEW_STATE = {
       if (!docId) return
       await writeViewState(docId, state, bytes ? new Uint8Array(bytes) : undefined)
     }),
+}
+
+/**
+ * The replica write, checkpoints and view state of the kit editing `path` (`mountKit`'s `replicaWrite`, `checkpoints`
+ * and `viewState`). Every call names this document only (`checkPath` refuses others, UI-H2). A preview keeps nothing:
+ * its writes are dropped and it is offered neither checkpoints nor view state; without the desktop shell neither is
+ * offered.
+ */
+export function kitHistoryHandlers({ path, kitId, preview, lastBy, checkPath }: { path: string; kitId: string; preview: boolean; lastBy: () => 'agent' | 'person'; checkPath: (wanted: string, path: string) => string }): Pick<KitHostHandlers, 'replicaWrite' | 'checkpoints' | 'viewState'> {
+  const confined = <P extends { path: string }, R>(run: (params: P) => R) => (params: P) => run({ ...params, path: checkPath(params.path, path) })
+  return {
+    replicaWrite: async ({ path: wanted, checkpoint: asked, ...replica }) =>
+      preview ? {} : writeKitReplica(checkPath(wanted, path), kitId, replica, { checkpoint: replicaWriteCheckpoint(asked, lastBy()) }),
+    checkpoints: preview || !servesKitCheckpoints() ? undefined : {
+      find: confined(KITION_CHECKPOINTS.find),
+      list: confined(KITION_CHECKPOINTS.list),
+      update: confined(KITION_CHECKPOINTS.update),
+      delete: confined(KITION_CHECKPOINTS.delete),
+      read: confined(KITION_CHECKPOINTS.read),
+    },
+    viewState: preview || !servesViewState() ? undefined : { read: confined(KITION_VIEW_STATE.read), write: confined(KITION_VIEW_STATE.write) },
+  }
 }

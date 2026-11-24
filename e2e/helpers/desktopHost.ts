@@ -213,7 +213,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     if (!await exists(gitignore)) await fs.writeFile(gitignore, '*\n!.gitignore\n')
   }
   type BlobRecord = { hashes?: string[]; bundle?: string }
-  type StoredCheckpoint = { id: string; time: number; origin: string; author?: string; label?: string; version?: string; seq?: number; blobs?: BlobRecord }
+  type StoredCheckpoint = { id: string; time: number; origin: string; author?: string; label?: string; description?: string; version?: string; seq?: number; blobs?: BlobRecord; available?: boolean }
   /** A kit's blob bundle, `(hex SHA-256, u64 LE length, bytes) * N`, kept as one file per blob. */
   async function storeBlobs(dir: string, bundle: Buffer): Promise<BlobRecord> {
     const blobs: Array<[string, Buffer]> = []
@@ -265,16 +265,44 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     const history = await readHistory(dir)
     const version = typeof input.version === 'string' ? input.version : (manifest?.head.version ?? undefined)
     const last = history[history.length - 1]
-    if (last && version && last.version === version) return publicCheckpoint(last)
+    const label = typeof input.label === 'string' && input.label ? input.label : undefined
+    const description = typeof input.description === 'string' && input.description ? input.description : undefined
+    if (last && version && last.version === version && last.available !== false) {
+      if (!label) return last
+      // A label at the newest checkpoint's version names that one, and it takes the requester's origin.
+      Object.assign(last, { label, origin: String(input.origin) })
+      if (description) last.description = description
+      else delete last.description
+      await writeHistory(dir, history)
+      return last
+    }
     const checkpoint: StoredCheckpoint = {
       id: randomUUID(), time: typeof input.time === 'number' ? input.time : Date.now(), origin: String(input.origin),
-      ...(typeof input.author === 'string' ? { author: input.author } : {}), ...(typeof input.label === 'string' ? { label: input.label } : {}),
+      ...(typeof input.author === 'string' ? { author: input.author } : {}), ...(label ? { label } : {}), ...(description ? { description } : {}),
       ...(version ? { version } : {}), ...(manifest ? { seq: manifest.head.seq } : {}), ...(manifest?.blobs ? { blobs: manifest.blobs } : {}),
     }
     history.push(checkpoint)
+    await writeHistory(dir, history)
+    return checkpoint
+  }
+  async function writeHistory(dir: string, history: StoredCheckpoint[]) {
     await fs.mkdir(dir, { recursive: true })
     await fs.writeFile(path.join(dir, 'history.json'), `${JSON.stringify({ format: 1, checkpoints: history.slice(-200) }, null, 2)}\n`)
-    return publicCheckpoint(checkpoint)
+  }
+  /** A checkpoint as a kit sees it (docstore/checkpoints.rs): the version in base64. */
+  const kitCheckpoint = ({ blobs: _blobs, seq: _seq, version, available, ...checkpoint }: StoredCheckpoint) =>
+    ({ ...checkpoint, version: version ? Buffer.from(version, 'hex').toString('base64') : '', available: available !== false })
+  /** The kit's own checkpoint `id` of `dir`, as update and delete need it. */
+  async function ownCheckpoint(dir: string, id: unknown) {
+    const history = await readHistory(dir)
+    const found = history.find((checkpoint) => checkpoint.id === id)
+    if (!found) throw new Error('DOCUMENT_CHECKPOINT_NOT_FOUND')
+    if (found.origin !== 'kit') throw new Error('DOCUMENT_CHECKPOINT_READ_ONLY')
+    return { history, found }
+  }
+  const viewStateFile = (docId: unknown) => {
+    if (typeof docId !== 'string' || !docIdPattern.test(docId)) throw new Error('invalid document id')
+    return path.join(dataDir, 'view-state', sha256(Buffer.from(activeRoot)).slice(0, 32), `${docId.replace(/:/g, '%3A')}.bin`)
   }
   async function readIndex() {
     const bytes = await readIfPresent(indexFile())
@@ -431,7 +459,11 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       }
       await fs.writeFile(metaFile, `${JSON.stringify(next, null, 2)}\n`)
       const written: Record<string, unknown> = { seq: next.head.seq, version: next.head.version, compact: next.changes.length >= 64 }
-      if (request?.checkpoint) written.checkpoint = await recordCheckpoint(dir, request.checkpoint as Record<string, unknown>, next)
+      if (request?.checkpoint) {
+        const recorded = await recordCheckpoint(dir, request.checkpoint as Record<string, unknown>, next)
+        written.checkpoint = publicCheckpoint(recorded)
+        written.kit_checkpoint = kitCheckpoint(recorded)
+      }
       return written
     },
     read_document_history: async ({ request }) => {
@@ -446,7 +478,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       if (!checkpoint || typeof checkpoint.origin !== 'string') throw new Error('a checkpoint needs an origin')
       const manifest = await readIfPresent(path.join(dir, 'meta.json')).then((bytes) => (bytes ? JSON.parse(bytes.toString('utf8')) : null)).catch(() => null)
       await ensureStore()
-      return { checkpoint: await recordCheckpoint(dir, checkpoint, manifest?.format === 2 ? manifest : null) }
+      return { checkpoint: publicCheckpoint(await recordCheckpoint(dir, checkpoint, manifest?.format === 2 ? manifest : null)) }
     },
     read_document_checkpoint: async ({ request }) => {
       checkRoot(request || {})
@@ -455,6 +487,80 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       if (!found) return null
       const blobs = found.blobs ? await readBlobs(dir, found.blobs) : null
       return { checkpoint: publicCheckpoint(found), ...(blobs ? { blobs_base64: blobs.toString('base64') } : {}) }
+    },
+    // Kits' checkpoints and view state (src-tauri/src/workspace/docstore/checkpoints.rs, viewstate.rs).
+    list_kit_checkpoints: async ({ request }) => {
+      checkRoot(request || {})
+      const newest = (await readHistory(entryDir(request?.doc_id))).reverse()
+      let start = 0
+      if (typeof request?.before === 'string' && request.before) {
+        start = newest.findIndex((checkpoint) => checkpoint.id === request.before) + 1
+        if (!start) throw new Error('DOCUMENT_CHECKPOINT_NOT_FOUND')
+      }
+      const matching = newest.slice(start).filter((checkpoint) => !request?.labelled || checkpoint.label)
+      const limit = Math.min(typeof request?.limit === 'number' && request.limit > 0 ? request.limit : 200, 200)
+      return { checkpoints: matching.slice(0, limit).map(kitCheckpoint), more: matching.length > limit }
+    },
+    find_kit_checkpoint: async ({ request }) => {
+      checkRoot(request || {})
+      const found = (await readHistory(entryDir(request?.doc_id))).find((checkpoint) => checkpoint.id === request?.id)
+      return found ? kitCheckpoint(found) : null
+    },
+    update_kit_checkpoint: async ({ request }) => {
+      checkRoot(request || {})
+      const dir = entryDir(request?.doc_id)
+      const { history, found } = await ownCheckpoint(dir, request?.id)
+      for (const key of ['label', 'description'] as const) {
+        const value = request?.[key]
+        if (typeof value !== 'string') continue
+        if (value) found[key] = value
+        else delete found[key]
+      }
+      await writeHistory(dir, history)
+      return { checkpoint: kitCheckpoint(found) }
+    },
+    delete_kit_checkpoint: async ({ request }) => {
+      checkRoot(request || {})
+      const dir = entryDir(request?.doc_id)
+      const { history, found } = await ownCheckpoint(dir, request?.id)
+      await writeHistory(dir, history.filter((checkpoint) => checkpoint !== found))
+      return null
+    },
+    read_kit_checkpoint: async ({ request }) => {
+      checkRoot(request || {})
+      const dir = entryDir(request?.doc_id)
+      const found = (await readHistory(dir)).find((checkpoint) => checkpoint.id === request?.id)
+      if (!found) throw new Error('DOCUMENT_CHECKPOINT_NOT_FOUND')
+      const blobs = found.blobs ? await readBlobs(dir, found.blobs) : Buffer.alloc(0)
+      if (found.available === false || !blobs) throw new Error('DOCUMENT_CHECKPOINT_HISTORY_MISSING')
+      return { checkpoint: kitCheckpoint(found), blobs_base64: blobs.toString('base64') }
+    },
+    read_view_state: async ({ request }) => {
+      const bytes = await readIfPresent(viewStateFile(request?.doc_id))
+      if (!bytes || bytes.length < 8) return { state: null }
+      const length = Number(bytes.readBigUInt64LE(0))
+      try {
+        const state = JSON.parse(bytes.subarray(8, 8 + length).toString('utf8'))
+        const rest = bytes.subarray(8 + length)
+        return { state, ...(rest.length ? { bytes_base64: rest.toString('base64') } : {}) }
+      } catch {
+        return { state: null }
+      }
+    },
+    write_view_state: async ({ request }) => {
+      const file = viewStateFile(request?.doc_id)
+      if (request?.state === null) {
+        await fs.rm(file, { force: true })
+        return null
+      }
+      const json = Buffer.from(JSON.stringify(request?.state))
+      const extra = typeof request?.bytes_base64 === 'string' ? Buffer.from(request.bytes_base64, 'base64') : Buffer.alloc(0)
+      if (json.length > 256 * 1024 || extra.length > 16 * 1024 * 1024) throw new Error('VIEW_STATE_TOO_LARGE')
+      const length = Buffer.alloc(8)
+      length.writeBigUInt64LE(BigInt(json.length))
+      await fs.mkdir(path.dirname(file), { recursive: true })
+      await fs.writeFile(file, Buffer.concat([length, json, extra]))
+      return null
     },
     document_store_status: async () => host.storeStatus,
     delete_document_store: async ({ request }) => {

@@ -1,0 +1,29 @@
+format: 1
+id: kition.kits.checkpoints/host-calls
+feature: kition.kits.checkpoints
+intent: >-
+  A kit open in Kition's KitFrame on the desktop shell is offered checkpoints and view state: a
+  replica write that asks for a labelled checkpoint is answered with the kit's own checkpoint, which
+  the kit lists, renames, reads and deletes (unknown ids not-found, labels past 200 characters
+  too-long); its view state is kept in the app's data, never the workspace, read back whole,
+  refused too-large past 256 KB of JSON, and deleted with null; calls for another document are
+  refused. No pinned kit package calls these capabilities yet, so the test sends the host calls
+  over the open editor's host channel, as a kit does.
+layer: gate
+dimension: function
+source:
+  kind: synthetic
+  from: e2e/kit-checkpoints.spec.ts
+  license: owned
+input: []
+steps:
+  - exec:
+      cmd: [pnpm, exec, playwright, test, --config, tooling/playwright.config.ts, e2e/kit-checkpoints.spec.ts]
+expected:
+  - actual: out:exec
+    compare: exit
+    value: 0
+since: "2026-11-23"
+tags: [browser]
+requires: [chromium]
+timeout_s: 120
