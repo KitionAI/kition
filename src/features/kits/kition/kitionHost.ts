@@ -9,6 +9,7 @@ import {
   writeDocumentStore,
   type DocumentCheckpointInput,
   type KitReplicaMeta,
+  type KitStoreCheckpoint,
 } from '@/services/desktop'
 import { resolveKitFilesRootURL, resolveKitFileURL, resolveWorkspaceFileURL } from '@/services/workspaceFiles'
 import { stampFromHeaders, type KitHost } from '../engine/kitHost'
@@ -109,9 +110,10 @@ export async function readKitReplica(path: string, kitId: string): Promise<Store
 /**
  * Stores the replica `kitId`'s editor saved with the workspace file at `path`, under the file's identity. When it
  * continues the stored replica only its new changes are appended (rule P5); a replica made anew (the file changed
- * elsewhere) replaces it and starts its version history over. `checkpoint` records the save in that history.
+ * elsewhere) replaces it and starts its version history over. `checkpoint` records the save in that history, and the
+ * answer names it as a kit sees it (Kit UI protocol `host/replicaWrite`).
  */
-export async function writeKitReplica(path: string, kitId: string, replica: StoredReplica, options: { checkpoint?: DocumentCheckpointInput } = {}): Promise<void> {
+export async function writeKitReplica(path: string, kitId: string, replica: StoredReplica, options: { checkpoint?: DocumentCheckpointInput } = {}): Promise<{ checkpoint?: KitStoreCheckpoint }> {
   const docId = await bindDocumentId(path, () => crypto.randomUUID())
   const snapshot = new Uint8Array(replica.snapshot)
   const blobs = new Uint8Array(replica.blobs)
@@ -144,14 +146,15 @@ export async function writeKitReplica(path: string, kitId: string, replica: Stor
       const written = await appendDocumentStore(docId, { meta, changes: delta.changes, baseSeq: delta.baseSeq, blobs }, writeOptions)
       if (written.compact) compactDue.add(docId)
       appended.set(path, { docId, kitId, replica, version: version ?? '' })
-      return
+      return written.kit_checkpoint ? { checkpoint: written.kit_checkpoint } : {}
     } catch (error) {
       if (!isDocumentStoreConflict(error)) throw error
     }
   }
-  await writeDocumentStore(docId, { meta, snapshot, blobs }, { ...writeOptions, ...(newLineage ? { lineage: 'new' as const } : {}) })
+  const written = await writeDocumentStore(docId, { meta, snapshot, blobs }, { ...writeOptions, ...(newLineage ? { lineage: 'new' as const } : {}) })
   compactDue.delete(docId)
   appended.delete(path)
+  return written?.kit_checkpoint ? { checkpoint: written.kit_checkpoint } : {}
 }
 
 /**

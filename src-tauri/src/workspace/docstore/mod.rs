@@ -10,6 +10,10 @@
 //!   <docId>/                   one document (`entry`, `blobs`, `history`)
 //! ```
 //!
+//! `checkpoints` serves the history to kits (Kit UI protocol section 7m).
+//! Where the person was in a document (its view state, section 7n) is not
+//! kept here but in the app's own data: see `super::viewstate`.
+//!
 //! The store is local to this machine, and deleting it loses only editing
 //! history, never document text: the workspace file is the document. Reads and
 //! writes of one document, and of the index, are serialised; only the Kition
@@ -26,6 +30,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 pub mod blobs;
+pub mod checkpoints;
 pub mod entry;
 pub mod history;
 pub mod lock;
@@ -210,6 +215,9 @@ pub fn write_entry(
     let dir = entry_dir(root, doc_id)?;
     check_meta(doc_id, save.write.meta)?;
     entry::check_body(&save.write.body)?;
+    if let Some(input) = &save.checkpoint {
+        history::check_input(input)?;
+    }
     access.check()?;
     locks.exclusive(&dir, || {
         ensure_store(root)?;
@@ -217,7 +225,7 @@ pub fn write_entry(
         let compaction = matches!(save.write.body, Body::Snapshot(_));
         let written = entry::write(root, &dir, doc_id, &save.write)?;
         if save.new_lineage {
-            history::clear(root, &dir)?;
+            history::new_lineage(root, &dir)?;
         }
         let checkpoint = match save.checkpoint {
             Some(input) => {
@@ -432,6 +440,7 @@ fn checkpoint_input(value: &Value) -> io::Result<CheckpointInput> {
         origin,
         author: text("author"),
         label: text("label"),
+        description: text("description"),
         version: text("version"),
         time: value.get("time").and_then(Value::as_u64),
     })
@@ -474,8 +483,9 @@ pub fn read_entry_request(
 }
 
 /// `{ doc_id, meta, snapshot_base64 | changes_base64 + base_seq, version?,
-/// blobs_base64?, lineage?: "new", checkpoint?: { origin, author?, label? },
-/// expected_root? }` to `{ seq, version, compact, checkpoint? }`.
+/// blobs_base64?, lineage?: "new", checkpoint?: { origin, author?, label?,
+/// description? }, expected_root? }` to `{ seq, version, compact, checkpoint?,
+/// kit_checkpoint? }`.
 pub fn write_entry_request(
     root: &Path,
     locks: &GuardedWrites,
@@ -531,6 +541,8 @@ pub fn write_entry_request(
     answer["compact"] = Value::Bool(saved.written.compact);
     if let Some(checkpoint) = &saved.checkpoint {
         answer["checkpoint"] = checkpoint_json(checkpoint);
+        // The same checkpoint as a kit sees it (Kit UI protocol `host/replicaWrite`).
+        answer["kit_checkpoint"] = checkpoints::kit_checkpoint_json(checkpoint);
     }
     Ok(answer)
 }
@@ -559,7 +571,8 @@ pub fn read_history_request(
     Ok(json!({ "checkpoints": checkpoints.iter().map(checkpoint_json).collect::<Vec<_>>() }))
 }
 
-/// `{ doc_id, origin, version?, author?, label?, expected_root? }` to `{ checkpoint }`.
+/// `{ doc_id, checkpoint: { origin, version?, author?, label?, description? },
+/// expected_root? }` to `{ checkpoint }`.
 pub fn record_checkpoint_request(
     root: &Path,
     locks: &GuardedWrites,

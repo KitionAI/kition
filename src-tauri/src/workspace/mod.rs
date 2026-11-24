@@ -6,4 +6,5 @@ pub mod formats;
 pub mod guarded;
 pub mod registry;
 pub mod safety;
+pub mod viewstate;
 pub mod watcher;

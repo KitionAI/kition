@@ -668,6 +668,29 @@ workspace file is the document. The Note kit's model of a `.md` file
 (schema `kit.note`, line endings, comments, identity, and merging a file
 changed on disk) is in kition-note's `docs/design.md`, section 2.
 
+The same history serves kits' checkpoints (Kit UI protocol section 7m,
+`docstore/checkpoints.rs`, commands `list_kit_checkpoints`,
+`find_kit_checkpoint`, `update_kit_checkpoint`, `delete_kit_checkpoint`,
+`read_kit_checkpoint`). A checkpoint has an optional label (at most 200
+characters) and description (at most 2000). A kit records one with its
+replica write (origin `kit`); a label at the newest checkpoint's version names
+that checkpoint and makes it the kit's. A kit renames or deletes only checkpoints
+of origin `kit`. Labelled checkpoints are never thinned for unlabelled ones
+(at most 200 of those, autosaves first) and have their own cap of 1000; a
+replica of a new lineage drops the unlabelled ones and keeps the labelled ones
+as `available: false`. `history.json` keeps versions in hex; kits get them in
+base64.
+
+A kit's view state of a document (section 7n: the page, zoom, panels) is the
+person's, not the document's, so it is not in the store: it is in the app's
+own data, `<app data>/view-state/<workspace key>/<docId>.bin` (the workspace
+key is the first 32 hex digits of the SHA-256 of the workspace folder's path;
+the file is the JSON's length, 8 bytes little-endian, the JSON object, then
+the bytes), at most 256 KB of JSON and 16 MB of bytes, written whole
+(`src-tauri/src/workspace/viewstate.rs`, commands `read_view_state` and
+`write_view_state`). It follows the file through renames by its document id;
+a missing or damaged file reads as none.
+
 ## 4b. Kit Packages And npm
 
 Kition ships every kit's package inside the app (decided 2026-10-15). All ten

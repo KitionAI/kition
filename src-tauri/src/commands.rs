@@ -22,7 +22,7 @@ use crate::request::Request;
 use crate::supervisor::portal_base_url;
 use crate::updates::UpdateManager;
 use crate::workspace::safety::write_atomically;
-use crate::workspace::{docstore, files};
+use crate::workspace::{docstore, files, viewstate};
 use crate::{feedback, pdf, window, workspace_window};
 
 type CommandResult<T = Value> = Result<T, String>;
@@ -401,6 +401,30 @@ document_store_command!(
     docstore::record_checkpoint_request
 );
 document_store_command!(read_document_checkpoint, docstore::read_checkpoint_request);
+// A document's checkpoints as kits see them (Kit UI protocol section 7m).
+document_store_command!(list_kit_checkpoints, docstore::checkpoints::list_request);
+document_store_command!(find_kit_checkpoint, docstore::checkpoints::find_request);
+document_store_command!(update_kit_checkpoint, docstore::checkpoints::update_request);
+document_store_command!(delete_kit_checkpoint, docstore::checkpoints::delete_request);
+document_store_command!(read_kit_checkpoint, docstore::checkpoints::read_request);
+
+macro_rules! view_state_command {
+    ($name:ident, $op:path) => {
+        /// A document's view state, in the app's own data (Kit UI protocol section 7n).
+        #[tauri::command]
+        pub async fn $name(app: AppHandle, request: Option<Value>) -> CommandResult {
+            blocking(move || {
+                let state = app.state::<Desktop>();
+                let root = state.workspace_root();
+                $op(&state.shared_data_dir, &root, &state.guarded, &req(request))
+            })
+            .await
+        }
+    };
+}
+
+view_state_command!(read_view_state, viewstate::read_request);
+view_state_command!(write_view_state, viewstate::write_request);
 
 /// `{ writable, holder }`: whether this Kition writes the workspace's document
 /// store, or which Kition does.

@@ -662,7 +662,15 @@ fn appends_changes_and_records_checkpoints_through_requests() {
         .is_err()
     );
 
-    // A replica of a new lineage starts its history over.
+    // A label at the newest version names that checkpoint.
+    assert_eq!(
+        recorded["checkpoint"]["id"], checkpoints[0]["id"],
+        "the restore names the agent's checkpoint at the same version"
+    );
+    assert_eq!(recorded["checkpoint"]["label"], json!("Restored"));
+
+    // A replica of a new lineage starts its history over; labelled checkpoints
+    // stay, marked unavailable.
     ok(write_entry_request(
         &root,
         &locks,
@@ -671,7 +679,13 @@ fn appends_changes_and_records_checkpoints_through_requests() {
             "doc_id": DOC, "meta": kit_meta, "snapshot_base64": BASE64.encode(b"n;"), "lineage": "new",
         })),
     ));
-    assert_eq!(ok(read_history(&root, &locks, DOC)), Vec::new());
+    let kept = ok(read_history(&root, &locks, DOC));
+    assert_eq!(
+        kept.iter()
+            .map(|c| (c.label.as_deref(), c.available))
+            .collect::<Vec<_>>(),
+        vec![(Some("Restored"), false)]
+    );
 
     // A board keeps only history: its file holds the replica.
     let board = "board-1";

@@ -1,0 +1,20 @@
+format: 1
+id: kition.kits.checkpoints/view-state-outside-workspace
+feature: kition.kits.checkpoints
+intent: >-
+  A kit's view state of a document is kept in the app's own data, per workspace and document id,
+  never in the workspace: written whole (state null deletes it), refused too-large past 256 KB of
+  JSON or 16 MB of bytes with nothing kept, and read as none when missing or damaged.
+layer: unit
+dimension: data-safety
+source:
+  kind: synthetic
+  from: src-tauri/src/workspace/viewstate.rs
+  license: owned
+input: []
+steps:
+  - cargo-test: { package: kition-app, filter: "workspace::viewstate::" }
+expected:
+  - actual: out:cargo-test
+    compare: exit
+since: "2026-11-23"

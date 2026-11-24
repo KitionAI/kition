@@ -13,6 +13,7 @@ import { mountKit, type KitConnection, type KitHostHandlers, type KitLinksPickPa
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
 import { kitCollabHandlers } from './kitLeases'
 import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
+import { replicaWriteCheckpoint } from './kitCheckpoints'
 import { agentInspect, kitEditorState } from './editorState'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
 import { bridgeModel } from './kitBridgeModel'
@@ -376,8 +377,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
               fromCarried = null
               return replica ?? readKitReplica(checked, kit.kitId)
             },
-            replicaWrite: ({ path: wanted, ...replica }) =>
-              preview ? undefined : writeKitReplica(documentPath(wanted, path), kit.kitId, replica, { checkpoint: { origin: lastBy === 'agent' ? 'agent' : 'save', author: lastBy === 'agent' ? 'agent:kition' : 'user:local' } }),
+            replicaWrite: async ({ path: wanted, ...replica }) =>
+              void (preview ? undefined : await writeKitReplica(documentPath(wanted, path), kit.kitId, replica, { checkpoint: replicaWriteCheckpoint(undefined, lastBy) })),
             openAgent: !preview && latest.current.onOpenAgent ? () => latest.current.onOpenAgent?.() : undefined,
             ...(preview ? {} : linkHandlers(latest)),
             changed: (next) => {

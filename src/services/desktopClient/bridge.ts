@@ -36,6 +36,15 @@ type KitionDesktopBridge = {
   ReadDocumentHistory?: (request: DocumentStoreRequest) => Promise<{ checkpoints: DocumentCheckpoint[] }>
   RecordDocumentCheckpoint?: (request: DocumentStoreRequest & { checkpoint: DocumentCheckpointInput }) => Promise<{ checkpoint: DocumentCheckpoint }>
   ReadDocumentCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: DocumentCheckpoint; blobs_base64?: string } | null>
+  /** A document's checkpoints as kits see them (Kit UI protocol section 7m), newest first. */
+  ListKitCheckpoints?: (request: DocumentStoreRequest & KitCheckpointQuery) => Promise<{ checkpoints: KitStoreCheckpoint[]; more: boolean }>
+  FindKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<KitStoreCheckpoint | null>
+  UpdateKitCheckpoint?: (request: DocumentStoreRequest & { id: string; label?: string; description?: string }) => Promise<{ checkpoint: KitStoreCheckpoint }>
+  DeleteKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<void | null>
+  ReadKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: KitStoreCheckpoint; blobs_base64: string }>
+  /** A document's view state, kept in the app's own data (Kit UI protocol section 7n). */
+  ReadViewState?: (request: DocumentStoreRequest) => Promise<{ state: Record<string, unknown> | null; bytes_base64?: string }>
+  WriteViewState?: (request: DocumentStoreRequest & { state: Record<string, unknown> | null; bytes_base64?: string }) => Promise<void | null>
   DocumentStoreStatus?: () => Promise<DocumentStoreStatus>
   /** The event the shell sends with a new `DocumentStoreStatus` when this window takes the store lock over or loses it. */
   documentStoreAccessEvent?: string
@@ -243,10 +252,13 @@ export type DocumentStorePayload = {
 
 /** What the renderer asks to record in a document's version history. */
 export type DocumentCheckpointInput = {
-  /** `save`, `agent`, `script`, `edit`, `open`, `restore`, `before-restore`. */
+  /** `kit`, `save`, `agent`, `script`, `edit`, `open`, `restore`, `before-restore`. */
   origin: string
   author?: string
+  /** At most 200 characters; a label at the newest checkpoint's version names that checkpoint. */
   label?: string
+  /** At most 2000 characters. */
+  description?: string
   /** The replica version (hex); a write's checkpoint defaults to the written version. */
   version?: string
   time?: number
@@ -260,10 +272,32 @@ export type DocumentCheckpoint = {
   origin: string
   author?: string
   label?: string
+  description?: string
   version?: string
   seq?: number
   /** The store kept the blobs the replica named then (a kit replica's). */
   hasBlobs: boolean
+  /** False once the stored replica no longer reaches `version` (it was replaced by one of another lineage); absent otherwise. */
+  available?: boolean
+}
+
+/** A checkpoint as a kit sees it (Kit UI protocol `KitCheckpoint`): `version` in base64. */
+export type KitStoreCheckpoint = {
+  id: string
+  time: number
+  origin: string
+  author?: string
+  label?: string
+  description?: string
+  version: string
+  available: boolean
+}
+
+/** One page of a document's checkpoints: newest first, at most `limit` (200), only labelled ones, only older than `before`. */
+export type KitCheckpointQuery = {
+  labelled?: boolean
+  before?: string
+  limit?: number
 }
 
 /**
@@ -288,6 +322,8 @@ export type DocumentStoreWritten = {
   version: string | null
   compact: boolean
   checkpoint?: DocumentCheckpoint
+  /** The same checkpoint as a kit sees it (Kit UI protocol `host/replicaWrite`). */
+  kit_checkpoint?: KitStoreCheckpoint
 }
 
 /**

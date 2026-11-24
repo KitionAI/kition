@@ -12,7 +12,9 @@ import {
   type DocumentStoreStatus,
   type DocumentStoreWriteRequest,
   type DocumentStoreWritten,
+  type KitCheckpointQuery,
   type KitReplicaMeta,
+  type KitStoreCheckpoint,
   getDesktopBridge,
 } from './bridge'
 import { normalizeWorkspaceDocumentPath } from './workspaceDocuments'
@@ -375,6 +377,74 @@ export async function readDocumentCheckpoint(docId: string, id: string, options?
   }
   if (!found) return null
   return { checkpoint: found.checkpoint, ...(typeof found.blobs_base64 === 'string' ? { blobs: base64ToBytes(found.blobs_base64, 'blobs') } : {}) }
+}
+
+// --- Checkpoints and view state for kits (Kit UI protocol sections 7m, 7n) ----
+// The desktop shell serves them; without it (the browser preview) a kit is not offered them.
+
+/** Whether the desktop shell serves kits' checkpoints. */
+export function servesKitCheckpoints(): boolean {
+  const bridge = getDesktopBridge()
+  return Boolean(bridge?.ListKitCheckpoints && bridge.FindKitCheckpoint && bridge.UpdateKitCheckpoint && bridge.DeleteKitCheckpoint && bridge.ReadKitCheckpoint)
+}
+
+/** Whether the desktop shell keeps kits' view state. */
+export function servesViewState(): boolean {
+  const bridge = getDesktopBridge()
+  return Boolean(bridge?.ReadViewState && bridge.WriteViewState)
+}
+
+function kitBridge() {
+  const bridge = getDesktopBridge()
+  if (!bridge || !servesKitCheckpoints() || !servesViewState()) throw new Error('kit checkpoints and view state need the desktop shell')
+  return bridge as Required<Pick<NonNullable<typeof bridge>, 'ListKitCheckpoints' | 'FindKitCheckpoint' | 'UpdateKitCheckpoint' | 'DeleteKitCheckpoint' | 'ReadKitCheckpoint' | 'ReadViewState' | 'WriteViewState'>>
+}
+
+/** One page of `docId`'s checkpoints as a kit sees them, newest first; an unknown `before` fails with `DOCUMENT_CHECKPOINT_NOT_FOUND`. */
+export async function listKitCheckpoints(docId: string, query: KitCheckpointQuery, options?: DocumentStoreOptions): Promise<{ checkpoints: KitStoreCheckpoint[]; more: boolean }> {
+  checkDocumentId(docId)
+  const answer = await kitBridge().ListKitCheckpoints({ doc_id: docId, ...query, ...rootRequest(options) })
+  return { checkpoints: answer?.checkpoints ?? [], more: answer?.more === true }
+}
+
+/** The checkpoint `id` of `docId`, or `null`. */
+export async function findKitCheckpoint(docId: string, id: string, options?: DocumentStoreOptions): Promise<KitStoreCheckpoint | null> {
+  checkDocumentId(docId)
+  return (await kitBridge().FindKitCheckpoint({ doc_id: docId, id, ...rootRequest(options) })) ?? null
+}
+
+/** Renames the kit's checkpoint `id` (an absent field is kept, an empty one removed). */
+export async function updateKitCheckpoint(docId: string, id: string, edit: { label?: string; description?: string }, options?: DocumentStoreOptions): Promise<KitStoreCheckpoint> {
+  checkDocumentId(docId)
+  return (await kitBridge().UpdateKitCheckpoint({ doc_id: docId, id, ...edit, ...rootRequest(options) })).checkpoint
+}
+
+/** Deletes the kit's checkpoint `id`. */
+export async function deleteKitCheckpoint(docId: string, id: string, options?: DocumentStoreOptions): Promise<void> {
+  checkDocumentId(docId)
+  await kitBridge().DeleteKitCheckpoint({ doc_id: docId, id, ...rootRequest(options) })
+}
+
+/** The checkpoint `id` and the blobs the replica named then; `DOCUMENT_CHECKPOINT_HISTORY_MISSING` when the store no longer reaches it. */
+export async function readKitCheckpoint(docId: string, id: string, options?: DocumentStoreOptions): Promise<{ checkpoint: KitStoreCheckpoint; blobs: Uint8Array }> {
+  checkDocumentId(docId)
+  const answer = await kitBridge().ReadKitCheckpoint({ doc_id: docId, id, ...rootRequest(options) })
+  return { checkpoint: answer.checkpoint, blobs: base64ToBytes(answer.blobs_base64 ?? '', 'blobs') }
+}
+
+/** `docId`'s view state on this device (`state: null` for none or a damaged one). */
+export async function readViewState(docId: string, options?: DocumentStoreOptions): Promise<{ state: Record<string, unknown> | null; bytes?: Uint8Array }> {
+  checkDocumentId(docId)
+  const answer = await kitBridge().ReadViewState({ doc_id: docId, ...rootRequest(options) })
+  const state = answer?.state && typeof answer.state === 'object' && !Array.isArray(answer.state) ? answer.state : null
+  if (!state) return { state: null }
+  return typeof answer.bytes_base64 === 'string' ? { state, bytes: base64ToBytes(answer.bytes_base64, 'view state bytes') } : { state }
+}
+
+/** Replaces `docId`'s view state whole; `state: null` deletes it. A larger one than the limits fails with `VIEW_STATE_TOO_LARGE`. */
+export async function writeViewState(docId: string, state: Record<string, unknown> | null, bytes?: Uint8Array, options?: DocumentStoreOptions): Promise<void> {
+  checkDocumentId(docId)
+  await kitBridge().WriteViewState({ doc_id: docId, state, ...(state && bytes ? { bytes_base64: uint8ArrayToBase64(bytes) } : {}), ...rootRequest(options) })
 }
 
 /** Whether this window writes the workspace's store, or which Kition does. Without a desktop shell: writable. */

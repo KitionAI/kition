@@ -495,6 +495,21 @@ features:
       - kition.kits.fetch-image/public-only
       - kition.kits.fetch-image/reasons
     since: "2026-11-10"
+  - id: kition.kits.checkpoints
+    title: A kit's saved versions and the person's view state of a document survive closing it (Kit UI protocol checkpoints, view-state)
+    dimension: [function, data-safety]
+    priority: P1
+    status: partial
+    paths:
+      - src-tauri/src/workspace/docstore/history.rs
+      - src-tauri/src/workspace/docstore/checkpoints.rs
+      - src-tauri/src/workspace/viewstate.rs
+      - src/features/kits/kition/kitCheckpoints.ts
+    gap: The store and its commands serve both; KitFrame passes them to mountKit only once Kition depends on an @kition/sdk with the checkpoints and view-state handlers.
+    cases:
+      - kition.kits.checkpoints/store-rules
+      - kition.kits.checkpoints/view-state-outside-workspace
+    since: "2026-11-23"
   - id: kition.onboarding.ai-fields
     title: The onboarding tables' AI fields run on request for the asked cell, from that row
     dimension: [ai, function, data-safety]

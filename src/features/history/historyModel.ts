@@ -37,7 +37,7 @@ export async function loadDeviceHistory(document: HistoryDocument): Promise<Devi
   return checkpoints.map((checkpoint) => ({
     ...checkpoint,
     source: 'device' as const,
-    available: Boolean(checkpoint.version) && bytes.holdsVersion([full.changes], bytes.fromHex(checkpoint.version ?? '')),
+    available: checkpoint.available !== false && Boolean(checkpoint.version) && bytes.holdsVersion([full.changes], bytes.fromHex(checkpoint.version ?? '')),
   }))
 }
 
