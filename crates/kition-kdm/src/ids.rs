@@ -6,21 +6,27 @@ use uuid::Uuid;
 
 use crate::{KdmError, Result};
 
-/// Ids in a reproducible build: `SOURCE_DATE_EPOCH` set (a showcase sample, a gating test), new
-/// document ids, actors and object ids are counted from the epoch instead of drawn at random, so
-/// the same steps save the same bytes. Never on the web: the page has no environment.
+/// Ids in a reproducible build, for tests and sample builds only: with the Cargo feature
+/// `reproducible-ids` **and** `KITION_REPRODUCIBLE_IDS` (a number, the seed) set, new document
+/// ids, actors and object ids are counted from the seed instead of drawn at random, so the same
+/// steps save the same bytes. A kit enables the feature in its `[dev-dependencies]` only (tests,
+/// examples that build samples), never in `[dependencies]`: a shipped kit cannot count ids, since
+/// two processes counting from one seed would mint the same ids. `SOURCE_DATE_EPOCH`, which
+/// hosts pass to kits for timestamps, never changes ids, and no host passes
+/// `KITION_REPRODUCIBLE_IDS` (kit process protocol, section 3). Never on the web: the page has no
+/// environment.
 mod reproducible {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     static NEXT: AtomicU64 = AtomicU64::new(0);
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(feature = "reproducible-ids", not(target_arch = "wasm32")))]
     fn epoch() -> Option<u64> {
-        static EPOCH: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
-        *EPOCH.get_or_init(|| std::env::var("SOURCE_DATE_EPOCH").ok().and_then(|value| value.trim().parse::<u64>().ok()))
+        static SEED: std::sync::OnceLock<Option<u64>> = std::sync::OnceLock::new();
+        *SEED.get_or_init(|| std::env::var("KITION_REPRODUCIBLE_IDS").ok().and_then(|value| value.trim().parse::<u64>().ok()))
     }
 
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(not(all(feature = "reproducible-ids", not(target_arch = "wasm32"))))]
     fn epoch() -> Option<u64> {
         None
     }

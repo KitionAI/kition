@@ -82,10 +82,12 @@ test('a kit records, lists, renames, reads and deletes its checkpoints, and keep
     await expect(view.getByTestId('vector-status')).toContainText('objects', { timeout: 30_000 })
 
     // A replica write asks for a labelled checkpoint and is answered with it, the kit's own.
-    const written = await fromKit(page, 'host/replicaWrite', { path: 'Logo.kvector', fileStamp: 'e2e', checkpoint: { label: 'Draft', description: 'For review' } }, { snapshot: [1, 2, 3], blobs: [] })
+    const written = await fromKit(page, 'host/replicaWrite', { path: 'Logo.kvector', fileStamp: 'e2e', checkpoint: { label: 'Draft', description: 'For review' } }, { snapshot: [1, 2, 3], blobs: [], version: [5, 6] })
     expect(written.error).toBeUndefined()
     const checkpoint = written.result?.checkpoint as { id: string; origin: string; label: string; description: string; available: boolean }
     expect(checkpoint).toMatchObject({ origin: 'kit', label: 'Draft', description: 'For review', available: true })
+    // At exactly the version the write carries (UI-R6), in base64.
+    expect(written.result?.checkpoint).toMatchObject({ version: Buffer.from([5, 6]).toString('base64') })
     expect(host.calls.some((call) => call.command === 'write_document_store' && (call.args.request as { checkpoint?: { origin?: string } })?.checkpoint?.origin === 'kit')).toBe(true)
 
     // Listed (labelled ones, newest first), renamed, read, deleted.

@@ -3303,6 +3303,7 @@ dependencies = [
 name = "kition-kdm"
 version = "0.0.0"
 dependencies = [
+ "kition-kdm",
  "loro",
  "serde",
  "serde_json",

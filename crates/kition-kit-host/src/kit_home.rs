@@ -34,7 +34,7 @@ const PENDING_STALE: std::time::Duration = std::time::Duration::from_secs(60);
 pub const PASSED: &[&str] = &[
     // A folder of fonts the operator ships for kits.
     "KITION_FONTS_DIR",
-    // A fixed time for outputs that carry one (reproducible files, KHP A26).
+    // A fixed time for outputs that carry one (reproducible files, KHP A26). It never changes ids.
     "SOURCE_DATE_EPOCH",
     // Diagnostics on standard error.
     "RUST_BACKTRACE",
@@ -342,7 +342,10 @@ mod tests {
         for name in ["KITION_FONTS_DIR", "KITION_KIT_TOKEN", "KITION_KIT_MOCK_AS", "RUST_LOG", "SOURCE_DATE_EPOCH"] {
             assert!(passes(name), "{name}");
         }
-        for name in ["PATH", "HOME", "USER", "SSH_AUTH_SOCK", "KITION_SYNC_SECRET", "KITION_WORKSPACE", "AWS_SECRET_ACCESS_KEY", "LANG"] {
+        // KITION_REPRODUCIBLE_IDS counts a kit's ids (tests and sample builds only): no host passes it.
+        for name in
+            ["PATH", "HOME", "USER", "SSH_AUTH_SOCK", "KITION_SYNC_SECRET", "KITION_WORKSPACE", "AWS_SECRET_ACCESS_KEY", "LANG", "KITION_REPRODUCIBLE_IDS"]
+        {
             assert!(!passes(name), "{name}");
         }
     }

@@ -700,6 +700,21 @@ impl<'a> Tx<'a> {
         Ok(())
     }
 
+    /// Deletes `node` and the nodes under it. The objects they name stay: a tree only arranges
+    /// objects that other fields own. Move the children to keep out first.
+    pub fn tree_delete(&mut self, id: &ObjectId, field: &str, node: &NodeRef) -> Result<()> {
+        let name = self.container_field(id, field, FieldKind::Tree)?;
+        let key = self.node_key(node)?;
+        let tree = self.tree_mut(id, name)?;
+        if !tree.contains(key) {
+            return Err(KdmError::NotFound(format!("node in {id}.{name}")));
+        }
+        tree.parents.remove(&key);
+        tree.deleted.insert(key);
+        self.ops.push(Op::TreeDelete { id: id.clone(), field: name, node: key });
+        Ok(())
+    }
+
     /// Rule M10b: leaves every object of the tree named by one node. For each object that several
     /// of the document's nodes name (a redo made a new node for it while another replica's
     /// concurrent move kept the old one alive), the node kept is the least by engine id (peer,

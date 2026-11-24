@@ -140,3 +140,53 @@ describe('kit replicas as appended changes', () => {
     expect(await readDocumentHistory(docId)).toEqual([])
   })
 })
+
+describe('the lineage a kit replica write continues (Kit UI protocol UI-R1, UI-R6)', () => {
+  const hex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+
+  it('stores and records the version the write carries, not one taken from the snapshot', async () => {
+    const { createTextReplica } = await import('@/test/textReplica')
+    const { readDocumentStoreHead } = await import('@/services/desktop')
+    const { person, randomActor } = await import('@kition/sdk/kdm')
+    const { replica, rootId } = createTextReplica('one\n', randomActor())
+    const taken = replica.version().encode().slice().buffer
+    const snapshot = replica.snapshot().slice().buffer
+    // An edit after the kit took the snapshot and its version is in neither.
+    replica.transact(person('me'), (tx) => tx.textInsert(rootId, 'body', 4, 'two\n'))
+    const answer = await writeKitReplica('art/a.psd', 'kit.photo', { snapshot, blobs: bytes(), fileStamp: 'v1', version: taken }, { checkpoint: { origin: 'kit', label: 'Draft' } })
+    const docId = (await readDocumentIndex()).entries['art/a.psd']
+    expect((await readDocumentStoreHead(docId))?.version).toBe(hex(taken))
+    expect(answer).toEqual({})
+    const { readDocumentHistory } = await import('@/services/desktop')
+    expect((await readDocumentHistory(docId))[0]).toMatchObject({ origin: 'kit', label: 'Draft', version: hex(taken) })
+    expect(hex(taken)).not.toBe(hex(replica.version().encode().slice().buffer))
+  })
+
+  it('continues the lineage when a merging kit saves after the file changed outside, and starts a new one only for a replica made anew', async () => {
+    const { createTextReplica } = await import('@/test/textReplica')
+    const { readDocumentStore, readDocumentHistory } = await import('@/services/desktop')
+    const { person, randomActor } = await import('@kition/sdk/kdm')
+    const { replica, rootId } = createTextReplica('one\n', randomActor())
+    const save = (stamp: string, checkpoint: { origin: string; label?: string } = { origin: 'save' }, saved = replica) =>
+      writeKitReplica('art/a.psd', 'kit.photo', { snapshot: saved.snapshot().slice().buffer, blobs: bytes(7), fileStamp: stamp, version: saved.version().encode().slice().buffer }, { checkpoint })
+    await save('v1', { origin: 'kit', label: 'Draft' })
+    const docId = (await readDocumentIndex()).entries['art/a.psd']
+
+    // The file changed outside (stamp v2-outside); the kit opened it with its stored replica and merged the change as
+    // one import, so its next save continues the stored history: appended, same document, the history kept.
+    replica.transact(person('import'), (tx) => tx.textInsert(rootId, 'body', 4, 'from outside\n'))
+    await save('v2-outside')
+    expect((await readDocumentIndex()).entries['art/a.psd']).toBe(docId)
+    expect((await readDocumentStore(docId))?.changes).toHaveLength(1)
+    const kept = await readDocumentHistory(docId)
+    expect(kept.map((checkpoint) => checkpoint.label ?? checkpoint.origin)).toEqual(['save', 'Draft'])
+    expect(kept.every((checkpoint) => checkpoint.available !== false)).toBe(true)
+    expect((await readKitReplica('art/a.psd', 'kit.photo'))?.fileStamp).toBe('v2-outside')
+
+    // A kit that opened the changed file plainly made a new replica: its write starts a new lineage.
+    const fresh = createTextReplica('one\nfrom outside\n', randomActor()).replica
+    await save('v3-outside', { origin: 'save' }, fresh)
+    expect((await readDocumentStore(docId))?.changes ?? []).toEqual([])
+    expect((await readDocumentHistory(docId)).map((checkpoint) => checkpoint.origin)).toEqual(['save'])
+  })
+})

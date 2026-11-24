@@ -395,3 +395,34 @@ fn a_redo_concurrent_with_a_move_names_its_object_once_after_the_repair() {
     let again = net.replicas[0].transact(&kition_kdm::Origin::system("repair"), |tx| tx.tree_dedupe(&page, "outline")).unwrap();
     assert_eq!(again, 0);
 }
+
+#[test]
+fn seals_two_replicas_commit_concurrently_after_the_same_merge_converge() {
+    let mut net = network(2, 14);
+    let (_, shape) = page_with_shape(&mut net.replicas[0]);
+    net.sync_all().unwrap();
+    net.replicas[0].transact(&person(), |tx| tx.set(&shape, "x", json!(1))).unwrap();
+    net.replicas[1].transact(&person(), |tx| tx.set(&shape, "fill", json!("#111111"))).unwrap();
+    net.sync_all().unwrap();
+    // Both save the same merged version: each seals it, concurrently.
+    let mut states = Vec::new();
+    for (index, replica) in net.replicas.iter_mut().enumerate() {
+        assert!(replica.seal().unwrap());
+        let file =
+            kition_kdm::Replica::load(schema(), &replica.content_snapshot().unwrap(), kition_kdm::ActorId::from_u64(10 + index as u64).unwrap()).unwrap();
+        states.push(file.state_hash().unwrap());
+    }
+    assert_eq!(states[0], states[1]);
+    net.sync_all().unwrap();
+    net.converged().unwrap();
+    assert_eq!(net.replicas[0].version(), net.replicas[1].version());
+    // Two seals are two heads: the next save seals again, and the other replica takes that seal.
+    assert!(net.replicas.iter().all(|replica| !replica.is_sealed()));
+    net.replicas[0].content_snapshot().unwrap();
+    net.sync_all().unwrap();
+    net.converged().unwrap();
+    assert!(net.replicas[1].is_sealed());
+    assert!(!net.replicas[1].seal().unwrap());
+    assert_eq!(net.replicas[1].get(&shape, "x").unwrap(), json!(1));
+    assert_eq!(net.replicas[0].get(&shape, "fill").unwrap(), json!("#111111"));
+}

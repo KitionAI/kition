@@ -84,14 +84,18 @@ fn a_shallow_replica_keeps_the_history_after_its_root() {
     let shallow = Replica::load(schema(), &full.shallow_snapshot(&middle).unwrap(), actor(2)).unwrap();
     assert!(shallow.is_shallow());
     assert!(shallow.version().includes(&middle));
-    // Drafts fork at the current version; earlier versions are read from the server.
+    // Drafts fork at the current version, and at any version from the root on (the root
+    // itself, here), with the same root; versions before the root are read from the server.
     let draft = shallow.fork_at(&shallow.version(), actor(4)).unwrap();
     assert!(draft.is_shallow());
     assert_eq!(draft.get(&shape, "x").unwrap(), json!(600));
-    for version in [middle, Version::empty()] {
-        let error = shallow.fork_at(&version, actor(5)).err().unwrap();
-        assert!(matches!(error, KdmError::HistoryMissing(_)), "{error:?}");
-    }
+    let at_root = shallow.fork_at(&middle, actor(5)).unwrap();
+    assert!(at_root.is_shallow());
+    assert_eq!(at_root.version(), middle);
+    assert_eq!(at_root.shallow_root(), shallow.shallow_root());
+    assert_eq!(at_root.state_hash().unwrap(), full.fork_at(&middle, actor(8)).unwrap().state_hash().unwrap());
+    let error = shallow.fork_at(&Version::empty(), actor(5)).err().unwrap();
+    assert!(matches!(error, KdmError::HistoryMissing(_)), "{error:?}");
     // A snapshot of a shallow replica is shallow too, rooted where it was; a shallow snapshot
     // from before the root is clamped to it.
     let again = Replica::load(schema(), &shallow.snapshot().unwrap(), actor(6)).unwrap();

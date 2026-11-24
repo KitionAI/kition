@@ -123,3 +123,40 @@ fn a_typescript_copy_carries_its_whole_history_and_its_truncation_does_not() {
     // A replica loaded from the copy and copied again here is born again.
     assert!(born.copy_as_new_document(DocId::new(), ActorId::from_u64(22).unwrap()).unwrap().carries_whole_history());
 }
+
+/// A content snapshot made by the TypeScript KDM (`fixtures/ts-content.*`, written by
+/// `KDM_WRITE_CONTENT_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`: the
+/// committed `ts-page.bin` edited by two replicas, merged, as `contentSnapshot()`) opens here as
+/// the document with the identical canonical state, holds no deleted text, overwritten title or
+/// person's origin, and only the seal of the history; it is sealed, does not carry the whole
+/// history until a rebirth, and keeps converging when edited from Rust. The TypeScript suite
+/// checks the Rust-made `rust-content.*` the same way.
+#[test]
+fn a_typescript_content_snapshot_opens_as_the_document_with_no_history() {
+    let bytes = include_bytes!("fixtures/ts-content.bin");
+    let mut file = Replica::load(schema(), bytes, ActorId::from_u64(17).unwrap()).unwrap();
+    assert_eq!(file.doc_id(), DocId::parse("01920000-0000-7000-8000-0000000000aa").unwrap());
+    assert!(file.is_shallow());
+    let state = file.state_json().unwrap().to_string();
+    assert_eq!(file.state_hash().unwrap(), include_str!("fixtures/ts-content.sha256"), "canonical state differs from fixtures/ts-content.json:\n{state}");
+    for needle in ["Jx4Hb8Ty3Nc6", "Ug5Le1Fo0Dw4", "Hs6Pn2Dc9Lx", "Ty5Ga1Ve7Oj", "Mz8Cu4Ki0Ef", "Rb2Wn6Xs3Ip"] {
+        assert!(!bytes.windows(needle.len()).any(|window| window == needle.as_bytes()), "{needle}");
+    }
+    let doc = loro::LoroDoc::new();
+    doc.import(&bytes[20..]).unwrap();
+    let changes = doc.export_json_updates(&loro::VersionVector::default(), &doc.oplog_vv()).changes;
+    assert_eq!(changes.len(), 1);
+    assert_eq!(kition_kdm::Origin::decode(changes[0].msg.as_deref().unwrap()), Some(kition_kdm::Origin::system("content-seal")));
+    assert!(file.is_sealed());
+    assert_eq!(file.content_snapshot().unwrap().len(), file.sealed_content_snapshot().unwrap().len());
+    assert!(!file.carries_whole_history());
+    let mut other = Replica::load(schema(), bytes, ActorId::from_u64(18).unwrap()).unwrap();
+    let shape = file.objects_of_type("Shape").into_iter().next().unwrap();
+    file.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "RS:")).unwrap();
+    other.transact(&person(), |tx| tx.set(&shape, "x", serde_json::json!(3))).unwrap();
+    other.import_changes(&file.export_changes(&other.version()).unwrap()).unwrap();
+    file.import_changes(&other.export_changes(&file.version()).unwrap()).unwrap();
+    assert_eq!(file.state_hash().unwrap(), other.state_hash().unwrap());
+    assert!(file.rebirth().unwrap());
+    assert!(Replica::snapshot_carries_whole_history(&file.content_snapshot().unwrap()).unwrap());
+}

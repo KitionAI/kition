@@ -106,18 +106,27 @@ export async function readKitReplica(path: string, kitId: string): Promise<Store
   return { snapshot: buffer(snapshot), blobs: buffer(entry.blobs), fileStamp: meta.fileStamp }
 }
 
+/** Lowercase hex of `bytes`, as the store keeps replica versions. */
+function hexOf(bytes: ArrayBuffer): string {
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 /**
- * Stores the replica `kitId`'s editor saved with the workspace file at `path`, under the file's identity. When it
- * continues the stored replica only its new changes are appended (rule P5); a replica made anew (the file changed
- * elsewhere) replaces it and starts its version history over. `checkpoint` records the save in that history, and the
- * answer names it as a kit sees it (Kit UI protocol `host/replicaWrite`).
+ * Stores the replica `kitId`'s editor saved with the workspace file at `path`, under the file's identity. The write
+ * decides its lineage, never the file stamps (Kit UI protocol UI-R1): a snapshot that continues the stored replica's
+ * history (the same replica, holding the stored version) continues its lineage, and only its new changes are appended
+ * (rule P5), also after the kit merged a file changed outside into it; a snapshot that does not (a replica made anew
+ * for the file) replaces it and starts a new lineage. `replica.version` is the version the snapshot holds, which the
+ * kit took with it (UI-R6): the store and the checkpoint name exactly that one; Kition's own writes without it (a file
+ * made from a replica) take the snapshot's. `checkpoint` records the save in the history, and the answer names it as a
+ * kit sees it (`host/replicaWrite`).
  */
-export async function writeKitReplica(path: string, kitId: string, replica: StoredReplica, options: { checkpoint?: DocumentCheckpointInput } = {}): Promise<{ checkpoint?: KitCheckpoint }> {
+export async function writeKitReplica(path: string, kitId: string, replica: StoredReplica & { version?: ArrayBuffer }, options: { checkpoint?: DocumentCheckpointInput } = {}): Promise<{ checkpoint?: KitCheckpoint }> {
   const docId = await bindDocumentId(path, () => crypto.randomUUID())
   const snapshot = new Uint8Array(replica.snapshot)
   const blobs = new Uint8Array(replica.blobs)
   let replicaId: string | undefined
-  let version: string | undefined
+  let version = replica.version?.byteLength ? hexOf(replica.version) : undefined
   let delta: { changes: Uint8Array; baseSeq: number } | null = null
   let newLineage = false
   try {
@@ -133,18 +142,19 @@ export async function writeKitReplica(path: string, kitId: string, replica: Stor
         else newLineage = true
       }
     }
-    version = bytes.toHex(bytes.versionOf([snapshot]))
+    version ??= bytes.toHex(bytes.versionOf([snapshot]))
   } catch {
     // Not KDM bytes the store can follow: it keeps them whole.
     replicaId = undefined
   }
+  const stored: StoredReplica = { snapshot: replica.snapshot, blobs: replica.blobs, fileStamp: replica.fileStamp }
   const meta: KitReplicaMeta = { docId, kit: kitId, path, fileStamp: replica.fileStamp, ...(replicaId ? { replicaId } : {}) }
   const writeOptions = { ...(version ? { version } : {}), ...(options.checkpoint ? { checkpoint: options.checkpoint } : {}) }
   if (delta) {
     try {
       const written = await appendDocumentStore(docId, { meta, changes: delta.changes, baseSeq: delta.baseSeq, blobs }, writeOptions)
       if (written.compact) compactDue.add(docId)
-      appended.set(path, { docId, kitId, replica, version: version ?? '' })
+      appended.set(path, { docId, kitId, replica: stored, version: version ?? '' })
       return written.kit_checkpoint ? { checkpoint: written.kit_checkpoint } : {}
     } catch (error) {
       if (!isDocumentStoreConflict(error)) throw error

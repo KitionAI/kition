@@ -124,7 +124,7 @@ describe("the kit editor's history handlers", () => {
     if (wanted !== path) throw new Error(`${wanted} is not this editor's document`)
     return wanted
   }
-  const replica = { snapshot: new ArrayBuffer(1), blobs: new ArrayBuffer(0), fileStamp: 's' }
+  const replica = { snapshot: new ArrayBuffer(1), blobs: new ArrayBuffer(0), fileStamp: 's', version: new Uint8Array([1, 2]).buffer }
 
   it('records the checkpoint a replica write asks for and answers it', async () => {
     const handlers = kitHistoryHandlers({ path: 'a.kdesign', kitId: 'kit.design', preview: false, lastBy: () => 'person', checkPath })

@@ -127,7 +127,9 @@ const branchTarget = (path: string, fromPrefix: string, toPrefix: string) => (pa
 
 /**
  * Where the index keeps a document whose file is gone until the next prune (`pruneDocumentStore`): a path no file
- * has, so the document is not opened by path, yet a restored or moved file with its hash is still recognised.
+ * has, so the document is not opened by path, while the index still names its id, so its replica and history stay in
+ * the store (an entry is deleted only once no index path names it). Nothing links a file back to it: a file restored or
+ * moved outside Kition has no entry at its path and opens as a new document.
  */
 const DELETED_PREFIX = '.kition/docs/deleted/'
 const deletedPath = (docId: string) => `${DELETED_PREFIX}${docId}`
@@ -271,8 +273,10 @@ export async function pruneDocumentStoreOnOpen(root: string): Promise<void> {
 
 /**
  * Prunes the store when a workspace opens (best effort): deletes the replicas of documents deleted before (in
- * Kition, or outside it and not seen since the previous prune), and keeps the documents whose files went away
- * outside Kition until the next prune, so a file renamed or restored meanwhile is still recognised by its hash.
+ * Kition, or outside it and not seen since the previous prune), and moves the entries of files that went away outside
+ * Kition to their deleted paths, which keeps their replicas and history until the next prune. A file renamed or
+ * restored outside Kition meanwhile is not linked back to its document: it has no entry at its path and opens as a
+ * new document.
  */
 export async function pruneDocumentStore(options?: Options): Promise<void> {
   const existing = await listFiles(options)

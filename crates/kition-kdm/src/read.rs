@@ -25,6 +25,11 @@ pub(crate) const SCHEMA_RAISES: &str = "schemaRaises";
 pub(crate) const BIRTH: &str = "birth";
 /// The key of [`BIRTH`] that holds the encoded version.
 pub(crate) const BIRTH_ROOT: &str = "root";
+/// The root map a content seal writes ([`crate::Replica::seal`]): its `version` key holds the
+/// encoded version the seal closes. A root map outside the canonical state, like [`BIRTH`].
+pub(crate) const SEAL: &str = "seal";
+/// The key of [`SEAL`] that holds the encoded version.
+pub(crate) const SEAL_VERSION: &str = "version";
 
 pub(crate) fn check_projected_storage(doc: &LoroDoc, schema: &Schema) -> Result<()> {
     if !schema.types.values().any(|def| def.projected) {

@@ -21,6 +21,15 @@ sha2 = "0.10"
 thiserror = { workspace = true }
 uuid = { version = "1", features = ["v4", "v7"] }
 
+[features]
+# Counted ids for tests and sample builds (src/ids.rs, `KITION_REPRODUCIBLE_IDS`): a kit enables it in
+# `[dev-dependencies]` only, never in a shipped build.
+reproducible-ids = []
+
+[dev-dependencies]
+# The crate's own tests count ids when they ask for it (tests/reproducible_ids.rs).
+kition-kdm = { path = ".", features = ["reproducible-ids"] }
+
 # Browsers have no OS randomness: ids draw theirs from `crypto.getRandomValues`.
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 uuid = { version = "1", features = ["js"] }
