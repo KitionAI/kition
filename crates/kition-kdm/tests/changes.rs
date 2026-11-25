@@ -208,7 +208,8 @@ fn an_edit_inside_named_objects_says_where_in_the_kits_words() {
 fn a_receipt_needs_a_version_the_replica_holds() {
     let fixture = fixture();
     let replica = set_up(&fixture);
-    let other = set_up(&fixture);
+    // A replica loaded from this one's snapshot holds the same changes: the same version.
+    let other = Replica::load(Arc::new(replica.schema().clone()), &replica.snapshot().unwrap(), ActorId::from_u64(2).unwrap()).unwrap();
     let mut edited = set_up(&fixture);
     batch::run(&mut ReplicaTarget(&mut edited), &fixture["cases"][1]["edit"]).unwrap();
     assert!(matches!(replica.changes_since(&edited.version()), Err(KdmError::HistoryMissing(_))), "a version past this replica's");

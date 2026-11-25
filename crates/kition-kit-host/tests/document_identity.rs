@@ -22,7 +22,7 @@ mod common;
 
 const LIMIT: Duration = Duration::from_secs(20);
 
-/// Where the mock's file keeps its replica: the text, this line, then the snapshot in base64.
+/// Where the mock's file keeps its replica: the text, this line, then the content in base64.
 const REPLICA_MARK: &str = "\n%%kition-mock-replica%%\n";
 
 const SECRET: &str = "SECRET-DELETED-BEFORE-THE-FORK";
@@ -135,8 +135,9 @@ async fn a_file_that_embeds_its_replica_tells_its_identity_and_forks_into_a_new_
     let text = std::fs::read_to_string(dir.join("b.mocktext")).unwrap();
     assert!(text.starts_with("Kept words"), "{text}");
 
-    // No history: the deleted tag's name is in the source's replica and not in the fork's.
-    assert!(holds(&embedded(&dir.join("a.mocktext")), SECRET), "the source keeps its history");
+    // No history: a replica holds the document's state alone (plan 2026-11-24), so the deleted
+    // tag's name is in neither the source's replica nor the fork's.
+    assert!(!holds(&embedded(&dir.join("a.mocktext")), SECRET), "a replica holds no deleted content");
     assert!(!holds(&embedded(&dir.join("b.mocktext")), SECRET), "deleted content does not travel");
 
     // The source and the fork refuse each other's changes.
@@ -164,7 +165,7 @@ async fn a_file_that_embeds_its_replica_tells_its_identity_and_forks_into_a_new_
     let _ = std::fs::remove_dir_all(dir);
 }
 
-/// regressions/issue-kdm-shallow-export: the fork is a shallow replica (KitModel M16a). The mock
+/// regressions/issue-kdm-shallow-export: the fork is a new document. The mock
 /// answers `model.export` as a kit on the change exchange does (the changes since `since`, every
 /// change without one), so a host's draft of the fork (`model.export`, then `model.open`) opens,
 /// edits through `model.batch`, and merges back with `model.import`; before, every change of a

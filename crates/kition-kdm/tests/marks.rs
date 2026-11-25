@@ -1,7 +1,7 @@
 // Copied from kition-sdk crates/kition-kdm/tests/marks.rs by scripts/sync-kit-host.mjs; change it there, not here.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 //! Marks on text (rule M19): schema declarations, transactions, reads, the canonical state, and
-//! two-replica merges. `packages/kdm/test/marks.test.ts` is the TypeScript twin; the canonical
+//! what text typed at a mark's ends takes. `packages/kdm/test/marks.test.ts` is the TypeScript twin; the canonical
 //! texts asserted here are asserted there too, so both implementations write the same state.
 
 use std::sync::Arc;
@@ -41,14 +41,6 @@ fn paragraph(actor: u64, text: &str) -> Replica {
 /// A second replica of `replica`'s document, loaded from its snapshot.
 fn peer(replica: &Replica, actor: u64) -> Replica {
     Replica::load(marks_schema(), &replica.snapshot().unwrap(), ActorId::from_u64(actor).unwrap()).unwrap()
-}
-
-fn sync(a: &mut Replica, b: &mut Replica) {
-    let to_b = a.export_changes(&b.version()).unwrap();
-    let to_a = b.export_changes(&a.version()).unwrap();
-    b.import_changes(&to_b).unwrap();
-    a.import_changes(&to_a).unwrap();
-    assert_eq!(a.state_json().unwrap(), b.state_json().unwrap(), "replicas converge");
 }
 
 fn run(text: &str, marks: Value) -> TextRun {
@@ -122,50 +114,6 @@ fn a_field_without_marks_reads_as_one_run_and_an_empty_text_as_none() {
 }
 
 #[test]
-fn concurrent_insertions_at_one_position_of_a_marked_text_are_both_kept() {
-    let mut a = paragraph(1, "ab");
-    a.transact(&person(), |tx| tx.text_mark(&id("p1"), "text", 0, 2, "bold", json!(true))).unwrap();
-    let mut b = peer(&a, 2);
-    a.transact(&person(), |tx| tx.text_insert(&id("p1"), "text", 1, "X")).unwrap();
-    b.transact(&person(), |tx| tx.text_insert(&id("p1"), "text", 1, "Y")).unwrap();
-    sync(&mut a, &mut b);
-    let text = a.text(&id("p1"), "text").unwrap();
-    assert!(text == "aXYb" || text == "aYXb", "{text}");
-    assert_eq!(delta(&a), vec![run(&text, json!({ "bold": true }))], "text typed inside a mark takes it");
-}
-
-#[test]
-fn concurrent_bold_and_italic_over_overlapping_ranges_both_apply() {
-    let mut a = paragraph(1, "Hello world");
-    let mut b = peer(&a, 2);
-    a.transact(&person(), |tx| tx.text_mark(&id("p1"), "text", 0, 5, "bold", json!(true))).unwrap();
-    b.transact(&person(), |tx| tx.text_mark(&id("p1"), "text", 3, 8, "italic", json!(true))).unwrap();
-    sync(&mut a, &mut b);
-    assert_eq!(
-        delta(&a),
-        vec![
-            run("Hel", json!({ "bold": true })),
-            run("lo", json!({ "bold": true, "italic": true })),
-            run(" wo", json!({ "italic": true })),
-            TextRun::new("rld"),
-        ]
-    );
-}
-
-#[test]
-fn concurrent_values_of_one_mark_resolve_to_one_value_per_character() {
-    let mut a = paragraph(1, "Hello world");
-    let mut b = peer(&a, 2);
-    a.transact(&person(), |tx| tx.text_mark(&id("p1"), "text", 0, 8, "link", json!("https://a"))).unwrap();
-    b.transact(&person(), |tx| tx.text_mark(&id("p1"), "text", 3, 11, "link", json!("https://b"))).unwrap();
-    sync(&mut a, &mut b);
-    let runs = delta(&a);
-    let values: Vec<&Value> = runs.iter().filter_map(|run| run.attributes.get("link")).collect();
-    assert!(!values.is_empty() && values.len() <= 3, "{runs:?}");
-    assert_eq!(runs.iter().map(|run| run.insert.as_str()).collect::<String>(), "Hello world");
-}
-
-#[test]
 fn typing_at_a_marks_end_follows_its_expand() {
     let mut replica = paragraph(1, "aaa bbb ccc ddd");
     let para = id("p1");
@@ -202,14 +150,47 @@ fn typing_at_a_marks_end_follows_its_expand() {
     );
 }
 
+/// Text typed where two runs meet takes each side's marks by their expand: the left one's when it
+/// grows after, the right one's when it grows before, and a mark both sides hold with one value
+/// (two links to one address next to each other are one run) whatever its expand.
 #[test]
-fn a_remote_replica_expands_a_mark_it_received() {
-    let mut a = paragraph(1, "bold");
-    a.transact(&person(), |tx| tx.text_mark(&id("p1"), "text", 0, 4, "bold", json!(true))).unwrap();
-    let mut b = peer(&a, 2);
-    b.transact(&person(), |tx| tx.text_insert(&id("p1"), "text", 4, "er")).unwrap();
-    sync(&mut a, &mut b);
-    assert_eq!(delta(&a), vec![run("bolder", json!({ "bold": true }))]);
+fn typing_where_two_runs_meet_takes_their_marks_by_their_expand() {
+    let mut replica = paragraph(1, "abcdef");
+    let para = id("p1");
+    replica
+        .transact(&person(), |tx| {
+            tx.text_mark(&para, "text", 0, 2, "link", json!("u"))?;
+            tx.text_mark(&para, "text", 2, 4, "link", json!("u"))?;
+            tx.text_mark(&para, "text", 4, 5, "bold", json!(true))?;
+            tx.text_mark(&para, "text", 5, 6, "lead", json!(true))
+        })
+        .unwrap();
+    assert_eq!(delta(&replica), vec![run("abcd", json!({ "link": "u" })), run("e", json!({ "bold": true })), run("f", json!({ "lead": true }))]);
+    replica.transact(&person(), |tx| tx.text_insert(&para, "text", 2, "X")).unwrap();
+    // Between `e` (bold, after) and `f` (lead, before): both grow into it.
+    replica.transact(&person(), |tx| tx.text_insert(&para, "text", 6, "Y")).unwrap();
+    // Between `d` (link, none) and `e` (bold, after): neither.
+    replica.transact(&person(), |tx| tx.text_insert(&para, "text", 5, "Z")).unwrap();
+    assert_eq!(
+        delta(&replica),
+        vec![
+            run("abXcd", json!({ "link": "u" })),
+            TextRun::new("Z"),
+            run("e", json!({ "bold": true })),
+            run("Y", json!({ "bold": true, "lead": true })),
+            run("f", json!({ "lead": true })),
+        ]
+    );
+    // Two links to different addresses next to each other: typing between them takes neither.
+    let mut other = paragraph(2, "abcd");
+    other
+        .transact(&person(), |tx| {
+            tx.text_mark(&para, "text", 0, 2, "link", json!("u"))?;
+            tx.text_mark(&para, "text", 2, 4, "link", json!("v"))?;
+            tx.text_insert(&para, "text", 2, "X")
+        })
+        .unwrap();
+    assert_eq!(delta(&other), vec![run("ab", json!({ "link": "u" })), TextRun::new("X"), run("cd", json!({ "link": "v" }))]);
 }
 
 #[test]
@@ -222,17 +203,6 @@ fn unmark_removes_a_mark_from_part_of_a_range() {
     // Unmarking unmarked characters changes nothing.
     replica.transact(&person(), |tx| tx.text_unmark(&para, "text", 3, 8, "italic")).unwrap();
     assert_eq!(delta(&replica).len(), 3);
-}
-
-#[test]
-fn a_concurrent_unmark_and_insertion_converge() {
-    let mut a = paragraph(1, "Hello");
-    a.transact(&person(), |tx| tx.text_mark(&id("p1"), "text", 0, 5, "bold", json!(true))).unwrap();
-    let mut b = peer(&a, 2);
-    a.transact(&person(), |tx| tx.text_unmark(&id("p1"), "text", 0, 5, "bold")).unwrap();
-    b.transact(&person(), |tx| tx.text_insert(&id("p1"), "text", 2, "XY")).unwrap();
-    sync(&mut a, &mut b);
-    assert_eq!(a.text(&id("p1"), "text").unwrap(), "HeXYllo");
 }
 
 #[test]

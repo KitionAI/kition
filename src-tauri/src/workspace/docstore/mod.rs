@@ -1,6 +1,6 @@
-//! The private store of document replicas under `.kition/docs/`: Markdown
-//! documents', boards' history, and those kit editors keep for their files
-//! (Kit UI protocol capability `replica`).
+//! The private store of the replicas kit editors keep for their files under
+//! `.kition/docs/` (Kit UI protocol capability `replica`): each document's last
+//! written state and its checkpoints.
 //!
 //! ```text
 //! .kition/docs/
@@ -35,7 +35,7 @@ pub mod entry;
 pub mod history;
 pub mod lock;
 
-pub use entry::{Body, Entry, Head, Write, Written};
+pub use entry::{Entry, Write, Written};
 pub use history::{Checkpoint, CheckpointInput};
 pub use lock::{STORE_READ_ONLY, StoreLock, StoreLocks};
 
@@ -163,46 +163,33 @@ fn check_meta(doc_id: &str, meta: &Value) -> io::Result<()> {
     Ok(())
 }
 
-/// Reads `doc_id`'s replica, or `None` when there is none or it is damaged. The
-/// writer migrates a format-1 entry as it reads it.
-pub fn read_entry(
-    root: &Path,
-    locks: &GuardedWrites,
-    access: Access,
-    doc_id: &str,
-) -> io::Result<Option<Entry>> {
+/// Reads `doc_id`'s stored state, or `None` when there is none, it is of
+/// another layout, or it is damaged.
+pub fn read_entry(root: &Path, locks: &GuardedWrites, doc_id: &str) -> io::Result<Option<Entry>> {
     let dir = entry_dir(root, doc_id)?;
-    locks.exclusive(&dir, || {
-        if access == Access::Writer {
-            entry::migrate(root, &dir, doc_id)?;
-        }
-        entry::read(root, &dir, doc_id)
-    })
+    locks.exclusive(&dir, || entry::read(root, &dir, doc_id))
 }
 
-/// The stored meta and head of `doc_id`, without the replica's bytes.
-pub fn read_entry_head(
-    root: &Path,
-    locks: &GuardedWrites,
-    doc_id: &str,
-) -> io::Result<Option<(Value, Head)>> {
-    let dir = entry_dir(root, doc_id)?;
-    locks.exclusive(&dir, || entry::read_head(root, &dir, doc_id))
-}
-
-/// A replica write and what goes with it.
+/// A state write and the checkpoint asked with it.
 pub struct Save<'a> {
     pub write: Write<'a>,
-    /// The replica is not a continuation of the stored one (a kit made a new
-    /// replica for a file changed elsewhere): its history starts over.
-    pub new_lineage: bool,
     pub checkpoint: Option<CheckpointInput>,
 }
 
 #[derive(Debug)]
 pub struct Saved {
     pub written: Written,
+    /// The checkpoint recorded (or the newest one, at the same version);
+    /// `None` when none was asked or the state is too large for it.
     pub checkpoint: Option<Checkpoint>,
+}
+
+/// Removes the blob and state files that neither the stored state nor a
+/// checkpoint names.
+pub(super) fn collect(root: &Path, dir: &Path, doc_id: &str) -> io::Result<()> {
+    let mut keep = history::blob_records(root, dir)?;
+    keep.extend(entry::blob_records(root, dir, doc_id)?);
+    blobs::collect_garbage(root, dir, keep.iter())
 }
 
 pub fn write_entry(
@@ -214,40 +201,28 @@ pub fn write_entry(
 ) -> io::Result<Saved> {
     let dir = entry_dir(root, doc_id)?;
     check_meta(doc_id, save.write.meta)?;
-    entry::check_body(&save.write.body)?;
+    history::check_version(save.write.version)?;
     if let Some(input) = &save.checkpoint {
         history::check_input(input)?;
     }
     access.check()?;
     locks.exclusive(&dir, || {
         ensure_store(root)?;
-        entry::migrate(root, &dir, doc_id)?;
-        let compaction = matches!(save.write.body, Body::Snapshot(_));
         let written = entry::write(root, &dir, doc_id, &save.write)?;
-        if save.new_lineage {
-            history::new_lineage(root, &dir)?;
-        }
         let checkpoint = match save.checkpoint {
-            Some(input) => {
-                let input = CheckpointInput {
-                    version: input.version.or_else(|| written.head.version.clone()),
-                    ..input
-                };
-                Some(history::record(
-                    root,
-                    &dir,
-                    input,
-                    Some(written.head.seq),
-                    written.blobs.clone(),
-                )?)
-            }
+            Some(input) => history::record(
+                root,
+                &dir,
+                input,
+                history::State {
+                    snapshot: save.write.snapshot,
+                    version: &written.version,
+                    blobs: written.blobs.clone(),
+                },
+            )?,
             None => None,
         };
-        if compaction {
-            let mut keep = history::blob_records(root, &dir)?;
-            keep.extend(written.blobs.clone());
-            blobs::collect_garbage(root, &dir, keep.iter())?;
-        }
+        collect(root, &dir, doc_id)?;
         Ok(Saved {
             written,
             checkpoint,
@@ -280,55 +255,6 @@ pub fn read_history(
 ) -> io::Result<Vec<Checkpoint>> {
     let dir = entry_dir(root, doc_id)?;
     locks.exclusive(&dir, || history::list(root, &dir))
-}
-
-/// Records a checkpoint of `doc_id` at its stored version (for a stored
-/// replica), or at `input.version` alone (a board, whose file holds its replica).
-pub fn record_checkpoint(
-    root: &Path,
-    locks: &GuardedWrites,
-    access: Access,
-    doc_id: &str,
-    input: CheckpointInput,
-) -> io::Result<Checkpoint> {
-    let dir = entry_dir(root, doc_id)?;
-    access.check()?;
-    locks.exclusive(&dir, || {
-        ensure_store(root)?;
-        entry::migrate(root, &dir, doc_id)?;
-        let manifest = entry::read_manifest(root, &dir, doc_id)?;
-        let (seq, blobs) = match &manifest {
-            Some(manifest) => (Some(manifest.head.seq), manifest.blobs.clone()),
-            None => (None, None),
-        };
-        let input = CheckpointInput {
-            version: input
-                .version
-                .or_else(|| manifest.and_then(|manifest| manifest.head.version)),
-            ..input
-        };
-        history::record(root, &dir, input, seq, blobs)
-    })
-}
-
-/// The checkpoint `id` and the blob bundle the replica named then.
-pub fn read_checkpoint(
-    root: &Path,
-    locks: &GuardedWrites,
-    doc_id: &str,
-    id: &str,
-) -> io::Result<Option<(Checkpoint, Option<Vec<u8>>)>> {
-    let dir = entry_dir(root, doc_id)?;
-    locks.exclusive(&dir, || {
-        let Some(checkpoint) = history::find(root, &dir, id)? else {
-            return Ok(None);
-        };
-        let bundle = match &checkpoint.blobs {
-            Some(record) => blobs::load(root, &dir, record)?,
-            None => None,
-        };
-        Ok(Some((checkpoint, bundle)))
-    })
 }
 
 /// A stored index path is a normalized workspace path.
@@ -417,20 +343,6 @@ fn decode(request: &Request, key: &str, what: &str) -> io::Result<Option<Vec<u8>
     }
 }
 
-fn head_json(head: &Head) -> Value {
-    json!({ "seq": head.seq, "version": head.version })
-}
-
-/// A checkpoint as the renderer sees it: without the store's blob record.
-fn checkpoint_json(checkpoint: &Checkpoint) -> Value {
-    let mut value = serde_json::to_value(checkpoint).unwrap_or(Value::Null);
-    if let Some(object) = value.as_object_mut() {
-        let has_blobs = object.remove("blobs").is_some();
-        object.insert("hasBlobs".into(), Value::Bool(has_blobs));
-    }
-    value
-}
-
 fn checkpoint_input(value: &Value) -> io::Result<CheckpointInput> {
     let text = |key: &str| value.get(key).and_then(Value::as_str).map(str::to_owned);
     let Some(origin) = text("origin") else {
@@ -441,38 +353,26 @@ fn checkpoint_input(value: &Value) -> io::Result<CheckpointInput> {
         author: text("author"),
         label: text("label"),
         description: text("description"),
-        version: text("version"),
         time: value.get("time").and_then(Value::as_u64),
     })
 }
 
-/// `{ doc_id, head_only?, expected_root? }` to `null`, or `{ meta, seq, version }`
-/// with `head_only`, or `{ meta, snapshot_base64, changes_base64, blobs_base64?,
-/// seq, version, complete }`.
+/// `{ doc_id, expected_root? }` to `null`, or `{ meta, snapshot_base64,
+/// version, blobs_base64? }`.
 pub fn read_entry_request(
     root: &Path,
     locks: &GuardedWrites,
-    access: Access,
+    _access: Access,
     request: &Request,
 ) -> io::Result<Value> {
     prepare(root, request)?;
-    let doc_id = request.str("doc_id");
-    if request.bool("head_only") {
-        return Ok(match read_entry_head(root, locks, &doc_id)? {
-            None => Value::Null,
-            Some((meta, head)) => json!({ "meta": meta, "seq": head.seq, "version": head.version }),
-        });
-    }
-    Ok(match read_entry(root, locks, access, &doc_id)? {
+    Ok(match read_entry(root, locks, &request.str("doc_id"))? {
         None => Value::Null,
         Some(entry) => {
             let mut payload = json!({
                 "meta": entry.meta,
                 "snapshot_base64": BASE64.encode(&entry.snapshot),
-                "changes_base64": entry.changes.iter().map(|change| BASE64.encode(change)).collect::<Vec<_>>(),
-                "seq": entry.head.seq,
-                "version": entry.head.version,
-                "complete": entry.complete,
+                "version": entry.version,
             });
             if let Some(blobs) = entry.blobs {
                 payload["blobs_base64"] = Value::String(BASE64.encode(blobs));
@@ -482,10 +382,11 @@ pub fn read_entry_request(
     })
 }
 
-/// `{ doc_id, meta, snapshot_base64 | changes_base64 + base_seq, version?,
-/// blobs_base64?, lineage?: "new", checkpoint?: { origin, author?, label?,
-/// description? }, expected_root? }` to `{ seq, version, compact, checkpoint?,
-/// kit_checkpoint? }`.
+/// `{ doc_id, meta, snapshot_base64, version, blobs_base64?, checkpoint?: {
+/// origin, author?, label?, description? }, expected_root? }` to `{ version,
+/// checkpoint? }`, the checkpoint as a kit sees it (Kit UI protocol
+/// `host/replicaWrite`). `version` is the version the snapshot holds, as the
+/// writer names it (base64 of the kit's bytes); the store keeps it as it is.
 pub fn write_entry_request(
     root: &Path,
     locks: &GuardedWrites,
@@ -494,28 +395,18 @@ pub fn write_entry_request(
 ) -> io::Result<Value> {
     prepare(root, request)?;
     let meta = request.value("meta").cloned().unwrap_or(Value::Null);
-    let snapshot = decode(request, "snapshot_base64", "snapshot")?;
-    let changes = decode(request, "changes_base64", "changes")?;
+    let Some(snapshot) = decode(request, "snapshot_base64", "snapshot")? else {
+        return Err(invalid("a document store write carries a snapshot"));
+    };
     let blobs = decode(request, "blobs_base64", "blobs")?;
-    let version = request.string("version");
-    let body = match (&snapshot, &changes) {
-        (Some(snapshot), None) => Body::Snapshot(snapshot),
-        (None, Some(changes)) => {
-            let Some(base_seq) = request.value("base_seq").and_then(Value::as_u64) else {
-                return Err(invalid(
-                    "appending changes needs the stored seq they follow",
-                ));
-            };
-            Body::Changes {
-                bytes: changes,
-                base_seq,
-            }
-        }
-        _ => {
-            return Err(invalid(
-                "a document store write carries a snapshot or changes",
-            ));
-        }
+    let Some(version) = request
+        .value("version")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+    else {
+        return Err(invalid(
+            "a document store write names the version its snapshot holds",
+        ));
     };
     let checkpoint = match request.value("checkpoint").filter(|value| !value.is_null()) {
         Some(value) => Some(checkpoint_input(value)?),
@@ -529,20 +420,16 @@ pub fn write_entry_request(
         Save {
             write: Write {
                 meta: &meta,
-                body,
-                version: version.as_deref(),
+                snapshot: &snapshot,
+                version: &version,
                 blobs: blobs.as_deref(),
             },
-            new_lineage: request.str("lineage") == "new",
             checkpoint,
         },
     )?;
-    let mut answer = head_json(&saved.written.head);
-    answer["compact"] = Value::Bool(saved.written.compact);
+    let mut answer = json!({ "version": saved.written.version });
     if let Some(checkpoint) = &saved.checkpoint {
-        answer["checkpoint"] = checkpoint_json(checkpoint);
-        // The same checkpoint as a kit sees it (Kit UI protocol `host/replicaWrite`).
-        answer["kit_checkpoint"] = checkpoints::kit_checkpoint_json(checkpoint);
+        answer["checkpoint"] = checkpoints::kit_checkpoint_json(checkpoint);
     }
     Ok(answer)
 }
@@ -559,7 +446,8 @@ pub fn delete_entry_request(
     Ok(Value::Null)
 }
 
-/// `{ doc_id, expected_root? }` to `{ checkpoints }`, newest first.
+/// `{ doc_id, expected_root? }` to `{ checkpoints }`, newest first, each as a
+/// kit sees it.
 pub fn read_history_request(
     root: &Path,
     locks: &GuardedWrites,
@@ -568,42 +456,8 @@ pub fn read_history_request(
 ) -> io::Result<Value> {
     prepare(root, request)?;
     let checkpoints = read_history(root, locks, &request.str("doc_id"))?;
-    Ok(json!({ "checkpoints": checkpoints.iter().map(checkpoint_json).collect::<Vec<_>>() }))
-}
-
-/// `{ doc_id, checkpoint: { origin, version?, author?, label?, description? },
-/// expected_root? }` to `{ checkpoint }`.
-pub fn record_checkpoint_request(
-    root: &Path,
-    locks: &GuardedWrites,
-    access: Access,
-    request: &Request,
-) -> io::Result<Value> {
-    prepare(root, request)?;
-    let input = checkpoint_input(request.value("checkpoint").unwrap_or(&Value::Null))?;
-    let checkpoint = record_checkpoint(root, locks, access, &request.str("doc_id"), input)?;
-    Ok(json!({ "checkpoint": checkpoint_json(&checkpoint) }))
-}
-
-/// `{ doc_id, id, expected_root? }` to `null` or `{ checkpoint, blobs_base64? }`.
-pub fn read_checkpoint_request(
-    root: &Path,
-    locks: &GuardedWrites,
-    _access: Access,
-    request: &Request,
-) -> io::Result<Value> {
-    prepare(root, request)?;
     Ok(
-        match read_checkpoint(root, locks, &request.str("doc_id"), &request.str("id"))? {
-            None => Value::Null,
-            Some((checkpoint, bundle)) => {
-                let mut payload = json!({ "checkpoint": checkpoint_json(&checkpoint) });
-                if let Some(bundle) = bundle {
-                    payload["blobs_base64"] = Value::String(BASE64.encode(bundle));
-                }
-                payload
-            }
-        },
+        json!({ "checkpoints": checkpoints.iter().map(checkpoints::kit_checkpoint_json).collect::<Vec<_>>() }),
     )
 }
 

@@ -1,9 +1,8 @@
 // Copied from kition-sdk crates/kition-kdm/tests/tree_nodes.rs by scripts/sync-kit-host.mjs; change it there, not here.
 #![allow(clippy::expect_used)]
-//! Deleting an object that a tree holds: every read skips the node of a deleted
-//! object with its subtree (`Replica::tree`, `Tx::tree`, a load), as the canonical state keeps the
-//! node (the shared batch fixtures say so for both implementations), and a change set (a write's,
-//! or two reads of a file compared) tells a plain deletion at the node's place. An object whose
+//! Deleting an object that a tree holds takes its node out of the tree (plan 2026-11-24, section
+//! 1.1): no read sees it (`Replica::tree`, `Tx::tree`, the canonical state), and a change set (a
+//! write's, or two reads of a file compared) tells a plain deletion at the node's place. An object whose
 //! node has live children is not deleted ([`kition_kdm::KdmError::InvalidValue`]): delete or move
 //! them first, as the batch's `delete` says.
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]

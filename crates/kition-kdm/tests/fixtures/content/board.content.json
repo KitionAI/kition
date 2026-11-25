@@ -1,0 +1,6 @@
+{"kdm":1,"kit":"kit.content","docId":"0193a5c4-0000-7000-8000-000000000001","schemaVersion":2,"objects":{
+"0193a5c4-0000-7000-8000-0000000000a1":{"$type":"Board","outline":[[0,"0193a5c4-0000-7000-8000-0000000000b1"],[1,"0193a5c4-0000-7000-8000-0000000000b2"],[0,"0193a5c4-0000-7000-8000-0000000000b3"]],"pages":["0193a5c4-0000-7000-8000-0000000000b1","0193a5c4-0000-7000-8000-0000000000b2","0193a5c4-0000-7000-8000-0000000000b3"],"title":"Q4","vars":{"gap":8,"zoom":1.5}},
+"0193a5c4-0000-7000-8000-0000000000b1":{"$type":"Page","body":[{"insert":"Ship "},{"attributes":{"bold":true},"insert":"it"}],"box":[0,0,200,120],"count":3,"done":false,"image":{"hash":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","mime":"image/png","size":5120},"kind":"sticky","name":"Page 1","next":"0193a5c4-0000-7000-8000-0000000000b2","scale":0.5},
+"0193a5c4-0000-7000-8000-0000000000b2":{"$type":"Page","name":""},
+"0193a5c4-0000-7000-8000-0000000000b3":{"$type":"Page","body":[{"attributes":{"link":"https://kition.ai"},"insert":"site"}],"box":{},"count":0,"done":true,"kind":"frame","name":"Page 3","scale":-2.25}
+}}

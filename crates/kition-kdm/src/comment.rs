@@ -243,12 +243,6 @@ mod tests {
         NewComment { author: author.into(), name: Some(author.to_uppercase()), body: body.into(), created: created.into() }
     }
 
-    fn sync(a: &mut Replica, b: &mut Replica) {
-        let (before_a, before_b) = (a.version(), b.version());
-        a.import_changes(&b.export_changes(&before_a).unwrap()).unwrap();
-        b.import_changes(&a.export_changes(&before_b).unwrap()).unwrap();
-    }
-
     #[test]
     fn threads_open_reply_resolve_and_read_back() {
         let mut doc = Replica::create(schema(), DocId::new(), ActorId::random()).unwrap();
@@ -281,23 +275,6 @@ mod tests {
         doc.transact(&Origin::person("alice"), |tx| delete_comment(tx, &thread, &first)).unwrap();
         assert!(threads(&doc).unwrap().is_empty());
         assert!(!doc.exists(&thread));
-    }
-
-    #[test]
-    fn concurrent_replies_both_survive_and_replicas_converge() {
-        let mut a = Replica::create(schema(), DocId::new(), ActorId::random()).unwrap();
-        let object = ObjectId::from_string("root");
-        let (thread, _) =
-            a.transact(&Origin::person("alice"), |tx| add_thread(tx, &CommentAnchor::object(&object), &said("alice", "One", "2026-10-19T10:00:00Z"))).unwrap();
-        let mut b = Replica::load(schema(), &a.snapshot().unwrap(), ActorId::random()).unwrap();
-        a.transact(&Origin::person("alice"), |tx| reply(tx, &thread, &said("alice", "Two", "2026-10-19T10:02:00Z"))).unwrap();
-        b.transact(&Origin::person("bob"), |tx| reply(tx, &thread, &said("bob", "Three", "2026-10-19T10:02:00Z"))).unwrap();
-        sync(&mut a, &mut b);
-        assert_eq!(a.state_hash().unwrap(), b.state_hash().unwrap());
-        let mut bodies: Vec<String> = threads(&a).unwrap()[0].comments.iter().map(|comment| comment.body.clone()).collect();
-        bodies.sort();
-        assert_eq!(bodies, vec!["One", "Three", "Two"]);
-        assert_eq!(threads(&a).unwrap(), threads(&b).unwrap());
     }
 
     #[test]

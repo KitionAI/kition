@@ -1,16 +1,14 @@
 // Copied from kition-sdk crates/kition-kdm/src/marks.rs by scripts/sync-kit-host.mjs; change it there, not here.
 //! Marks on text (Standard 2.0 rule M19): rich-text run properties a `text` field declares in the
-//! schema. Each mark key is its own last-writer-wins value over ranges of characters; the
-//! schema's `expand` decides whether text typed at a marked range's ends takes the mark.
+//! schema. Each mark key holds one value over ranges of characters; the schema's `expand` decides
+//! whether text typed at a marked range's ends takes the mark (`store::text`).
 
 use std::collections::BTreeMap;
 
-use loro::{ExpandType, LoroDoc, LoroText, StyleConfig, StyleConfigMap, TextDelta, ToJson};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::value::canonical;
-use crate::{Expand, FieldDef, Schema};
 
 /// One run of a text field: characters that carry the same marks.
 ///
@@ -46,52 +44,6 @@ impl TextRun {
         out.insert("insert".into(), Value::String(self.insert.clone()));
         canonical(Value::Object(out))
     }
-}
-
-fn expand_type(expand: Expand) -> ExpandType {
-    match expand {
-        Expand::After => ExpandType::After,
-        Expand::Before => ExpandType::Before,
-        Expand::Both => ExpandType::Both,
-        Expand::None => ExpandType::None,
-    }
-}
-
-/// Tells the engine every mark key of the schema and its expand. The configuration is local to a
-/// replica (the engine does not replicate it); every replica of a document configures it from the
-/// same schema before it marks anything. Only declared keys are configured, so the engine itself
-/// refuses a mark of any other key.
-pub(crate) fn configure(doc: &LoroDoc, schema: &Schema) {
-    let mut styles = StyleConfigMap::new();
-    for (key, expand) in schema.mark_expands() {
-        // Schema::check refuses keys holding `:`, the one key the engine's map panics on.
-        styles.insert(key.into(), StyleConfig { expand: expand_type(expand) });
-    }
-    doc.config_text_style(styles);
-}
-
-/// A text field's runs as the canonical state reads them: only `def`'s declared marks, null
-/// values (unmarked) dropped, empty runs dropped, adjacent runs with equal marks merged.
-pub(crate) fn runs(text: &LoroText, def: &FieldDef) -> Vec<TextRun> {
-    let mut out: Vec<TextRun> = Vec::new();
-    for delta in text.to_delta() {
-        let TextDelta::Insert { insert, attributes } = delta else { continue };
-        if insert.is_empty() {
-            continue;
-        }
-        let mut marks = BTreeMap::new();
-        for (key, value) in attributes.into_iter().flatten() {
-            if !def.marks.contains_key(&key) {
-                continue;
-            }
-            let value = canonical(value.to_json_value());
-            if !value.is_null() {
-                marks.insert(key, value);
-            }
-        }
-        push_run(&mut out, insert, marks);
-    }
-    out
 }
 
 /// Appends a run, merging it into the last one when their marks are equal.

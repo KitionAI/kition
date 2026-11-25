@@ -1,6 +1,5 @@
 // Copied from kition-sdk crates/kition-kdm/src/ids.rs by scripts/sync-kit-host.mjs; change it there, not here.
 use std::fmt;
-use std::sync::{Arc, OnceLock};
 
 use uuid::Uuid;
 
@@ -55,6 +54,12 @@ mod reproducible {
     }
 }
 
+/// A new line of changes (plan 2026-11-24, section 1.3): a UUID v7, or counted in a reproducible
+/// build ([`reproducible`]).
+pub(crate) fn new_lineage() -> [u8; 16] {
+    *reproducible::uuid().unwrap_or_else(Uuid::now_v7).as_bytes()
+}
+
 /// A document's durable identity. Renaming or moving its file never changes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DocId(Uuid);
@@ -67,14 +72,6 @@ impl DocId {
 
     pub fn parse(text: &str) -> Result<Self> {
         Uuid::parse_str(text).map(Self).map_err(|error| KdmError::Encoding(error.to_string()))
-    }
-
-    pub(crate) fn as_bytes(&self) -> &[u8; 16] {
-        self.0.as_bytes()
-    }
-
-    pub(crate) fn from_bytes(bytes: [u8; 16]) -> Self {
-        Self(Uuid::from_bytes(bytes))
     }
 }
 
@@ -90,13 +87,14 @@ impl fmt::Display for DocId {
     }
 }
 
-/// The identity of one writable replica session. Two sessions never share one.
+/// The identity of one writable replica session: the session that wrote a change, recorded in it.
+/// Two sessions never share one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ActorId(u64);
 
 impl ActorId {
-    /// A fresh random actor. The top bit is cleared because the engine reserves `u64::MAX`.
-    /// A random actor, or a counted one in a reproducible build ([`reproducible`]).
+    /// A random actor, or a counted one in a reproducible build ([`reproducible`]). The top bit
+    /// is cleared, so an actor is never `u64::MAX`.
     pub fn random() -> Self {
         Self(reproducible::next().unwrap_or_else(|| Uuid::new_v4().as_u64_pair().0) >> 1)
     }
@@ -145,56 +143,15 @@ impl fmt::Display for ObjectId {
     }
 }
 
-/// A node of a tree field. Valid in the replica that returned it and in every replica that has
-/// the change that created it.
-///
-/// A node created inside a transaction has no engine id until the transaction commits; its handle
-/// resolves then. Handles compare by resolved node; two unresolved handles are equal only if they
-/// are the same handle (or clones of it). A handle from a failed transaction never resolves, and
-/// using it is [`KdmError::NotFound`]. `NodeRef` is not `Hash`: an unresolved handle's identity
-/// changes when it resolves.
-#[derive(Clone, Debug)]
-pub struct NodeRef(pub(crate) NodeInner);
-
-#[derive(Clone, Debug)]
-pub(crate) enum NodeInner {
-    Committed(loro::TreeID),
-    Pending(Arc<PendingNode>),
-}
-
-/// A node created by a transaction that has not been applied yet.
-#[derive(Debug)]
-pub(crate) struct PendingNode {
-    /// The serial of the transaction that created it.
-    pub(crate) tx: u64,
-    /// Its index among that transaction's created nodes.
-    pub(crate) index: usize,
-    /// Set once, when the transaction applies.
-    pub(crate) id: OnceLock<loro::TreeID>,
-}
+/// A node of a tree field: the node of one object in one tree (a tree holds an object at most
+/// once). A handle names the object; it is valid in every replica of the document whose tree holds
+/// that object, and a transaction's handle is valid as soon as the transaction made it.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct NodeRef(pub(crate) ObjectId);
 
 impl NodeRef {
-    pub(crate) fn committed(id: loro::TreeID) -> Self {
-        Self(NodeInner::Committed(id))
-    }
-
-    /// The engine id, once the node exists in the document.
-    pub(crate) fn resolved(&self) -> Option<loro::TreeID> {
-        match &self.0 {
-            NodeInner::Committed(id) => Some(*id),
-            NodeInner::Pending(pending) => pending.id.get().copied(),
-        }
+    /// The object the node is.
+    pub fn object(&self) -> &ObjectId {
+        &self.0
     }
 }
-
-impl PartialEq for NodeRef {
-    fn eq(&self, other: &Self) -> bool {
-        match (self.resolved(), other.resolved()) {
-            (Some(a), Some(b)) => a == b,
-            (None, None) => matches!((&self.0, &other.0), (NodeInner::Pending(a), NodeInner::Pending(b)) if Arc::ptr_eq(a, b)),
-            _ => false,
-        }
-    }
-}
-
-impl Eq for NodeRef {}

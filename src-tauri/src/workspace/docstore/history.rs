@@ -1,65 +1,70 @@
 //! A document's version history on this device: `history.json` in its folder,
-//! the checkpoints recorded when it was saved, when an agent or a script
-//! finished a batch of edits, every few minutes of editing, around a restore,
-//! and when a kit or the person named a version (Kit UI protocol section 7m).
-//! A checkpoint names the replica version it was taken at (the replica keeps
-//! its whole history, so any recorded version can be read again), with its
-//! time, author, and origin, and the blobs the replica then named, so a kit
-//! can show and restore it.
+//! the checkpoints recorded with the writes of its state (when it was saved,
+//! when an agent saved it, when a kit or the person named a version: Kit UI
+//! protocol section 7m). A checkpoint is a state: it keeps the snapshot of the
+//! write that recorded it in `states/<sha256>` (the same bytes once), with its
+//! time, author, origin, the version that snapshot holds, and the blobs it
+//! named, so a kit can show and restore it whatever was written since.
+//!
+//! The store never reads a version: it compares the strings writers give it,
+//! so "this save is at the newest checkpoint's version" is a comparison of
+//! equal bytes (versions are opaque to the host, section 7).
 //!
 //! Labelled checkpoints (a name a person gave) and unlabelled ones are kept
-//! apart: past `MAX_CHECKPOINTS` unlabelled ones the oldest are thinned,
-//! autosaves first; labelled ones are never thinned for them and have their
-//! own cap, `MAX_LABELLED_CHECKPOINTS`. When the replica is replaced by one of
-//! another lineage, the unlabelled checkpoints go and the labelled ones stay,
-//! marked unavailable (the new replica does not reach their versions).
+//! apart. Past `MAX_CHECKPOINTS` unlabelled ones, or past
+//! `MAX_UNLABELLED_BYTES` of their states, the oldest unlabelled ones go,
+//! autosaves first; labelled ones are never dropped for them and have a cap of
+//! their own, `MAX_LABELLED_CHECKPOINTS`. A document whose state is larger
+//! than `LARGE_STATE_BYTES` records unlabelled checkpoints only at the
+//! person's saves.
 
+use std::collections::BTreeSet;
+use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
 use super::blobs::BlobRecord;
-use super::read_confined;
+use super::{read_confined, sha256_hex};
 use crate::workspace::safety::{assert_safe, invalid, write_atomically};
 
 pub(super) const HISTORY_FILE: &str = "history.json";
-const HISTORY_FORMAT: u64 = 1;
+pub(super) const STATES_DIR: &str = "states";
+const HISTORY_FORMAT: u64 = 2;
 /// The most unlabelled checkpoints a document keeps.
 pub const MAX_CHECKPOINTS: usize = 200;
 /// The most labelled checkpoints a document keeps (the protocol names no
 /// number); past it the oldest labelled one goes.
 pub const MAX_LABELLED_CHECKPOINTS: usize = 1000;
+/// The most bytes the states of a document's unlabelled checkpoints take
+/// together (each state counted once).
+pub const MAX_UNLABELLED_BYTES: u64 = 512 << 20;
+/// A state larger than this records unlabelled checkpoints only at saves.
+pub const LARGE_STATE_BYTES: u64 = 16 << 20;
 /// The longest label, author, and version (Kit UI protocol `CHECKPOINT_LABEL_LIMIT`).
 const MAX_TEXT: usize = 200;
 /// The longest description (Kit UI protocol `CHECKPOINT_DESCRIPTION_LIMIT`).
 const MAX_DESCRIPTION: usize = 2000;
 /// The origin of checkpoints made while editing, thinned first.
 const EDIT_ORIGIN: &str = "edit";
+/// The origin of the person's saves.
+const SAVE_ORIGIN: &str = "save";
 /// The origin of a kit's own checkpoints: the only ones a kit changes.
 pub const KIT_ORIGIN: &str = "kit";
 
 /// The errors of the Kit UI protocol's checkpoint requests (`error.data.reason`
-/// `not-found`, `history-missing`, `too-long`, `read-only`).
+/// `not-found`, `too-long`, `read-only`).
 pub const CHECKPOINT_NOT_FOUND: &str = "DOCUMENT_CHECKPOINT_NOT_FOUND";
-pub const CHECKPOINT_HISTORY_MISSING: &str = "DOCUMENT_CHECKPOINT_HISTORY_MISSING";
 pub const CHECKPOINT_TOO_LONG: &str = "DOCUMENT_CHECKPOINT_TOO_LONG";
 pub const CHECKPOINT_READ_ONLY: &str = "DOCUMENT_CHECKPOINT_READ_ONLY";
-
-fn yes() -> bool {
-    true
-}
-
-fn is_true(value: &bool) -> bool {
-    *value
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Checkpoint {
     pub id: String,
     /// Milliseconds since the Unix epoch.
     pub time: u64,
-    /// `kit`, `save`, `agent`, `script`, `edit`, `restore`, `open`, …
+    /// `kit`, `save`, `agent`, …
     pub origin: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub author: Option<String>,
@@ -67,18 +72,14 @@ pub struct Checkpoint {
     pub label: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// The replica version (the writer's, in hex).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-    /// The stored `seq` when the checkpoint was taken, for a stored replica.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub seq: Option<u64>,
+    /// The version the state holds, as its writer named it.
+    pub version: String,
+    /// The SHA-256 of the state, `states/<state>`.
+    pub state: String,
+    /// The state's size in bytes.
+    pub size: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub blobs: Option<BlobRecord>,
-    /// False once the stored replica no longer reaches `version` (it was
-    /// replaced by one of another lineage). Written only when false.
-    #[serde(default = "yes", skip_serializing_if = "is_true")]
-    pub available: bool,
 }
 
 impl Checkpoint {
@@ -102,8 +103,15 @@ pub struct CheckpointInput {
     pub author: Option<String>,
     pub label: Option<String>,
     pub description: Option<String>,
-    pub version: Option<String>,
     pub time: Option<u64>,
+}
+
+/// The state a checkpoint keeps: the written snapshot, the version it holds,
+/// and the blobs it names.
+pub struct State<'a> {
+    pub snapshot: &'a [u8],
+    pub version: &'a str,
+    pub blobs: Option<BlobRecord>,
 }
 
 /// A page of `list_page`: newest first, at most `limit`, only labelled ones
@@ -122,6 +130,22 @@ pub struct Edit {
     pub label: Option<String>,
     pub description: Option<String>,
 }
+
+/// The limits a history keeps to (`LIMITS`; tests use smaller ones).
+#[derive(Clone, Copy, Debug)]
+struct Limits {
+    unlabelled: usize,
+    labelled: usize,
+    unlabelled_bytes: u64,
+    large_state: u64,
+}
+
+const LIMITS: Limits = Limits {
+    unlabelled: MAX_CHECKPOINTS,
+    labelled: MAX_LABELLED_CHECKPOINTS,
+    unlabelled_bytes: MAX_UNLABELLED_BYTES,
+    large_state: LARGE_STATE_BYTES,
+};
 
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
@@ -159,33 +183,32 @@ pub fn check_input(input: &CheckpointInput) -> io::Result<()> {
         (&input.author, MAX_TEXT),
         (&input.label, MAX_TEXT),
         (&input.description, MAX_DESCRIPTION),
-        (&input.version, MAX_TEXT),
     ] {
         check_text(value.clone(), limit)?;
     }
     Ok(())
 }
 
-/// The replica version a stored version (hex) encodes, when it is one.
-fn decoded(version: &str) -> Option<kition_kdm::Version> {
-    kition_kdm::Version::decode(&hex::decode(version).ok()?).ok()
-}
-
-/// Whether two stored versions name the same replica version. They are compared decoded: the
-/// KDM's canonical bytes (Kit UI protocol UI-R7) and the older encoders' bytes, whose entries
-/// follow a hash map's order, are two spellings of one version, and a document's checkpoints
-/// come from both (the page's `versionOf`, a kit engine's `replica/version`). Strings that are
-/// not versions compare as they are.
-fn same_version(a: &str, b: &str) -> bool {
-    a == b || matches!((decoded(a), decoded(b)), (Some(a), Some(b)) if a == b)
+/// Checks a written version: an opaque string the store keeps as it is.
+pub fn check_version(version: &str) -> io::Result<()> {
+    if version.chars().count() > MAX_TEXT {
+        return Err(invalid("a replica version is at most 200 characters"));
+    }
+    Ok(())
 }
 
 fn load(root: &Path, dir: &Path) -> io::Result<History> {
     let Some(bytes) = read_confined(root, &dir.join(HISTORY_FILE))? else {
         return Ok(History::default());
     };
-    // A damaged history file reads as no history; the next checkpoint replaces it.
-    Ok(serde_json::from_slice(&bytes).unwrap_or_default())
+    // A damaged history file, or one of another format, reads as no history;
+    // the next checkpoint replaces it.
+    let history: History = serde_json::from_slice(&bytes).unwrap_or_default();
+    Ok(if history.format == HISTORY_FORMAT {
+        history
+    } else {
+        History::default()
+    })
 }
 
 fn save(root: &Path, dir: &Path, history: &mut History) -> io::Result<()> {
@@ -195,6 +218,77 @@ fn save(root: &Path, dir: &Path, history: &mut History) -> io::Result<()> {
     let mut bytes = serde_json::to_vec_pretty(history).map_err(io::Error::other)?;
     bytes.push(b'\n');
     write_atomically(&path, &bytes)
+}
+
+fn is_hash(text: &str) -> bool {
+    text.len() == 64
+        && text
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn state_path(dir: &Path, hash: &str) -> PathBuf {
+    dir.join(STATES_DIR).join(hash)
+}
+
+/// Keeps `snapshot` as `states/<hash>` unless a file of that size is there: a
+/// state file is never changed once written.
+fn put_state(root: &Path, dir: &Path, hash: &str, snapshot: &[u8]) -> io::Result<()> {
+    let path = state_path(dir, hash);
+    assert_safe(root, &path, true)?;
+    match fs::symlink_metadata(&path) {
+        Ok(metadata) if metadata.is_file() && metadata.len() == snapshot.len() as u64 => Ok(()),
+        Ok(_) => write_atomically(&path, snapshot),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            fs::create_dir_all(dir.join(STATES_DIR))?;
+            write_atomically(&path, snapshot)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+/// The snapshot `checkpoint` keeps, or `None` when its file is missing or
+/// does not hash to its name.
+pub fn read_state(root: &Path, dir: &Path, checkpoint: &Checkpoint) -> io::Result<Option<Vec<u8>>> {
+    if !is_hash(&checkpoint.state) {
+        return Ok(None);
+    }
+    Ok(read_confined(root, &state_path(dir, &checkpoint.state))?
+        .filter(|bytes| sha256_hex(bytes) == checkpoint.state))
+}
+
+/// Removes the state files no checkpoint names.
+fn collect_states(root: &Path, dir: &Path, history: &History) -> io::Result<()> {
+    let states = dir.join(STATES_DIR);
+    assert_safe(root, &states, true)?;
+    let keep: BTreeSet<&str> = history
+        .checkpoints
+        .iter()
+        .map(|c| c.state.as_str())
+        .collect();
+    let entries = match fs::read_dir(&states) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        // Temporary files of a write in flight start with a dot; leave them.
+        if is_hash(&name) && !keep.contains(name.as_str()) {
+            match fs::remove_file(entry.path()) {
+                Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
+                _ => {}
+            }
+        }
+    }
+    // An empty folder goes too (fails harmlessly when it is not empty).
+    let _ = fs::remove_dir(&states);
+    Ok(())
+}
+
+fn store(root: &Path, dir: &Path, history: &mut History) -> io::Result<()> {
+    save(root, dir, history)?;
+    collect_states(root, dir, history)
 }
 
 /// The checkpoints, newest first.
@@ -232,26 +326,39 @@ pub fn find(root: &Path, dir: &Path, id: &str) -> io::Result<Option<Checkpoint>>
         .find(|checkpoint| checkpoint.id == id))
 }
 
-/// Drops the oldest checkpoints past the caps, never the newest one: past
-/// `MAX_CHECKPOINTS` unlabelled ones, autosaves first; past
-/// `MAX_LABELLED_CHECKPOINTS` labelled ones, the oldest labelled.
-fn thin(checkpoints: &mut Vec<Checkpoint>) {
+/// The bytes the states of the unlabelled checkpoints take, each state once.
+fn unlabelled_bytes(checkpoints: &[Checkpoint]) -> u64 {
+    let mut seen = BTreeSet::new();
+    checkpoints
+        .iter()
+        .filter(|c| !c.is_labelled() && seen.insert(c.state.as_str()))
+        .map(|c| c.size)
+        .sum()
+}
+
+/// Drops the oldest checkpoints past the limits, never the newest one: past
+/// the count or the bytes of unlabelled ones, autosaves first; past the count
+/// of labelled ones, the oldest labelled.
+fn thin(checkpoints: &mut Vec<Checkpoint>, limits: &Limits) {
     for labelled in [false, true] {
-        let cap = if labelled {
-            MAX_LABELLED_CHECKPOINTS
-        } else {
-            MAX_CHECKPOINTS
-        };
         loop {
-            let last = checkpoints.len().saturating_sub(1);
-            let kind = |checkpoint: &&Checkpoint| checkpoint.is_labelled() == labelled;
-            if checkpoints.iter().filter(kind).count() <= cap {
+            let count = checkpoints
+                .iter()
+                .filter(|c| c.is_labelled() == labelled)
+                .count();
+            let over = if labelled {
+                count > limits.labelled
+            } else {
+                count > limits.unlabelled || unlabelled_bytes(checkpoints) > limits.unlabelled_bytes
+            };
+            if !over {
                 break;
             }
+            let last = checkpoints.len().saturating_sub(1);
             let older = &checkpoints[..last];
             let index = older
                 .iter()
-                .position(|c| c.is_labelled() == labelled && !labelled && c.origin == EDIT_ORIGIN)
+                .position(|c| !labelled && !c.is_labelled() && c.origin == EDIT_ORIGIN)
                 .or_else(|| older.iter().position(|c| c.is_labelled() == labelled));
             match index {
                 Some(index) => {
@@ -263,30 +370,38 @@ fn thin(checkpoints: &mut Vec<Checkpoint>) {
     }
 }
 
-/// Records a checkpoint at `head` (the stored version and its blobs, for a
-/// stored replica) and answers it. A checkpoint at the version of the newest
-/// one is that one; with a label it takes the label, the description, and the
-/// origin asked (a kit's request makes it the kit's, Kit UI protocol UI-C1).
+/// Records a checkpoint of `state` and answers it. A checkpoint at the version
+/// of the newest one is that one; with a label it takes the label, the
+/// description, and the origin asked (a kit's request makes it the kit's, Kit
+/// UI protocol UI-C1). Answers `None` when the state is too large for an
+/// unlabelled checkpoint of this origin (see the module documentation).
 pub fn record(
     root: &Path,
     dir: &Path,
     input: CheckpointInput,
-    seq: Option<u64>,
-    blobs: Option<BlobRecord>,
-) -> io::Result<Checkpoint> {
+    state: State<'_>,
+) -> io::Result<Option<Checkpoint>> {
+    record_within(root, dir, input, state, &LIMITS)
+}
+
+fn record_within(
+    root: &Path,
+    dir: &Path,
+    input: CheckpointInput,
+    state: State<'_>,
+    limits: &Limits,
+) -> io::Result<Option<Checkpoint>> {
     check_origin(&input.origin)?;
     let author = check_text(input.author, MAX_TEXT)?;
     let label = check_text(input.label, MAX_TEXT)?;
     let description = check_text(input.description, MAX_DESCRIPTION)?;
-    let version = check_text(input.version, MAX_TEXT)?;
+    check_version(state.version)?;
     let mut history = load(root, dir)?;
     if let Some(last) = history.checkpoints.last_mut()
-        && let (Some(stored), Some(asked)) = (&last.version, &version)
-        && last.available
-        && same_version(stored, asked)
+        && last.version == state.version
     {
         if label.is_none() {
-            return Ok(last.clone());
+            return Ok(Some(last.clone()));
         }
         last.label = label;
         last.description = description;
@@ -295,10 +410,16 @@ pub fn record(
             last.author = author;
         }
         let upgraded = last.clone();
-        thin(&mut history.checkpoints);
-        save(root, dir, &mut history)?;
-        return Ok(upgraded);
+        thin(&mut history.checkpoints, limits);
+        store(root, dir, &mut history)?;
+        return Ok(Some(upgraded));
     }
+    let size = state.snapshot.len() as u64;
+    if label.is_none() && size > limits.large_state && input.origin != SAVE_ORIGIN {
+        return Ok(None);
+    }
+    let hash = sha256_hex(state.snapshot);
+    put_state(root, dir, &hash, state.snapshot)?;
     let checkpoint = Checkpoint {
         id: uuid::Uuid::new_v4().to_string(),
         time: input.time.unwrap_or_else(now_ms),
@@ -306,15 +427,15 @@ pub fn record(
         author,
         label,
         description,
-        version,
-        seq,
-        blobs,
-        available: true,
+        version: state.version.to_owned(),
+        state: hash,
+        size,
+        blobs: state.blobs,
     };
     history.checkpoints.push(checkpoint.clone());
-    thin(&mut history.checkpoints);
-    save(root, dir, &mut history)?;
-    Ok(checkpoint)
+    thin(&mut history.checkpoints, limits);
+    store(root, dir, &mut history)?;
+    Ok(Some(checkpoint))
 }
 
 /// The kit's checkpoint `id`, for a change: unknown is `CHECKPOINT_NOT_FOUND`,
@@ -341,9 +462,9 @@ pub fn update(root: &Path, dir: &Path, id: &str, edit: Edit) -> io::Result<Check
         checkpoint.description = check_text(Some(description), MAX_DESCRIPTION)?;
     }
     let updated = checkpoint.clone();
-    // A label removed makes it an unlabelled one, which counts toward their cap.
-    thin(&mut history.checkpoints);
-    save(root, dir, &mut history)?;
+    // A label removed makes it an unlabelled one, which counts toward their limits.
+    thin(&mut history.checkpoints, &LIMITS);
+    store(root, dir, &mut history)?;
     Ok(updated)
 }
 
@@ -352,24 +473,7 @@ pub fn delete(root: &Path, dir: &Path, id: &str) -> io::Result<()> {
     let mut history = load(root, dir)?;
     let index = kit_checkpoint(&history, id)?;
     history.checkpoints.remove(index);
-    save(root, dir, &mut history)
-}
-
-/// The replica was replaced by one of another lineage, whose history does not
-/// hold the recorded versions: the unlabelled checkpoints go, the labelled ones
-/// stay as unavailable (without the blobs, which nothing can read any more).
-pub fn new_lineage(root: &Path, dir: &Path) -> io::Result<()> {
-    let mut history = load(root, dir)?;
-    if history.checkpoints.is_empty() {
-        return Ok(());
-    }
-    history.checkpoints.retain(Checkpoint::is_labelled);
-    for checkpoint in &mut history.checkpoints {
-        checkpoint.available = false;
-        checkpoint.seq = None;
-        checkpoint.blobs = None;
-    }
-    save(root, dir, &mut history)
+    store(root, dir, &mut history)
 }
 
 /// The blobs the checkpoints name, so they survive a collection.
@@ -389,103 +493,164 @@ mod tests {
         result.unwrap_or_else(|err| panic!("{err}"))
     }
 
+    fn some<T>(result: io::Result<Option<T>>) -> T {
+        ok(result).unwrap_or_else(|| panic!("nothing recorded"))
+    }
+
     fn error_text<T: std::fmt::Debug>(result: io::Result<T>) -> String {
         result.err().map(|err| err.to_string()).unwrap_or_default()
     }
 
-    fn input(origin: &str, version: &str) -> CheckpointInput {
+    fn input(origin: &str) -> CheckpointInput {
         CheckpointInput {
             origin: origin.into(),
-            version: Some(version.into()),
             author: Some("user:local".into()),
             ..CheckpointInput::default()
         }
     }
 
-    fn labelled(label: &str, version: &str) -> CheckpointInput {
+    fn labelled(label: &str) -> CheckpointInput {
         CheckpointInput {
             label: Some(label.into()),
-            ..input(KIT_ORIGIN, version)
+            ..input(KIT_ORIGIN)
         }
     }
 
-    fn store() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    /// A state whose snapshot is the version's bytes.
+    fn at(version: &str) -> State<'_> {
+        State {
+            snapshot: version.as_bytes(),
+            version,
+            blobs: None,
+        }
+    }
+
+    fn store_dir() -> (tempfile::TempDir, PathBuf, PathBuf) {
         let temp = tempfile::tempdir().unwrap_or_else(|err| panic!("{err}"));
         let root = temp.path().to_path_buf();
         let dir = root.join("doc");
         (temp, root, dir)
     }
 
+    fn state_files(dir: &Path) -> usize {
+        fs::read_dir(dir.join(STATES_DIR))
+            .map(Iterator::count)
+            .unwrap_or(0)
+    }
+
     #[test]
     fn records_lists_and_thins_checkpoints() {
-        let (_temp, root, dir) = store();
+        let (_temp, root, dir) = store_dir();
         assert!(ok(list(&root, &dir)).is_empty());
-        let first = ok(record(&root, &dir, input("save", "01"), Some(1), None));
+        let first = some(record(&root, &dir, input("save"), at("01")));
         // The same version again is the same checkpoint.
-        assert_eq!(
-            ok(record(&root, &dir, input("agent", "01"), Some(1), None)),
-            first
-        );
-        let second = ok(record(&root, &dir, input("agent", "02"), Some(2), None));
+        assert_eq!(some(record(&root, &dir, input("agent"), at("01"))), first);
+        let second = some(record(&root, &dir, input("agent"), at("02")));
         assert_eq!(ok(list(&root, &dir)), vec![second.clone(), first.clone()]);
         assert_eq!(ok(find(&root, &dir, &first.id)), Some(first.clone()));
-        assert!(record(&root, &dir, input("Not An Origin", "03"), None, None).is_err());
+        assert!(record(&root, &dir, input("Not An Origin"), at("03")).is_err());
         assert_eq!(
-            error_text(record(
-                &root,
-                &dir,
-                labelled(&"x".repeat(201), "03"),
-                None,
-                None
-            )),
+            error_text(record(&root, &dir, labelled(&"x".repeat(201)), at("03"))),
             CHECKPOINT_TOO_LONG
         );
 
         for n in 0..MAX_CHECKPOINTS {
-            ok(record(
-                &root,
-                &dir,
-                input("edit", &format!("e{n}")),
-                None,
-                None,
-            ));
+            some(record(&root, &dir, input("edit"), at(&format!("e{n}"))));
         }
         let listed = ok(list(&root, &dir));
         assert_eq!(listed.len(), MAX_CHECKPOINTS);
         // Autosaves went first: the save and the agent checkpoint are kept.
         assert!(listed.iter().any(|checkpoint| checkpoint.id == first.id));
         assert!(listed.iter().any(|checkpoint| checkpoint.id == second.id));
+        // The states of the dropped ones went with them.
+        assert_eq!(state_files(&dir), MAX_CHECKPOINTS);
 
         ok(std::fs::write(dir.join(HISTORY_FILE), b"garbage"));
+        assert!(ok(list(&root, &dir)).is_empty());
+        // So does a history of another format.
+        ok(std::fs::write(
+            dir.join(HISTORY_FILE),
+            b"{\"format\":1,\"checkpoints\":[]}",
+        ));
         assert!(ok(list(&root, &dir)).is_empty());
     }
 
     #[test]
+    fn keeps_each_checkpoints_state() {
+        let (_temp, root, dir) = store_dir();
+        let one = some(record(
+            &root,
+            &dir,
+            input("save"),
+            State {
+                snapshot: b"state one",
+                version: "v1",
+                blobs: None,
+            },
+        ));
+        let two = some(record(
+            &root,
+            &dir,
+            input("save"),
+            State {
+                snapshot: b"state two",
+                version: "v2",
+                blobs: None,
+            },
+        ));
+        // The same bytes at another version are kept once.
+        let again = some(record(
+            &root,
+            &dir,
+            input("save"),
+            State {
+                snapshot: b"state one",
+                version: "v3",
+                blobs: None,
+            },
+        ));
+        assert_eq!(state_files(&dir), 2);
+        assert_eq!(again.state, one.state);
+        assert_eq!(
+            ok(read_state(&root, &dir, &one)).as_deref(),
+            Some(&b"state one"[..])
+        );
+        assert_eq!(
+            ok(read_state(&root, &dir, &two)).as_deref(),
+            Some(&b"state two"[..])
+        );
+        assert_eq!(one.size, 9);
+        // A damaged state file reads as none.
+        ok(fs::write(state_path(&dir, &two.state), b"other"));
+        assert_eq!(ok(read_state(&root, &dir, &two)), None);
+    }
+
+    #[test]
     fn keeps_descriptions_within_their_limit() {
-        let (_temp, root, dir) = store();
+        let (_temp, root, dir) = store_dir();
         let described = CheckpointInput {
             description: Some("d".repeat(MAX_DESCRIPTION)),
-            ..labelled("Draft", "01")
+            ..labelled("Draft")
         };
         assert!(check_input(&described).is_ok());
-        let kept = ok(record(&root, &dir, described, None, None));
+        let kept = some(record(&root, &dir, described, at("01")));
         assert_eq!(
             kept.description.as_deref().map(str::len),
             Some(MAX_DESCRIPTION)
         );
         let longer = CheckpointInput {
             description: Some("d".repeat(MAX_DESCRIPTION + 1)),
-            ..labelled("Draft", "02")
+            ..labelled("Draft")
         };
         assert_eq!(error_text(check_input(&longer)), CHECKPOINT_TOO_LONG);
         assert_eq!(
-            error_text(record(&root, &dir, longer, None, None)),
+            error_text(record(&root, &dir, longer, at("02"))),
             CHECKPOINT_TOO_LONG
         );
         // A label keeps the protocol's 200 characters.
-        assert!(check_input(&labelled(&"l".repeat(MAX_TEXT), "03")).is_ok());
+        assert!(check_input(&labelled(&"l".repeat(MAX_TEXT))).is_ok());
         assert_eq!(
-            error_text(check_input(&labelled(&"l".repeat(MAX_TEXT + 1), "03"))),
+            error_text(check_input(&labelled(&"l".repeat(MAX_TEXT + 1)))),
             CHECKPOINT_TOO_LONG
         );
         assert_eq!(ok(list(&root, &dir)).len(), 1);
@@ -493,22 +658,10 @@ mod tests {
 
     #[test]
     fn never_thins_labelled_checkpoints_for_unlabelled_ones() {
-        let (_temp, root, dir) = store();
-        let named = ok(record(
-            &root,
-            &dir,
-            labelled("First draft", "00"),
-            None,
-            None,
-        ));
+        let (_temp, root, dir) = store_dir();
+        let named = some(record(&root, &dir, labelled("First draft"), at("00")));
         for n in 0..MAX_CHECKPOINTS + 20 {
-            ok(record(
-                &root,
-                &dir,
-                input("save", &format!("s{n}")),
-                None,
-                None,
-            ));
+            some(record(&root, &dir, input("save"), at(&format!("s{n}"))));
         }
         let listed = ok(list(&root, &dir));
         assert_eq!(listed.len(), MAX_CHECKPOINTS + 1);
@@ -528,14 +681,14 @@ mod tests {
             author: None,
             label: label.map(str::to_owned),
             description: None,
-            version: Some(format!("{n:04x}")),
-            seq: None,
+            version: format!("{n:04x}"),
+            state: format!("{n:064x}"),
+            size: 1,
             blobs: None,
-            available: true,
         };
         let mut checkpoints = vec![checkpoint(0, None)];
         checkpoints.extend((1..=MAX_LABELLED_CHECKPOINTS + 1).map(|n| checkpoint(n, Some("v"))));
-        thin(&mut checkpoints);
+        thin(&mut checkpoints, &LIMITS);
         assert_eq!(
             checkpoints.iter().filter(|c| c.is_labelled()).count(),
             MAX_LABELLED_CHECKPOINTS
@@ -552,18 +705,145 @@ mod tests {
     }
 
     #[test]
+    fn keeps_unlabelled_states_within_their_bytes() {
+        let (_temp, root, dir) = store_dir();
+        let limits = Limits {
+            unlabelled_bytes: 100,
+            large_state: 1000,
+            ..LIMITS
+        };
+        fn state<'a>(text: &'a [u8], version: &'a str) -> State<'a> {
+            State {
+                snapshot: text,
+                version,
+                blobs: None,
+            }
+        }
+        let forty = [b'a'; 40];
+        let named = some(record_within(
+            &root,
+            &dir,
+            labelled("Named"),
+            state(&[b'n'; 90], "n"),
+            &limits,
+        ));
+        let first = some(record_within(
+            &root,
+            &dir,
+            input("save"),
+            state(&forty, "1"),
+            &limits,
+        ));
+        // The same state again costs nothing more.
+        some(record_within(
+            &root,
+            &dir,
+            input("save"),
+            state(&forty, "2"),
+            &limits,
+        ));
+        let third = some(record_within(
+            &root,
+            &dir,
+            input("save"),
+            state(&[b'b'; 40], "3"),
+            &limits,
+        ));
+        assert_eq!(ok(list(&root, &dir)).len(), 4);
+        // 40 more bytes go past 100: the oldest unlabelled ones go until it fits; the labelled one stays.
+        let fourth = some(record_within(
+            &root,
+            &dir,
+            input("save"),
+            state(&[b'c'; 40], "4"),
+            &limits,
+        ));
+        let ids: Vec<String> = ok(list(&root, &dir)).into_iter().map(|c| c.id).collect();
+        assert_eq!(ids, vec![fourth.id, third.id, named.id]);
+        assert!(!ids.contains(&first.id));
+        // The newest one stays even when it alone is past the bytes.
+        let big = some(record_within(
+            &root,
+            &dir,
+            input("save"),
+            state(&[b'd'; 120], "5"),
+            &limits,
+        ));
+        let ids: Vec<String> = ok(list(&root, &dir)).into_iter().map(|c| c.id).collect();
+        assert_eq!(ids.first(), Some(&big.id));
+        assert_eq!(ids.len(), 2);
+    }
+
+    #[test]
+    fn records_a_large_state_unlabelled_only_at_saves() {
+        let (_temp, root, dir) = store_dir();
+        let limits = Limits {
+            large_state: 10,
+            ..LIMITS
+        };
+        let large = |version: &'static str| State {
+            snapshot: b"more than ten bytes",
+            version,
+            blobs: None,
+        };
+        assert_eq!(
+            ok(record_within(
+                &root,
+                &dir,
+                input("agent"),
+                large("1"),
+                &limits
+            )),
+            None
+        );
+        assert!(ok(list(&root, &dir)).is_empty());
+        assert!(
+            ok(record_within(
+                &root,
+                &dir,
+                input("save"),
+                large("2"),
+                &limits
+            ))
+            .is_some()
+        );
+        assert!(
+            ok(record_within(
+                &root,
+                &dir,
+                labelled("Named"),
+                large("3"),
+                &limits
+            ))
+            .is_some()
+        );
+        assert_eq!(
+            ok(record_within(
+                &root,
+                &dir,
+                input(KIT_ORIGIN),
+                large("4"),
+                &limits
+            )),
+            None
+        );
+        // A small state records at any origin.
+        assert!(ok(record_within(&root, &dir, input("agent"), at("5"), &limits)).is_some());
+        assert_eq!(ok(list(&root, &dir)).len(), 3);
+    }
+
+    #[test]
     fn a_label_at_the_newest_version_upgrades_that_checkpoint() {
-        let (_temp, root, dir) = store();
-        let saved = ok(record(&root, &dir, input("save", "01"), Some(1), None));
-        let named = ok(record(
+        let (_temp, root, dir) = store_dir();
+        let saved = some(record(&root, &dir, input("save"), at("01")));
+        let named = some(record(
             &root,
             &dir,
             CheckpointInput {
                 description: Some("Before the review".into()),
-                ..labelled("Draft", "01")
+                ..labelled("Draft")
             },
-            Some(1),
-            None,
+            at("01"),
         ));
         assert_eq!(named.id, saved.id);
         assert_eq!(
@@ -576,89 +856,21 @@ mod tests {
         );
         assert_eq!(ok(list(&root, &dir)), vec![named.clone()]);
         // Without a label, the same version answers the checkpoint unchanged.
-        assert_eq!(
-            ok(record(&root, &dir, input("save", "01"), None, None)),
-            named
-        );
-    }
-
-    #[test]
-    fn compares_versions_decoded_not_as_bytes() {
-        // One version of three actors as the engine's hash map ordered it and in the canonical
-        // order (crates/kition-kdm/tests/fixtures/version-bytes.json), and a later version.
-        let reordered = "0381808080808080108002ac020a0100";
-        let canonical = "030100ac020a81808080808080108002";
-        let later = "030100ac020c81808080808080108002";
-        assert!(decoded(canonical).is_some());
-        assert_eq!(decoded(canonical), decoded(reordered));
-        assert!(same_version(canonical, reordered));
-        assert!(!same_version(canonical, later));
-        assert!(same_version("not hex", "not hex"));
-        assert!(!same_version("not hex", "also not"));
-
-        // So a label at the newest version upgrades its checkpoint whichever encoder wrote either.
-        let (_temp, root, dir) = store();
-        let saved = ok(record(&root, &dir, input("save", reordered), None, None));
-        let named = ok(record(
-            &root,
-            &dir,
-            labelled("Draft", canonical),
-            None,
-            None,
-        ));
-        assert_eq!(named.id, saved.id);
-        assert_eq!(ok(list(&root, &dir)).len(), 1);
-        // And a write at a later version is a new checkpoint.
+        assert_eq!(some(record(&root, &dir, input("save"), at("01"))), named);
+        // Versions compare as the bytes they are: another version is another checkpoint.
         assert_ne!(
-            ok(record(&root, &dir, input("save", later), None, None)).id,
-            saved.id
+            some(record(&root, &dir, input("save"), at("01 "))).id,
+            named.id
         );
-    }
-
-    #[test]
-    fn a_new_lineage_keeps_labelled_checkpoints_as_unavailable() {
-        let (_temp, root, dir) = store();
-        let record_blobs = BlobRecord {
-            hashes: None,
-            bundle: Some("ab".into()),
-        };
-        ok(record(
-            &root,
-            &dir,
-            input("save", "01"),
-            Some(1),
-            Some(record_blobs.clone()),
-        ));
-        let named = ok(record(
-            &root,
-            &dir,
-            labelled("Draft", "02"),
-            Some(2),
-            Some(record_blobs),
-        ));
-        ok(new_lineage(&root, &dir));
-        let listed = ok(list(&root, &dir));
-        assert_eq!(listed.len(), 1);
-        assert_eq!(listed[0].id, named.id);
-        assert!(!listed[0].available);
-        assert_eq!((listed[0].seq, listed[0].blobs.clone()), (None, None));
-        assert!(ok(blob_records(&root, &dir)).is_empty());
-        // The new replica's checkpoint at the same version is a new one.
-        let fresh = ok(record(&root, &dir, labelled("Again", "02"), Some(1), None));
-        assert_ne!(fresh.id, named.id);
-        assert!(fresh.available);
-        // `available` is written only when false.
-        let text = ok(std::fs::read_to_string(dir.join(HISTORY_FILE)));
-        assert_eq!(text.matches("\"available\"").count(), 1);
     }
 
     #[test]
     fn lists_pages_newest_first() {
-        let (_temp, root, dir) = store();
-        let a = ok(record(&root, &dir, labelled("A", "01"), None, None));
-        let b = ok(record(&root, &dir, input("save", "02"), None, None));
-        let c = ok(record(&root, &dir, labelled("C", "03"), None, None));
-        let d = ok(record(&root, &dir, input("agent", "04"), None, None));
+        let (_temp, root, dir) = store_dir();
+        let a = some(record(&root, &dir, labelled("A"), at("01")));
+        let b = some(record(&root, &dir, input("save"), at("02")));
+        let c = some(record(&root, &dir, labelled("C"), at("03")));
+        let d = some(record(&root, &dir, input("agent"), at("04")));
         let ids = |page: (Vec<Checkpoint>, bool)| {
             (page.0.into_iter().map(|c| c.id).collect::<Vec<_>>(), page.1)
         };
@@ -702,26 +914,24 @@ mod tests {
 
     #[test]
     fn a_kit_updates_and_deletes_only_its_own_checkpoints() {
-        let (_temp, root, dir) = store();
-        let host = ok(record(
+        let (_temp, root, dir) = store_dir();
+        let host = some(record(
             &root,
             &dir,
             CheckpointInput {
-                label: Some("Restored".into()),
-                ..input("restore", "01")
+                label: Some("Saved".into()),
+                ..input("save")
             },
-            None,
-            None,
+            at("01"),
         ));
-        let own = ok(record(
+        let own = some(record(
             &root,
             &dir,
             CheckpointInput {
                 description: Some("first".into()),
-                ..labelled("Draft", "02")
+                ..labelled("Draft")
             },
-            None,
-            None,
+            at("02"),
         ));
         let rename = |label: Option<&str>, description: Option<&str>| Edit {
             label: label.map(str::to_owned),
@@ -766,8 +976,11 @@ mod tests {
         );
         assert_eq!(ok(find(&root, &dir, &own.id)), Some(cleared));
 
+        // A deleted checkpoint's state goes with it.
+        assert_eq!(state_files(&dir), 2);
         ok(delete(&root, &dir, &own.id));
         assert_eq!(ok(find(&root, &dir, &own.id)), None);
         assert_eq!(ok(list(&root, &dir)), vec![host]);
+        assert_eq!(state_files(&dir), 1);
     }
 }

@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "docId": "0193a5c4-0000-7000-8000-000000000002",
+    "kdm": 1,
+    "kit": "kit.content",
+    "schemaVersion": 1
+  },
+  "objects": {
+    "Z9": {
+      "$type": "Page",
+      "body": [
+        {
+          "insert": "😀 "
+        },
+        {
+          "attributes": {
+            "bold": true
+          },
+          "insert": "bold 𝄞"
+        }
+      ],
+      "box": null,
+      "count": null,
+      "done": null,
+      "image": null,
+      "kind": null,
+      "name": "Z",
+      "next": null,
+      "scale": null
+    },
+    "_m": {
+      "$type": "Page",
+      "body": [],
+      "box": null,
+      "count": null,
+      "done": null,
+      "image": null,
+      "kind": null,
+      "name": "m",
+      "next": null,
+      "scale": null
+    },
+    "a0": {
+      "$type": "Board",
+      "notes": "line1\nline2 😀",
+      "outline": [],
+      "pages": [
+        "Z9",
+        "_m"
+      ],
+      "title": "Tab\there \"quoted\" back\\slash 😀 é \u0001",
+      "vars": {
+        "B": 1,
+        "_": 2,
+        "a": 3,
+        "é": 4,
+        "ｚ": 5,
+        "😀": 6
+      }
+    }
+  }
+}

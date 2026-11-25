@@ -1,102 +1,71 @@
 // Copied from kition-sdk crates/kition-kdm/src/replica.rs by scripts/sync-kit-host.mjs; change it there, not here.
-use std::borrow::Cow;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::mem;
-use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use loro::event::Diff;
-use loro::{
-    Container, ContainerID, ContainerTrait, Counter, ExportMode, Frontiers, ID, IdSpan, Index, LoroDoc, LoroMap, LoroValue, PeerID, ToJson, TreeID,
-    TreeParentId, UndoItemMeta, UndoManager, ValueOrContainer, VersionRange, VersionVector,
-};
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
-use crate::error::{engine, importing};
-use crate::read::{self, BIRTH, BIRTH_ROOT, META, OBJECTS, SCHEMA_RAISES, SCHEMA_VERSION, SEAL, SEAL_VERSION};
-use crate::value::canonical;
-use crate::{ActorId, Changes, DocId, FieldKind, KDM_VERSION, KdmError, NodeRef, ObjectId, Origin, OriginKind, Result, Schema, TextRun, Tx, UndoScope};
+use crate::content::{self, ContentVersion};
+use crate::ids::new_lineage;
+use crate::read;
+use crate::store::op::{Change, Op, inverse_all};
+use crate::store::transform::through;
+use crate::store::{Field, Store};
+use crate::{ActorId, Changes, DocId, KDM_VERSION, KdmError, NodeRef, ObjectId, Origin, OriginKind, Result, Schema, TextRun, Tx, UndoScope};
 
-/// The origin given to the partial operations of a transaction the engine refused while applying
-/// it, and to their reversal, so the undo history never records either.
-const ROLLBACK: &str = "kdm-rollback";
-
-/// The engine's origin of its own undo and redo commits (loro 1.16.2), which the replica's own
-/// write-backs of registers also take. One scope's undo is, for the other scope's history, a
-/// change it did not make.
-const ENGINE_UNDO: &str = "undo";
-
-/// The commit origin of a transaction that only writes registers: the replica keeps its undo step
-/// itself ([`Part::Registers`]), so the engine's histories never record it.
-const REGISTER_STEP: &str = "kdm-registers";
-
-/// The undo steps a scope keeps; the oldest beyond go (the engine's default, which the replica's
-/// histories kept before they kept their own steps).
+/// The undo steps a scope keeps; the oldest beyond go.
 const MAX_STEPS: usize = 100;
 
-/// The engine's commit origin for a transaction of `kind`: the name of the undo scope it joins
-/// (M12a), or its kind when it is no undo step. Only the undo histories read it; it is local to the
-/// replica and never exported (the commit message carries the origin).
-fn commit_origin(kind: OriginKind) -> &'static str {
-    UndoScope::of(kind).map_or(kind.as_str(), UndoScope::as_str)
-}
+/// The changes a replica keeps in its log (plan 2026-11-24, section 1.7), and the bytes they may
+/// hold: the oldest go first beyond either.
+const LOG_CHANGES: usize = 10_000;
+const LOG_BYTES: usize = 64 << 20;
 
-/// A replica's version: the set of changes it contains. Exchanged to ask for what is missing.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Version(VersionVector);
+/// A replica's version (plan 2026-11-24, section 1.3): its line of changes (`lineage`) and how
+/// many changes of that line its state holds (`seq`). Two replicas at one version hold one state.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Version(Option<([u8; 16], u64)>);
 
 impl Version {
+    /// The version before everything: every version includes it.
     pub fn empty() -> Self {
-        Self(VersionVector::default())
+        Self(None)
     }
 
-    /// The version's canonical bytes: equal versions encode to the same bytes, here and in the
-    /// TypeScript KDM, so a host may compare and store them as they are (docs/platform/data-model.md,
-    /// "Version bytes"). The engine's own encoding writes its entries in the order of its hash
-    /// map, which two equal versions need not share. These are the same format, a postcard map
-    /// (an entry count, then each actor id and counter as varints, the counter zigzagged), with
-    /// the entries sorted by actor id; the engine decodes them, and they decode bytes it wrote.
+    /// The version's bytes: none for the empty version, else the 16 bytes of the lineage and
+    /// `seq` as 8 bytes big-endian. Equal versions are equal bytes.
     pub fn encode(&self) -> Vec<u8> {
-        let mut entries: Vec<(u64, i32)> = self.0.iter().map(|(actor, counter)| (*actor, *counter)).collect();
-        entries.sort_unstable();
-        let mut bytes = Vec::with_capacity(1 + entries.len() * 12);
-        varint(&mut bytes, entries.len() as u64);
-        for (actor, counter) in entries {
-            varint(&mut bytes, actor);
-            varint(&mut bytes, u64::from(((counter << 1) ^ (counter >> 31)) as u32));
+        match &self.0 {
+            None => Vec::new(),
+            Some((lineage, seq)) => [lineage.as_slice(), &seq.to_be_bytes()].concat(),
         }
-        bytes
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self> {
-        VersionVector::decode(bytes).map(Self).map_err(|error| KdmError::Encoding(error.to_string()))
+        if bytes.is_empty() {
+            return Ok(Self::empty());
+        }
+        let bad = || KdmError::Encoding(format!("a version is 0 or 24 bytes, not {}", bytes.len()));
+        let (lineage, seq) = bytes.split_first_chunk::<16>().ok_or_else(bad)?;
+        let seq: [u8; 8] = seq.try_into().map_err(|_| bad())?;
+        Ok(Self(Some((*lineage, u64::from_be_bytes(seq)))))
     }
 
-    /// Whether every change in `other` is in this version. Versions are partially ordered: of two
-    /// replicas that changed concurrently, neither version includes the other.
+    /// Whether this version holds every change `other` holds: `other` is empty, or on the same
+    /// line and not after this one.
     pub fn includes(&self, other: &Version) -> bool {
-        self.0.includes_vv(&other.0)
+        match (&self.0, &other.0) {
+            (_, None) => true,
+            (None, Some(_)) => false,
+            (Some((mine, seq)), Some((theirs, other_seq))) => mine == theirs && seq >= other_seq,
+        }
     }
-}
 
-/// `value` as an unsigned LEB128 varint, as postcard writes integers.
-fn varint(bytes: &mut Vec<u8>, mut value: u64) {
-    while value >= 0x80 {
-        bytes.push((value as u8) | 0x80);
-        value >>= 7;
+    fn at(lineage: [u8; 16], seq: u64) -> Self {
+        Self(Some((lineage, seq)))
     }
-    bytes.push(value as u8);
-}
-
-/// One change of a replica's history, as [`Replica::history_since`] lists it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HistoryChange {
-    /// Who made it and why; `None` for a change whose commit message is not a KDM origin.
-    pub origin: Option<Origin>,
-    /// The version the change makes with every change it depends on: [`Replica::fork_at`] it
-    /// reads the state just after the change.
-    pub version: Version,
 }
 
 /// One node of a tree field, as [`Replica::tree`] lists it.
@@ -109,50 +78,6 @@ pub struct TreeEntry {
     pub parent: Option<NodeRef>,
 }
 
-/// One copy of one document.
-///
-/// Unlike the TypeScript `Replica`, this one has no `clear_redo`.
-pub struct Replica {
-    doc: LoroDoc,
-    doc_id: DocId,
-    schema: Arc<Schema>,
-    actor: ActorId,
-    undo: Histories,
-    /// Set between [`Replica::begin_undo_group`] and [`Replica::end_undo_group`].
-    grouping: bool,
-    changed: Changes,
-    /// For each replica whose changes an import could not apply yet, the counter just past the
-    /// last of them. They are applied (and no longer pending) once [`Replica::version`] reaches it.
-    pending: HashMap<PeerID, Counter>,
-    /// Registers an import changed: the candidates for another replica's later write, which an
-    /// undo or redo must keep (M12). Pruned at each undo and redo.
-    imported_registers: HashSet<Register>,
-    /// Registers an undo or redo put back to another replica's value, with that value: still that
-    /// replica's write for the next undo or redo, though this replica wrote it last.
-    kept_registers: HashMap<Register, Option<LoroValue>>,
-    /// The value this replica last wrote to each register (`None`: deleted it). Another replica's
-    /// later write of the same value is not a change an undo must keep (a script's own undo that
-    /// puts back this replica's value, for instance).
-    own_registers: HashMap<Register, Option<LoroValue>>,
-    /// The undo scope of this replica's last write to each register (`None`: a `system` or
-    /// `import` transaction), with the value written. An undo in one scope keeps the value another
-    /// scope wrote later, as it keeps another replica's (M12a). Pruned at each undo and redo.
-    local_writes: HashMap<Register, (Option<UndoScope>, Option<LoroValue>)>,
-    /// The content snapshot this replica was loaded from, with its version: what
-    /// [`Replica::sealed_content_snapshot`] answers while the replica is still at that version.
-    /// The engine encodes a reloaded document's version vectors in another order, so its own export
-    /// of the same version is the same document but not the same bytes.
-    loaded_content: Option<(Version, Vec<u8>)>,
-}
-
-/// A register: one key of a map container inside an object (a register field, or one key of a
-/// `map` field).
-type Register = (ContainerID, String);
-
-/// A register whose current value an undo or redo must keep, with that value and who wrote it:
-/// another replica (`None`), or another scope of this one (`Some`).
-type LaterWrite = (Register, Option<LoroValue>, Option<Option<UndoScope>>);
-
 /// Objects and fields written by one undo step. `fields: None` holds the whole object
 /// (creation or deletion); an empty set holds its existence and placement only.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -163,8 +88,7 @@ pub struct UndoTouch {
 
 /// Merges `more` into `into`, which holds one touch per object sorted by id (and still does
 /// afterwards): a touch of an object `into` holds adds its fields, or holds the whole object
-/// (`fields: None`) when either does. Costs O(n + m log m) for `n` held and `m` more touches, so a
-/// transaction that writes every record of a large table merges in one pass.
+/// (`fields: None`) when either does.
 pub(crate) fn merge_undo_touches(into: &mut Vec<UndoTouch>, more: &[UndoTouch]) {
     fn add(held: &mut UndoTouch, touch: &UndoTouch) {
         match (&mut held.fields, &touch.fields) {
@@ -193,15 +117,137 @@ pub(crate) fn merge_undo_touches(into: &mut Vec<UndoTouch>, more: &[UndoTouch]) 
     *into = merged;
 }
 
+/// The operations of one change as the log and the undo history hold them: shared, and, for an
+/// undo or redo that took back a change exactly, that change's operations read backwards.
+#[derive(Clone, Debug)]
+struct Ops {
+    ops: Arc<Vec<Op>>,
+    /// The change is the inverse of `ops`.
+    inverted: bool,
+}
+
+impl Ops {
+    fn plain(ops: Vec<Op>) -> Self {
+        Self { ops: Arc::new(ops), inverted: false }
+    }
+
+    /// The change's operations, in the order they applied.
+    fn forward(&self) -> Vec<Op> {
+        if self.inverted { inverse_all(self.ops.iter()) } else { self.ops.as_ref().clone() }
+    }
+
+    /// The operations that take the change back.
+    fn backward(&self) -> Vec<Op> {
+        if self.inverted { self.ops.as_ref().clone() } else { inverse_all(self.ops.iter()) }
+    }
+
+    fn inverse(&self) -> Self {
+        Self { ops: Arc::clone(&self.ops), inverted: !self.inverted }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.ops.is_empty()
+    }
+}
+
+/// One change of the log.
+#[derive(Clone, Debug)]
+struct Entry {
+    seq: u64,
+    actor: ActorId,
+    origin: Origin,
+    schema_version: u32,
+    ops: Ops,
+    /// About the memory it holds, for the log's limit.
+    size: usize,
+}
+
+/// The changes of this session, oldest first (plan 2026-11-24, section 1.7).
+#[derive(Clone, Debug, Default)]
+struct Log {
+    /// The version's `seq` before the first entry.
+    base: u64,
+    entries: VecDeque<Entry>,
+    bytes: usize,
+}
+
+impl Log {
+    fn starting_at(base: u64) -> Self {
+        Self { base, entries: VecDeque::new(), bytes: 0 }
+    }
+
+    fn push(&mut self, entry: Entry) {
+        self.bytes += entry.size;
+        self.entries.push_back(entry);
+        while self.entries.len() > LOG_CHANGES || (self.bytes > LOG_BYTES && self.entries.len() > 1) {
+            let Some(first) = self.entries.pop_front() else { break };
+            self.bytes -= first.size;
+            self.base = first.seq;
+        }
+    }
+
+    /// Whether the log holds every change after `seq`.
+    fn covers(&self, seq: u64) -> bool {
+        seq >= self.base
+    }
+
+    fn after(&self, seq: u64) -> impl Iterator<Item = &Entry> {
+        self.entries.iter().filter(move |entry| entry.seq > seq)
+    }
+
+    fn get(&self, seq: u64) -> Option<&Entry> {
+        seq.checked_sub(self.base + 1).and_then(|at| usize::try_from(at).ok()).and_then(|at| self.entries.get(at)).filter(|entry| entry.seq == seq)
+    }
+
+    /// Drops the entries after `seq`.
+    fn truncate(&mut self, seq: u64) {
+        while self.entries.back().is_some_and(|entry| entry.seq > seq) {
+            if let Some(last) = self.entries.pop_back() {
+                self.bytes -= last.size;
+            }
+        }
+    }
+}
+
+/// About the memory a change's operations hold.
+fn size_of_ops(ops: &[Op]) -> usize {
+    ops.iter()
+        .map(|op| {
+            192 + match op {
+                Op::TextInsert { text, .. } => text.len(),
+                Op::TextDelete { was, .. } => was.iter().map(|run| run.insert.len() + 32).sum(),
+                Op::Create { object, .. } => 64 * object.fields().count(),
+                Op::Delete { was: Some(object), .. } => 64 * object.fields().count(),
+                _ => 0,
+            }
+        })
+        .sum()
+}
+
+/// One copy of one document.
+pub struct Replica {
+    store: Store,
+    schema: Arc<Schema>,
+    actor: ActorId,
+    lineage: [u8; 16],
+    seq: u64,
+    log: Log,
+    undo: Histories,
+    /// Set between [`Replica::begin_undo_group`] and [`Replica::end_undo_group`].
+    grouping: bool,
+    changed: Changes,
+    /// The newest schema version a change this replica applied was written under (rule M5a).
+    author_schema: Option<u32>,
+}
+
 impl Replica {
     /// A new, empty document. Only one replica creates a document; others [`Replica::load`] it.
     pub fn create(schema: Arc<Schema>, doc_id: DocId, actor: ActorId) -> Result<Self> {
         Self::create_with(schema, doc_id, actor, &Origin::system("create"), |_| Ok(())).map(|(replica, ())| replica)
     }
 
-    /// A new document whose initial content `build` writes in the creating commit, before undo
-    /// history starts: file imports and other bulk builds. Undo bookkeeping grows faster than
-    /// linearly with a transaction's size, so bulk content must not go through [`Replica::transact`].
+    /// A new document whose initial content `build` writes before the change log and undo
+    /// history start: file imports and other bulk builds.
     pub fn create_with<R>(
         schema: Arc<Schema>,
         doc_id: DocId,
@@ -209,109 +255,73 @@ impl Replica {
         origin: &Origin,
         build: impl FnOnce(&mut Tx<'_>) -> Result<R>,
     ) -> Result<(Self, R)> {
-        let doc = LoroDoc::new();
-        doc.set_peer_id(actor.get()).map_err(engine)?;
-        crate::marks::configure(&doc, &schema);
-        // Written before `build` runs, so its transaction reads the document's schema version.
-        let meta = doc.get_map(META);
-        meta.insert("docId", doc_id.to_string()).map_err(engine)?;
-        meta.insert("kit", schema.kit.clone()).map_err(engine)?;
-        meta.insert(SCHEMA_VERSION, i64::from(schema.schema_version)).map_err(engine)?;
-        meta.insert("kdm", i64::from(KDM_VERSION)).map_err(engine)?;
-        let (value, staged) = {
-            let mut tx = Tx::new(&doc, &schema);
+        let mut store = Store::new(doc_id, schema.kit.clone(), u64::from(schema.schema_version));
+        let (value, ops) = {
+            let mut tx = Tx::new(&store, &schema);
             let value = build(&mut tx)?;
             (value, tx.finish())
         };
-        // The new document is discarded on failure, so nothing needs reverting.
-        staged.apply(&doc, &schema).map_err(applying_failed)?;
-        doc.set_next_commit_origin(commit_origin(origin.kind));
-        doc.set_next_commit_message(&origin.encode_commit(schema.schema_version));
-        doc.commit();
-        Ok((Self::attach(doc, doc_id, schema, actor)?, value))
+        if ops.iter().any(|op| matches!(op, Op::SchemaVersion { .. })) && origin.kind != OriginKind::System {
+            return Err(raise_refused(origin));
+        }
+        store.apply_all(ops, &schema).map_err(applying_failed)?;
+        let author = schema.schema_version;
+        let mut replica = Self::attach(store, schema, actor, new_lineage(), 0);
+        replica.author_schema = Some(author);
+        Ok((replica, value))
     }
 
-    /// Opens a snapshot (or a full change export) as a new writable replica of `actor`. Refuses
-    /// ([`KdmError::Schema`]) a document of another kit or of another KDM version, and
-    /// ([`KdmError::NewerSchema`]) one whose minimum schema version (rule M20) is newer than
-    /// `schema`'s.
-    ///
-    /// A snapshot holds the changes its replica applied, not those still pending on it (see
-    /// [`Replica::has_pending_changes`]): the loaded replica has none pending, and fetches those
-    /// changes again when it syncs.
+    fn attach(store: Store, schema: Arc<Schema>, actor: ActorId, lineage: [u8; 16], seq: u64) -> Self {
+        Self {
+            store,
+            schema,
+            actor,
+            lineage,
+            seq,
+            log: Log::starting_at(seq),
+            undo: Histories::default(),
+            grouping: false,
+            changed: Changes::default(),
+            author_schema: None,
+        }
+    }
+
+    /// Opens content (a file's `content.json`, on a new line of changes) or a snapshot (the
+    /// version it holds) as a writable replica of `actor`. Refuses ([`KdmError::Schema`]) a
+    /// document of another kit or of another KDM version, ([`KdmError::NewerSchema`]) one whose
+    /// minimum schema version (rule M20) is newer than `schema`'s, and ([`KdmError::Encoding`])
+    /// bytes that are not content.
     pub fn load(schema: Arc<Schema>, bytes: &[u8], actor: ActorId) -> Result<Self> {
-        let whole = bytes;
-        let (doc_id, bytes) = envelope::open(bytes)?;
-        let doc = LoroDoc::new();
-        crate::marks::configure(&doc, &schema);
-        let status = doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        let meta = |key: &str| match doc.get_map(META).get(key) {
-            Some(ValueOrContainer::Value(value)) => value.to_json_value(),
-            _ => Value::Null,
+        let value = content::parse(bytes, "KDM content")?;
+        if value.get("changes").is_some() {
+            return Err(KdmError::Encoding("not a snapshot: these are changes only (load a snapshot or content)".into()));
+        }
+        let content = content::decode_value(value)?;
+        let store = Self::checked_store(&schema, &content)?;
+        let (lineage, seq, author) = match content.version {
+            Some(version) => (version.lineage, version.seq, version.author_schema_version.and_then(|author| u32::try_from(author).ok())),
+            None => (new_lineage(), 0, None),
         };
-        let kit = meta("kit");
-        if kit.is_null() {
-            return Err(KdmError::Encoding("not a snapshot: meta.kit is missing (load a snapshot or a full export, not changes only)".into()));
-        }
-        if kit.as_str() != Some(schema.kit.as_str()) {
-            return Err(KdmError::Schema(format!("the document belongs to {kit}, not `{}`", schema.kit)));
-        }
-        let kdm = meta("kdm");
-        if kdm.as_u64() != Some(u64::from(KDM_VERSION)) {
-            return Err(KdmError::Schema(format!("the document uses kdm {kdm}; this build reads {KDM_VERSION}")));
-        }
-        match read::min_schema_version(&doc) {
-            Some(found) if found <= u64::from(schema.schema_version) => {}
-            Some(found) => return Err(KdmError::NewerSchema { found, reads: schema.schema_version }),
-            None => {
-                return Err(KdmError::Schema(format!(
-                    "the document has schema version {}; this kit reads schema versions up to {}",
-                    meta(SCHEMA_VERSION),
-                    schema.schema_version
-                )));
-            }
-        }
-        // The envelope and the document must agree; anything else is corrupt or forged bytes.
-        if meta("docId").as_str().map(DocId::parse).and_then(std::result::Result::ok) != Some(doc_id) {
-            return Err(KdmError::Encoding(format!("the bytes are labelled as document {doc_id}, but hold another")));
-        }
-        let mut replica = Self::attach(doc, doc_id, schema, actor)?;
-        replica.note_pending(status.pending.as_ref());
-        // Content bytes (a shallow snapshot rooted at its own seal, with no change after it) are
-        // what this replica's content is while it stays at their version.
-        if replica.is_shallow()
-            && !replica.has_pending_changes()
-            && replica.is_sealed()
-            && replica.doc.shallow_since_frontiers() == replica.doc.oplog_frontiers()
-        {
-            replica.loaded_content = Some((replica.version(), whole.to_vec()));
-        }
+        let mut replica = Self::attach(store, schema, actor, lineage, seq);
+        replica.author_schema = author;
         Ok(replica)
     }
 
-    fn attach(doc: LoroDoc, doc_id: DocId, schema: Arc<Schema>, actor: ActorId) -> Result<Self> {
-        read::check_projected_storage(&doc, &schema)?;
-        doc.set_peer_id(actor.get()).map_err(engine)?;
-        let undo = Histories::new(&doc);
-        Ok(Self {
-            doc,
-            doc_id,
-            schema,
-            actor,
-            undo,
-            grouping: false,
-            changed: Changes::default(),
-            pending: HashMap::new(),
-            imported_registers: HashSet::new(),
-            kept_registers: HashMap::new(),
-            own_registers: HashMap::new(),
-            local_writes: HashMap::new(),
-            loaded_content: None,
-        })
+    /// The store of `content`, checked against `schema`.
+    fn checked_store(schema: &Schema, content: &content::Content) -> Result<Store> {
+        if content.kit != schema.kit {
+            return Err(KdmError::Schema(format!("the document belongs to \"{}\", not `{}`", content.kit, schema.kit)));
+        }
+        if content.schema_version > u64::from(schema.schema_version) {
+            return Err(KdmError::NewerSchema { found: content.schema_version, reads: schema.schema_version });
+        }
+        let store = Store::from_content(content, schema)?;
+        read::check_projected_storage(&store, schema)?;
+        Ok(store)
     }
 
     pub fn doc_id(&self) -> DocId {
-        self.doc_id
+        self.store.doc_id
     }
 
     pub fn actor(&self) -> ActorId {
@@ -323,146 +333,76 @@ impl Replica {
     }
 
     pub fn version(&self) -> Version {
-        Version(self.doc.oplog_vv())
+        Version::at(self.lineage, self.seq)
     }
 
     /// The document's minimum schema version (rule M20): the version it was created with, or the
-    /// largest one a transaction raised it to ([`Tx::raise_schema_version`]). Never more than
-    /// this replica's schema version: loads and imports refuse such documents.
+    /// largest one a transaction raised it to ([`Tx::raise_schema_version`]).
     pub fn min_schema_version(&self) -> u32 {
-        read::min_schema_version(&self.doc).and_then(|found| u32::try_from(found).ok()).unwrap_or(0)
+        u32::try_from(self.store.schema_version).unwrap_or(u32::MAX)
     }
 
-    /// The newest schema version any change of this replica was written under (rule M5a: every
-    /// commit records its author's schema version), or `None` when no change records one (they
-    /// all predate the rule). A version above this replica's schema means someone edits the
-    /// document with a newer kit: objects of types this schema lacks read as their `$type` only
-    /// and refuse edits here ([`KdmError::UnknownType`]), and a host asks the person to update the
-    /// kit. A shallow replica (rule M16a) sees only the changes after its root.
+    /// The newest schema version a change this replica applied in this session was written under
+    /// (rule M5a: every change records its author's schema version), or `None` before any. A
+    /// version above this replica's schema means someone edits the document with a newer kit.
     pub fn author_schema_version(&self) -> Option<u32> {
-        let start = self.doc.shallow_since_vv();
-        let mut newest = None;
-        for (peer, end) in self.doc.oplog_vv().iter() {
-            let mut counter = start.get(peer).copied().unwrap_or(0);
-            while counter < *end {
-                let Some(change) = self.doc.get_change(loro::ID::new(*peer, counter)) else { break };
-                let version = change.message.as_deref().and_then(Origin::decode_commit).and_then(|(_, version)| version);
-                newest = newest.max(version);
-                let next = change.id.counter.saturating_add(i32::try_from(change.len).unwrap_or(i32::MAX));
-                if next <= counter {
-                    break;
-                }
-                counter = next;
-            }
-        }
-        newest
+        self.author_schema
     }
 
-    /// Runs `f` as one transaction: one commit, one undo step (of its origin's scope, M12a), one origin. Operations are staged
-    /// while `f` runs and applied only if it succeeds: if `f` fails, the document, its version,
-    /// and its exports are unchanged and the error is returned.
+    /// Runs `f` as one transaction: one change, one undo step (of its origin's scope, M12a), one
+    /// origin. Operations are staged while `f` runs and applied only if it succeeds: if `f` fails,
+    /// the document, its version, and its exports are unchanged and the error is returned.
     pub fn transact<R>(&mut self, origin: &Origin, f: impl FnOnce(&mut Tx<'_>) -> Result<R>) -> Result<R> {
         let schema = Arc::clone(&self.schema);
-        let (value, staged) = {
-            let mut tx = Tx::new(&self.doc, &schema);
+        let (value, ops) = {
+            let mut tx = Tx::new(&self.store, &schema);
             let value = f(&mut tx)?;
             (value, tx.finish())
         };
-        if staged.is_empty() {
+        if ops.is_empty() {
             return Ok(value);
         }
-        if staged.raises_schema() && origin.kind != OriginKind::System {
-            return Err(KdmError::InvalidValue {
-                ty: "$meta".into(),
-                field: "schemaVersion".into(),
-                reason: format!("is raised only in a `system` transaction, not `{}`", origin.kind.as_str()),
-            });
+        if ops.iter().any(|op| matches!(op, Op::SchemaVersion { .. })) && origin.kind != OriginKind::System {
+            return Err(raise_refused(origin));
         }
-        let before = self.doc.state_frontiers();
-        let scope = UndoScope::of(origin.kind);
-        // A transaction that only writes registers is an undo step the replica keeps itself: it
-        // writes back the values noted here, and never asks the engine for them (the engine's undo
-        // looks each one up in the document's history).
-        let (writes, entries) = match scope.and_then(|_| staged.register_step(&self.doc)) {
-            Some((writes, entries)) => (writes, Some(entries)),
-            None => (staged.register_writes(&self.doc), None),
-        };
-        let touches = staged.undo_touches(&self.doc, &schema);
-        let changes = staged.changes();
-        if let Err(error) = staged.apply(&self.doc, &schema) {
-            // Validation should have made this impossible: an operation the overlay accepted was
-            // refused by the engine, so this is a validation bug. Some operations may already be
-            // applied and the engine cannot abort, so they are committed and reverted. Both
-            // commits reach other replicas, and the reversal can overwrite a collaborator's
-            // concurrent edits to the same fields; that is the cost of this last-resort path.
-            self.doc.set_next_commit_origin(ROLLBACK);
-            self.doc.commit();
-            if self.doc.state_frontiers() != before {
-                self.doc.revert_to(&before).map_err(engine)?;
-                self.doc.set_next_commit_origin(ROLLBACK);
-                self.doc.set_next_commit_message(&Origin::system("rollback").encode_commit(self.schema.schema_version));
-                self.doc.commit();
-            }
-            return Err(applying_failed(error));
+        let applied = self.store.apply_all(ops, &schema).map_err(applying_failed)?;
+        let touches = UndoScope::of(origin.kind).map(|_| touches_of(&applied));
+        self.changed.extend(changes_of(&applied));
+        let ops = Ops::plain(applied);
+        let seq = self.commit(origin, ops.clone(), self.schema.schema_version);
+        if let (Some(scope), Some(touches)) = (UndoScope::of(origin.kind), touches) {
+            self.undo.record(scope, Part { seq, ops }, touches, self.grouping);
         }
-        self.doc.set_next_commit_origin(if entries.is_some() { REGISTER_STEP } else { commit_origin(origin.kind) });
-        self.doc.set_next_commit_message(&origin.encode_commit(self.schema.schema_version));
-        match (scope, entries) {
-            (Some(scope), Some(entries)) => {
-                self.doc.commit();
-                if !entries.is_empty() {
-                    self.undo.record(scope, Part::Registers(entries), touches, self.grouping);
-                }
-            }
-            (Some(scope), None) => {
-                let last = self.prepare_engine_step(scope);
-                self.doc.commit();
-                self.note_engine_step(scope, last, touches);
-            }
-            (None, _) => self.doc.commit(),
-        }
-        self.changed.extend(changes);
-        self.note_own_writes(writes, scope);
         Ok(value)
     }
 
-    /// Before a commit that is a step of `scope` the engine's history records ([`Part::Engine`]):
-    /// the engine keeps as many steps as the replica's history refers to, and this one. Answers
-    /// the last serial given to an engine step, for [`Replica::note_engine_step`].
-    fn prepare_engine_step(&mut self, scope: UndoScope) -> i64 {
-        let history = self.undo.of(scope);
-        let items = history.engine_items();
-        history.engine.set_max_undo_steps(items + 1);
-        self.undo.serial.load(Ordering::Relaxed)
-    }
-
-    /// After that commit: notes the step the engine recorded for it, if any (a commit that
-    /// changed nothing is no step).
-    fn note_engine_step(&mut self, scope: UndoScope, last: i64, touches: Vec<UndoTouch>) {
-        if let Some(serial) = history_serial(self.undo.get(scope).engine.top_undo_value()).filter(|serial| *serial > last) {
-            self.undo.record(scope, Part::Engine(serial), touches, self.grouping);
+    /// Logs an applied change as the next one; answers its `seq`.
+    fn commit(&mut self, origin: &Origin, ops: Ops, schema_version: u32) -> u64 {
+        self.seq += 1;
+        let size = if ops.inverted { 96 } else { 96 + size_of_ops(&ops.ops) };
+        self.author_schema = self.author_schema.max(Some(schema_version));
+        let base = self.log.base;
+        self.log.push(Entry { seq: self.seq, actor: self.actor, origin: origin.clone(), schema_version, ops, size });
+        if self.log.base != base {
+            self.undo.drop_before(self.log.base);
         }
+        self.seq
     }
 
     pub fn exists(&self, id: &ObjectId) -> bool {
-        read::object_map(&self.doc, id).is_ok()
-    }
-
-    /// Whether the engine holds its index of the history for checkouts ([`crate::testing`]).
-    pub(crate) fn engine_history_cached(&self) -> bool {
-        self.doc.has_history_cache()
+        self.store.contains(id)
     }
 
     pub fn object_type(&self, id: &ObjectId) -> Result<String> {
-        read::object_type(&self.doc, id)
+        read::object_type(&self.store, id)
     }
 
     pub fn get(&self, id: &ObjectId, field: &str) -> Result<Value> {
-        read::register(&self.doc, &self.schema, id, field)
+        read::register(&self.store, &self.schema, id, field)
     }
 
     pub fn text(&self, id: &ObjectId, field: &str) -> Result<String> {
-        Ok(read::text(&self.doc, &self.schema, id, field)?.map(|text| text.to_string()).unwrap_or_default())
+        Ok(read::text(&self.store, &self.schema, id, field)?.map(|text| text.string()).unwrap_or_default())
     }
 
     /// A text field as runs of characters with equal marks (rule M19), in order: adjacent runs
@@ -470,157 +410,236 @@ impl Replica {
     /// that declares no marks reads as one unmarked run (none when empty). Positions are counted
     /// in Unicode scalar values (`insert.chars().count()`).
     pub fn text_delta(&self, id: &ObjectId, field: &str) -> Result<Vec<TextRun>> {
-        read::text_runs(&self.doc, &self.schema, id, field)
+        read::text_runs(&self.store, &self.schema, id, field)
     }
 
     pub fn list(&self, id: &ObjectId, field: &str) -> Result<Vec<ObjectId>> {
-        Ok(read::list(&self.doc, &self.schema, id, field)?.map(|list| read::list_items(&list)).transpose()?.unwrap_or_default())
+        Ok(read::list(&self.store, &self.schema, id, field)?.to_vec())
     }
 
     /// One key of a map field, or `null`.
     pub fn map_get(&self, id: &ObjectId, field: &str, key: &str) -> Result<Value> {
-        Ok(read::map(&self.doc, &self.schema, id, field)?.map_or(Value::Null, |map| read::map_value(&map, key)))
+        Ok(read::map(&self.store, &self.schema, id, field)?.and_then(|entries| entries.get(key)).cloned().unwrap_or(Value::Null))
     }
 
     /// A map field's keys and values, sorted by key (code point order, as in the canonical state).
-    /// Each value reads as [`Replica::map_get`] reads it. Reads the whole map.
     pub fn map_entries(&self, id: &ObjectId, field: &str) -> Result<Vec<(String, Value)>> {
-        Ok(read::map(&self.doc, &self.schema, id, field)?.map(|map| read::map_entries(&map)).unwrap_or_default())
+        Ok(read::map(&self.store, &self.schema, id, field)?
+            .map(|entries| entries.iter().map(|(key, value)| (key.clone(), value.clone())).collect())
+            .unwrap_or_default())
     }
 
     /// The tree's nodes in pre-order (each parent before its children, siblings in order). A node
-    /// that names no object is skipped with its subtree, as in [`Replica::state_json`]; so is one
-    /// naming a deleted object, which the state keeps.
+    /// naming an object the document does not hold is skipped with its subtree, as in
+    /// [`Replica::state_json`].
     pub fn tree(&self, id: &ObjectId, field: &str) -> Result<Vec<TreeEntry>> {
         let mut out = Vec::new();
-        let Some(tree) = read::tree(&self.doc, &self.schema, id, field)? else { return Ok(out) };
-        let mut stack: Vec<(TreeID, Option<NodeRef>)> = Vec::new();
-        let push_children = |stack: &mut Vec<(TreeID, Option<NodeRef>)>, parent: TreeParentId, parent_ref: Option<NodeRef>| {
-            for node in tree.children(parent).unwrap_or_default().into_iter().rev() {
-                stack.push((node, parent_ref.clone()));
+        let Some(tree) = read::tree(&self.store, &self.schema, id, field)? else { return Ok(out) };
+        let mut stack: Vec<(&ObjectId, Option<NodeRef>)> = tree.children(None).iter().rev().map(|node| (node, None)).collect();
+        while let Some((node, parent)) = stack.pop() {
+            if !self.store.contains(node) {
+                continue;
             }
-        };
-        push_children(&mut stack, TreeParentId::Root, None);
-        while let Some((id, parent)) = stack.pop() {
-            // A node naming no object, or a deleted one, is skipped with its subtree.
-            let Some(object) = read::node_object(&tree, id).filter(|object| self.exists(object)) else { continue };
-            let node = NodeRef::committed(id);
-            out.push(TreeEntry { node: node.clone(), object, parent });
-            push_children(&mut stack, TreeParentId::Node(id), Some(node));
+            let handle = NodeRef(node.clone());
+            stack.extend(tree.children(Some(node)).iter().rev().map(|child| (child, Some(handle.clone()))));
+            out.push(TreeEntry { node: handle, object: node.clone(), parent });
         }
         Ok(out)
     }
 
-    /// Ids of the objects of type `ty`, sorted. One pass over the objects, so it suits large
-    /// documents; it costs O(objects) per call.
+    /// Ids of the objects of type `ty`, sorted. One pass over the objects.
     pub fn objects_of_type(&self, ty: &str) -> Vec<ObjectId> {
-        read::objects_of_type(&self.doc, ty)
+        read::objects_of_type(&self.store, ty)
     }
 
     /// Every object's id by its type, in one pass: [`Replica::objects_of_type`] for all types.
     pub(crate) fn objects_by_type(&self) -> std::collections::HashMap<String, Vec<ObjectId>> {
-        read::objects_by_type(&self.doc)
+        read::objects_by_type(&self.store)
     }
 
-    /// The changes this replica has that a replica at `since` lacks.
-    /// Exported bytes carry this document's id; see [`Replica::import_changes`].
-    ///
-    /// With `Version::empty()` (every change) the bytes always [`Replica::load`] as this document.
-    /// A shallow replica (rule M16a) has no changes before its root, so for a `since` that does
-    /// not reach its root (the empty version above all) it answers its snapshot: its state at the
-    /// root with every change after it, which loads as a shallow replica with the same root and
-    /// imports into any replica that has the root, as these changes would. On a full replica, and
-    /// for a `since` at or after the root, the bytes are the changes alone.
+    /// The changes a replica at `since` lacks (plan 2026-11-24, section 1.4): none when `since`
+    /// is this version or ahead of it on its line; the changes after it, in order, when `since` is
+    /// on this replica's line and in its log; otherwise a snapshot ([`Replica::snapshot`]). The bytes carry the document's
+    /// id; see [`Replica::import_changes`].
     pub fn export_changes(&self, since: &Version) -> Result<Vec<u8>> {
-        if !self.reaches_root(since) {
-            return self.snapshot();
+        match &since.0 {
+            Some((lineage, seq)) if *lineage == self.lineage && *seq <= self.seq && self.log.covers(*seq) => self.changes_bytes(*seq),
+            // Ahead on this line: this replica has nothing that one lacks.
+            Some((lineage, seq)) if *lineage == self.lineage && *seq > self.seq => self.changes_bytes(self.seq),
+            _ => self.snapshot(),
         }
-        let bytes = self.doc.export(ExportMode::updates(&since.0)).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        Ok(envelope::wrap(self.doc_id, bytes))
     }
 
-    /// Applies changes from another replica or from storage, in any order, any number of times.
-    /// Answers the objects whose state changed.
-    /// Bytes that are not a KDM export are [`KdmError::Encoding`]; changes of another document are
-    /// [`KdmError::WrongDocument`] and change nothing. On a shallow replica, changes that depend on
-    /// history before its root (made by a replica that had not seen the root yet) are
-    /// [`KdmError::HistoryMissing`] and change nothing; see [`Replica::rebase`].
+    /// The changes after `seq` (in the log) as bytes.
+    fn changes_bytes(&self, seq: u64) -> Result<Vec<u8>> {
+        let changes: Vec<Value> = self
+            .log
+            .after(seq)
+            .map(|entry| {
+                Change { seq: entry.seq, actor: entry.actor, origin: entry.origin.clone(), schema_version: entry.schema_version, ops: entry.ops.forward() }
+                    .to_json()
+            })
+            .collect();
+        let after_actor = self.log.get(seq).map_or(Value::Null, |entry| Value::String(format!("{:016x}", entry.actor.get())));
+        let bytes = serde_json::to_vec(&json!({
+            "kdm": KDM_VERSION,
+            "docId": self.store.doc_id.to_string(),
+            "lineage": Uuid::from_bytes(self.lineage).to_string(),
+            "after": { "seq": seq, "actor": after_actor },
+            "changes": changes,
+        }))
+        .map_err(|error| KdmError::Encoding(error.to_string()))?;
+        Ok(bytes)
+    }
+
+    /// Applies another replica's changes or snapshot (plan 2026-11-24, section 1.4) and answers
+    /// the objects whose state changed.
     ///
-    /// Changes that raise the document's minimum schema version (rule M20) above this replica's
-    /// schema are [`KdmError::NewerSchema`] and change nothing: the state, the version, the
-    /// exports, and the changes still pending are as before the import. The engine cannot check
-    /// changes without applying them, so the replica is rebuilt from its history before the
-    /// import; that clears its undo and redo history.
+    /// Changes: those this replica has already are skipped, so importing twice is harmless; the
+    /// first new one must follow this replica's version, else [`KdmError::Stale`] and nothing
+    /// changes, as when an operation's precondition does not hold. Each operation is checked
+    /// against the schema as a transaction's is (a field used as another kind, a value a
+    /// transaction refuses, an item of another type): a refusal is the transaction's error
+    /// ([`KdmError::InvalidValue`]) and the whole import is refused. A snapshot replaces the state
+    /// when it is on this replica's line and not behind it (or when this replica has applied no
+    /// change yet), else [`KdmError::Stale`]. Bytes that are neither are [`KdmError::Encoding`];
+    /// another document's are [`KdmError::WrongDocument`]; changes that raise the minimum schema
+    /// version above this replica's schema are [`KdmError::NewerSchema`]. A refused import changes
+    /// nothing.
     pub fn import_changes(&mut self, bytes: &[u8]) -> Result<BTreeSet<ObjectId>> {
-        let (doc_id, bytes) = envelope::open(bytes)?;
-        if doc_id != self.doc_id {
-            return Err(KdmError::WrongDocument { expected: self.doc_id.to_string(), found: doc_id.to_string() });
+        let value = content::parse(bytes, "KDM changes")?;
+        let doc_id = value.get("docId").and_then(Value::as_str).ok_or_else(|| KdmError::Encoding("not KDM changes: no `docId`".into()))?;
+        let doc_id = DocId::parse(doc_id)?;
+        if doc_id != self.store.doc_id {
+            return Err(KdmError::WrongDocument { expected: self.store.doc_id.to_string(), found: doc_id.to_string() });
         }
-        let before = self.doc.oplog_vv();
-        let doc = &self.doc;
-        let (imported, changed, registers) = observe_changes(doc, || doc.import(bytes).map_err(importing));
-        if let Err(error) = read::check_projected_storage(&self.doc, &self.schema) {
-            self.restore(&before)?;
+        if value.get("changes").is_some() {
+            return self.import_change_list(&value);
+        }
+        if value.get("objects").is_some() {
+            return self.import_snapshot(value);
+        }
+        Err(KdmError::Encoding("not KDM changes: neither changes nor a snapshot".into()))
+    }
+
+    fn import_change_list(&mut self, value: &Value) -> Result<BTreeSet<ObjectId>> {
+        let bad = |what: &str| KdmError::Encoding(format!("not KDM changes: no valid `{what}`"));
+        let lineage = value.get("lineage").and_then(Value::as_str).and_then(|text| Uuid::parse_str(text).ok()).ok_or_else(|| bad("lineage"))?;
+        if *lineage.as_bytes() != self.lineage {
+            return Err(KdmError::Stale(OTHER_LINE.into()));
+        }
+        let after = value.get("after").and_then(|after| after.get("seq")).and_then(Value::as_u64).ok_or_else(|| bad("after"))?;
+        if after > self.seq {
+            return Err(KdmError::Stale(format!("the changes follow version {after}; this replica is at {}", self.seq)));
+        }
+        let after_actor = value.get("after").and_then(|after| after.get("actor")).and_then(Value::as_str).and_then(|hex| u64::from_str_radix(hex, 16).ok());
+        if let (Some(theirs), Some(mine)) = (after_actor, self.log.get(after))
+            && theirs != mine.actor.get()
+        {
+            return Err(KdmError::Stale(DIVERGED.into()));
+        }
+        let list = value.get("changes").and_then(Value::as_array).ok_or_else(|| bad("changes"))?;
+        let changes = list.iter().map(|change| Change::from_json(change, &self.schema)).collect::<Result<Vec<_>>>()?;
+        let start = self.seq;
+        let author = self.author_schema;
+        let mut changed = Changes::default();
+        let mut failure = None;
+        for change in changes {
+            if change.seq <= self.seq {
+                // Held already, unless this replica's change of that number is another one.
+                if self.log.get(change.seq).is_some_and(|mine| mine.actor != change.actor) {
+                    failure = Some(KdmError::Stale(DIVERGED.into()));
+                    break;
+                }
+                continue;
+            }
+            if change.seq != self.seq + 1 {
+                failure = Some(KdmError::Stale(format!("change {} does not follow version {}", change.seq, self.seq)));
+                break;
+            }
+            match self.store.apply_all_checked(change.ops, &self.schema) {
+                Ok(applied) => {
+                    changed.extend(changes_of(&applied));
+                    self.seq = change.seq;
+                    let ops = Ops::plain(applied);
+                    let size = 96 + size_of_ops(&ops.ops);
+                    self.author_schema = self.author_schema.max(Some(change.schema_version));
+                    let base = self.log.base;
+                    self.log.push(Entry { seq: change.seq, actor: change.actor, origin: change.origin, schema_version: change.schema_version, ops, size });
+                    if self.log.base != base {
+                        self.undo.drop_before(self.log.base);
+                    }
+                }
+                Err(error) => {
+                    failure = Some(error);
+                    break;
+                }
+            }
+        }
+        if failure.is_none() && self.store.schema_version > u64::from(self.schema.schema_version) {
+            failure = Some(KdmError::NewerSchema { found: self.store.schema_version, reads: self.schema.schema_version });
+        }
+        if failure.is_none()
+            && let Err(error) = read::check_projected_storage(&self.store, &self.schema)
+        {
+            failure = Some(error);
+        }
+        if let Some(error) = failure {
+            self.rewind(start)?;
+            self.author_schema = author;
             return Err(error);
         }
-        if let Some(found) = read::min_schema_version(&self.doc).filter(|found| *found > u64::from(self.schema.schema_version)) {
-            self.restore(&before)?;
-            return Err(KdmError::NewerSchema { found, reads: self.schema.schema_version });
-        }
-        let status = imported?;
-        // Without an undo or redo step no undo reaches what the import wrote: a later step
-        // writes such a register before its own undo can, and then it is this replica's.
-        // Loading a document replays its stored changes this way.
-        if self.has_steps() {
-            self.imported_registers.extend(registers);
-        }
-        self.note_pending(status.pending.as_ref());
         let objects = changed.objects().clone();
         self.changed.extend(changed);
         Ok(objects)
     }
 
-    /// Replaces the document with its history up to `version`, dropping every change applied
-    /// since. Changes still pending stay recorded in `pending`: they are missing again, and a
-    /// sync fetches them. A shallow replica stays shallow, with the same root.
-    fn restore(&mut self, version: &VersionVector) -> Result<()> {
-        let doc =
-            if self.doc.is_shallow() { shallow_fork_at(&self.doc, version)? } else { self.doc.fork_at(&self.doc.vv_to_frontiers(version)).map_err(engine)? };
-        crate::marks::configure(&doc, &self.schema);
-        doc.set_peer_id(self.actor.get()).map_err(engine)?;
-        self.undo = Histories::new(&doc);
-        self.doc = doc;
-        // No undo history is left to protect registers from.
-        self.imported_registers.clear();
-        self.kept_registers.clear();
-        self.own_registers.clear();
-        self.local_writes.clear();
-        self.end_undo_group();
+    /// Takes back the changes logged after `seq`, newest first (an import that failed part way).
+    fn rewind(&mut self, seq: u64) -> Result<()> {
+        let undone: Vec<Op> = self.log.after(seq).collect::<Vec<_>>().into_iter().rev().flat_map(|entry| entry.ops.backward()).collect();
+        for op in undone {
+            self.store.apply(op, &self.schema).map_err(applying_failed)?;
+        }
+        self.log.truncate(seq);
+        self.seq = seq;
         Ok(())
     }
 
-    /// Whether this replica holds imported changes it could not apply yet, because they depend on
-    /// changes it has not received. Importing changes out of order is legitimate (they are applied
-    /// as soon as what they depend on arrives); a replica that stays in this state is missing
-    /// changes, which a sync from [`Replica::version`] fetches. Pending changes are not in
-    /// [`Replica::version`], the state, or the exports.
-    pub fn has_pending_changes(&self) -> bool {
-        let applied = self.doc.oplog_vv();
-        self.pending.iter().any(|(peer, end)| applied.get(peer).copied().unwrap_or(0) < *end)
-    }
-
-    /// Records the changes an import left pending, and forgets those applied since.
-    fn note_pending(&mut self, parked: Option<&VersionRange>) {
-        for (peer, (_, end)) in parked.into_iter().flat_map(VersionRange::iter) {
-            let known = self.pending.entry(*peer).or_insert(*end);
-            *known = (*known).max(*end);
+    fn import_snapshot(&mut self, value: Value) -> Result<BTreeSet<ObjectId>> {
+        let content = content::decode_value(value)?;
+        let Some(version) = content.version else { return Err(KdmError::Stale("content without a version continues no line of changes".into())) };
+        let fresh = self.seq == 0 && self.log.entries.is_empty();
+        if !(fresh || (version.lineage == self.lineage && version.seq >= self.seq)) {
+            return Err(KdmError::Stale(format!("the snapshot is not ahead of this replica on its line (it is at {})", version.seq)));
         }
-        let applied = self.doc.oplog_vv();
-        self.pending.retain(|peer, end| applied.get(peer).copied().unwrap_or(0) < *end);
+        if version.lineage == self.lineage && version.seq == self.seq {
+            return Ok(BTreeSet::new());
+        }
+        let store = Self::checked_store(&self.schema, &content)?;
+        let mut changed = BTreeSet::new();
+        for (id, object) in self.store.objects() {
+            if store.object(id) != Some(object) {
+                changed.insert(id.clone());
+            }
+        }
+        for (id, _) in store.objects() {
+            if !self.store.contains(id) {
+                changed.insert(id.clone());
+            }
+        }
+        self.store = store;
+        self.author_schema = self.author_schema.max(version.author_schema_version.and_then(|author| u32::try_from(author).ok()));
+        self.lineage = version.lineage;
+        self.seq = version.seq;
+        self.log = Log::starting_at(version.seq);
+        self.undo = Histories::default();
+        self.end_undo_group();
+        self.changed.extend(Changes::from(changed.clone()));
+        Ok(changed)
     }
 
     /// The objects changed since the last call (of this or [`Replica::take_changes`]), by local
-    /// transactions or imports.
+    /// transactions, undo and redo, or imports.
     pub fn take_changed(&mut self) -> BTreeSet<ObjectId> {
         mem::take(&mut self.changed).into_objects()
     }
@@ -631,378 +650,31 @@ impl Replica {
         mem::take(&mut self.changed)
     }
 
-    /// A compacted copy of the whole document, for fast loading and new replicas: its state and
-    /// **its whole history** (every change, with deleted content and each change's origin).
-    ///
-    /// The rule (data model, "A file holds no history"): `snapshot()` is for a document's history
-    /// store (`<workspace>/.kition/docs/<docId>/`), a sync server, and new replicas; it is never
-    /// written into a person's file. What a kit writes into a person's file is
-    /// [`Replica::content_snapshot`] (or [`Replica::sealed_content_snapshot`] after
-    /// [`Replica::seal`]).
+    /// The document's state with its version (data model 7.4, rule C10): for the host's store,
+    /// drafts, pages and new replicas. Never written into a person's file
+    /// ([`Replica::content_snapshot`] is).
     pub fn snapshot(&self) -> Result<Vec<u8>> {
-        let bytes = self.doc.export(ExportMode::Snapshot).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        Ok(envelope::wrap(self.doc_id, bytes))
+        let version = ContentVersion { lineage: self.lineage, seq: self.seq, author_schema_version: self.author_schema.map(u64::from) };
+        content::encode(&self.store.to_content(Some(version)))
     }
 
-    /// A **shallow snapshot** (standard 2.0 rule M16a): the document's current state with only the
-    /// history after `at`, for a device that holds a large document without its whole history.
-    /// [`Replica::load`] opens it as a shallow replica, which edits, exports, imports, and merges
-    /// like a full one; history before its root stays with whoever holds it (the sync server).
-    ///
-    /// The root is the latest version at or before `at` that every later change descends from
-    /// (the engine moves it back past changes made concurrently with `at`, so they stay in the
-    /// retained history); `Version::empty()` keeps the whole history. `at` must be a version this
-    /// replica has ([`KdmError::InvalidValue`] otherwise); on a shallow replica, an `at` before its
-    /// own root is its root.
-    pub fn shallow_snapshot(&self, at: &Version) -> Result<Vec<u8>> {
-        if !self.version().includes(at) {
-            return Err(KdmError::InvalidValue { ty: "$shallow".into(), field: "version".into(), reason: "names changes this replica does not have".into() });
-        }
-        let frontiers = if self.reaches_root(at) { self.doc.vv_to_frontiers(&at.0) } else { self.doc.shallow_since_frontiers() };
-        let bytes = self.doc.export(ExportMode::shallow_snapshot(&frontiers)).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        Ok(envelope::wrap(self.doc_id, bytes))
+    /// The document's **content**: what a kit writes into a person's file (data model 7.4). It
+    /// depends on the state alone: a document saved again unchanged is the same bytes, and so is
+    /// the same state saved by anyone.
+    pub fn content_snapshot(&self) -> Result<Vec<u8>> {
+        content::encode(&self.store.to_content(None))
     }
 
-    /// The document's **content**: what a kit writes into a person's file (data model, "A file
-    /// holds no history"). [`Replica::seal`]s this replica first, then answers a shallow snapshot
-    /// rooted at the seal: the current state, and of the history only the seal's one operation.
-    /// [`Replica::load`] opens it as this document (same `DocId`, version, object ids), which
-    /// edits, imports later changes, and merges like any shallow replica; changes made before the
-    /// seal that it does not hold are [`KdmError::HistoryMissing`].
-    ///
-    /// What the bytes keep of the history: the seal (a `system` change with the label
-    /// `content-seal`, its lamport number and a zero timestamp, since the KDM records no times)
-    /// and the actor (peer) ids inside element ids, which say which replica wrote each surviving
-    /// character, list item or tree node. No deleted content, no overwritten value, no person's or
-    /// agent's origin. Exporting again with no change in between commits nothing and answers the
-    /// same bytes.
-    ///
-    /// The seal is a real change (see [`Replica::seal`]): push it to the history store and the
-    /// room like any other. The bytes do not carry the document's whole history (sync protocol
-    /// S20) unless the replica's last change is its birth ([`Replica::rebirth`],
-    /// [`Replica::copy_as_new_document`]).
-    pub fn content_snapshot(&mut self) -> Result<Vec<u8>> {
-        self.seal()?;
-        self.sealed_content_snapshot()
-    }
-
-    /// [`Replica::content_snapshot`] of a replica already sealed, for code that holds the replica
-    /// read-only (a kit's `KitModel::export`, after its session sealed it). Refuses
-    /// ([`KdmError::InvalidValue`]) a replica whose last change is no seal: its shallow snapshot
-    /// would keep that change's origin, and with concurrent heads, history back to their last
-    /// common version.
-    pub fn sealed_content_snapshot(&self) -> Result<Vec<u8>> {
-        if !self.is_sealed() {
-            return Err(KdmError::InvalidValue { ty: "$content".into(), field: "version".into(), reason: NOT_SEALED.into() });
-        }
-        if let Some((version, bytes)) = &self.loaded_content
-            && *version == self.version()
-        {
-            return Ok(bytes.clone());
-        }
-        // A read creates a root map of the engine's the first time it names one (an empty root
-        // container is part of the state the export writes): every root the KDM reads exists
-        // before the export, so the bytes do not depend on what was read since the last change.
-        for root in [META, OBJECTS, SEAL, BIRTH, SCHEMA_RAISES] {
-            self.doc.get_map(root);
-        }
-        let bytes = self.doc.export(ExportMode::shallow_snapshot(&self.doc.oplog_frontiers())).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        Ok(envelope::wrap(self.doc_id, bytes))
-    }
-
-    /// Seals the current version for [`Replica::content_snapshot`]: unless the replica's last
-    /// change already is a seal (nothing changed since), commits one `system` change (label
-    /// `content-seal`) that depends on every head and writes the version it closes into the root
-    /// map `seal`, outside the canonical state. Answers whether it committed one.
-    ///
-    /// A shallow snapshot is rooted at the latest version every later change descends from: with
-    /// concurrent heads (after importing another replica's changes) that is their last common
-    /// version, and the history since then would stay in the bytes; with one head, that head's
-    /// change keeps its origin. The seal makes one head whose origin is the KDM's.
-    ///
-    /// The seal is an ordinary change of this replica's actor: it is in [`Replica::version`] and
-    /// [`Replica::export_changes`], goes to the history store and the room, and converges with
-    /// another replica's concurrent seal. It is never an undo step, and an undo after it takes
-    /// back the person's or agent's last step as before. A copy's or a rebirth's change
-    /// ([`Replica::copy_as_new_document`], [`Replica::rebirth`]) counts as a seal.
-    pub fn seal(&mut self) -> Result<bool> {
-        if self.is_sealed() {
-            return Ok(false);
-        }
-        let closes = Version(self.doc.oplog_vv());
-        self.doc.get_map(SEAL).insert(SEAL_VERSION, LoroValue::Binary(closes.encode().into())).map_err(engine)?;
-        self.doc.set_next_commit_origin(OriginKind::System.as_str());
-        self.doc.set_next_commit_message(&Origin::system(CONTENT_SEAL).encode_commit(self.schema.schema_version));
-        self.doc.commit();
-        Ok(true)
-    }
-
-    /// Whether the replica's version has one head and that head's change is a seal
-    /// ([`Replica::seal`]): a `system` change labelled `content-seal`, `new-document` or `rebirth`.
-    pub fn is_sealed(&self) -> bool {
-        let heads = self.doc.oplog_frontiers();
-        let Some(head) = heads.as_single() else { return false };
-        let Some(change) = self.doc.get_change(head) else { return false };
-        change
-            .message
-            .as_deref()
-            .and_then(Origin::decode)
-            .is_some_and(|origin| origin.kind == OriginKind::System && origin.label.as_deref().is_some_and(|label| SEALS.contains(&label)))
-    }
-
-    /// Makes this replica's current version the document's **birth** (sync protocol S20), for a
-    /// document known only from a file that holds no history ([`Replica::content_snapshot`]): its
-    /// bytes do not carry the document's whole history, so a sync server refuses them as a new
-    /// room's first state. Commits one `system` change (label `rebirth`) that depends on every
-    /// head and records its own root as the birth, then roots this replica there: it becomes a
-    /// shallow replica with the same `DocId`, state and object ids that
-    /// [`Replica::carries_whole_history`], as do its snapshots, its content snapshots and every
-    /// replica loaded from them. Answers whether it did; a replica that already carries the whole
-    /// history (a full one, or one rooted at its birth) is left as it is.
-    ///
-    /// It declares that no replica holds history before this version. A host calls it only for a
-    /// document with no history store and no room; a replica that does hold earlier history and
-    /// made changes concurrent with the rebirth cannot send them to the reborn document
-    /// ([`KdmError::HistoryMissing`]). Clears the undo and redo history, like any load. Refuses
-    /// ([`KdmError::InvalidValue`]) while changes are pending ([`Replica::has_pending_changes`]):
-    /// they would be lost.
-    pub fn rebirth(&mut self) -> Result<bool> {
-        if self.carries_whole_history() {
-            return Ok(false);
-        }
-        if self.has_pending_changes() {
-            return Err(KdmError::InvalidValue { ty: "$rebirth".into(), field: "version".into(), reason: PENDING_REBIRTH.into() });
-        }
-        // The change has one operation, so the engine roots the shallow document at it: the root
-        // (as `shallow_root` answers it) is the version before that operation, every head
-        // included, with this actor's entry at the operation's counter.
-        let mut birth = self.doc.oplog_vv();
-        let actor = self.actor.get();
-        let next = birth.get(&actor).copied().unwrap_or(0);
-        birth.insert(actor, next);
-        self.doc.get_map(BIRTH).insert(BIRTH_ROOT, LoroValue::Binary(Version(birth).encode().into())).map_err(engine)?;
-        self.doc.set_next_commit_origin(OriginKind::System.as_str());
-        self.doc.set_next_commit_message(&Origin::system(REBIRTH).encode_commit(self.schema.schema_version));
-        self.doc.commit();
-        let bytes = self.doc.export(ExportMode::shallow_snapshot(&self.doc.oplog_frontiers())).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        let reborn = Self::load(Arc::clone(&self.schema), &envelope::wrap(self.doc_id, bytes), self.actor)?;
-        if !reborn.carries_whole_history() {
-            return Err(KdmError::Engine("the reborn replica is not rooted at the birth it records".into()));
-        }
-        self.doc = reborn.doc;
-        self.undo = reborn.undo;
-        self.imported_registers.clear();
-        self.kept_registers.clear();
-        self.own_registers.clear();
-        self.local_writes.clear();
-        self.end_undo_group();
-        Ok(true)
-    }
-
-    /// Whether this replica holds only part of the document's history: it was loaded from a
-    /// [`Replica::shallow_snapshot`] (or from a snapshot of a shallow replica).
-    pub fn is_shallow(&self) -> bool {
-        self.doc.is_shallow()
-    }
-
-    /// The version a shallow replica's retained history starts at (its root): it has every change
-    /// after it, and none of the history it summarizes. `None` for a full replica.
-    ///
-    /// The root excludes the root's own operation (the seal, for a replica opened from a content
-    /// snapshot), whose state the replica does not hold, so the replica cannot read the root
-    /// itself ([`Replica::reaches`] is false for it). The earliest version it can read is
-    /// [`Replica::earliest_readable`].
-    pub fn shallow_root(&self) -> Option<Version> {
-        self.is_shallow().then(|| Version(self.doc.shallow_since_vv().to_vv()))
-    }
-
-    /// Whether this replica carries the **document's whole history** (sync protocol S20): it is
-    /// full, or it is shallow and its root is the document's birth, so no replica of the document
-    /// can hold changes before it. A copy made by [`Replica::copy_as_new_document`] is born at its
-    /// root, and every replica loaded from it, its snapshots and its drafts keep that root; a
-    /// shallow snapshot taken later ([`Replica::shallow_snapshot`] after more changes) does not.
-    ///
-    /// The birth is the version the copy recorded in the change that made it, read from this
-    /// replica's state **at its root**: a change after the root, which any client may make, never
-    /// counts, and a value written in such a change could only name a version before the root it
-    /// is part of. A server that trusts no client decides from the bytes alone. Shallow documents
-    /// that record no birth (copies made before it was recorded) do not carry it.
-    pub fn carries_whole_history(&self) -> bool {
-        carries_whole_history(&self.doc)
-    }
-
-    /// [`Replica::carries_whole_history`] of the document `bytes` (a snapshot or a full export)
-    /// hold, read without a schema, as a sync server reads a room's first state (rule S20).
-    /// Bytes that are not a KDM export, or that do not decode, are [`KdmError::Encoding`].
-    pub fn snapshot_carries_whole_history(bytes: &[u8]) -> Result<bool> {
-        let (_, bytes) = envelope::open(bytes)?;
-        let meta = LoroDoc::decode_import_blob_meta(bytes, true).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        if meta.mode != loro::EncodedBlobMode::ShallowSnapshot {
-            return Ok(true);
-        }
-        let doc = LoroDoc::new();
-        doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        Ok(carries_whole_history(&doc))
-    }
-
-    /// The origins of the changes the document `bytes` hold (a snapshot, a content snapshot, or an
-    /// export of changes), read without a schema: one entry per change, `None` for a change whose
-    /// commit message is not a KDM origin. A change is the engine's: consecutive transactions of
-    /// one replica with the same origin may be one change. A content snapshot holds one, its seal
-    /// ([`Replica::content_snapshot`]); a full snapshot holds every change since the document was
-    /// made (or since its root, for a shallow one). An export of changes that depend on changes it
-    /// lacks lists none of them (read a snapshot instead). Bytes that are not a KDM export, or that
-    /// do not decode, are [`KdmError::Encoding`]. The TypeScript `Replica.snapshotOrigins` reads the
-    /// same.
-    pub fn snapshot_origins(bytes: &[u8]) -> Result<Vec<Option<Origin>>> {
-        let (_, bytes) = envelope::open(bytes)?;
-        let doc = LoroDoc::new();
-        doc.import(bytes).map_err(|error| KdmError::Encoding(error.to_string()))?;
-        let changes = doc.export_json_updates(&VersionVector::default(), &doc.oplog_vv()).changes;
-        Ok(changes.into_iter().map(|change| change.msg.as_deref().and_then(Origin::decode)).collect())
-    }
-
-    /// Whether this replica's history reaches `version`, so it can read that version itself
-    /// ([`Replica::fork_at`], [`Replica::changes_since`]) rather than from whoever keeps the whole
-    /// history: always on a full replica; on a shallow one, when `version` includes its root and
-    /// the root's own operation (the seal, for a replica opened from a content snapshot); the
-    /// earliest such version is [`Replica::earliest_readable`]. It says nothing about whether the
-    /// replica has the version's changes ([`Version::includes`] of [`Replica::version`] does).
-    pub fn reaches(&self, version: &Version) -> bool {
-        self.reaches_root(version) && (!self.is_shallow() || self.doc.shallow_since_frontiers().iter().all(|id| version.0.includes_id(id)))
-    }
-
-    /// Whether `version` is at or after this replica's shallow root: always, on a full replica.
-    fn reaches_root(&self, version: &Version) -> bool {
-        self.shallow_root().is_none_or(|root| version.includes(&root))
-    }
-
-    /// The earliest version whose state this replica can read ([`Replica::fork_at`],
-    /// [`Replica::changes_since`], [`Replica::history_since`]): [`Version::empty`] on a full
-    /// replica; on a shallow one, its root with the root's own operation. For a replica opened
-    /// from a content snapshot ([`Replica::content_snapshot`]) that is the version the file was
-    /// sealed at, and its state there is the file's content, also after the replica grew with
-    /// later changes and was stored and loaded again. Every version this replica
-    /// [`Replica::reaches`] includes it. Nothing of it is written into any bytes: it is read from
-    /// the engine's history.
-    pub fn earliest_readable(&self) -> Version {
-        if !self.is_shallow() {
-            return Version::empty();
-        }
-        // The engine's root version (`shallow_since_vv`) excludes the root operation, which its
-        // root frontiers name: a checkout of those frontiers is the earliest one it allows.
-        let mut version = self.doc.shallow_since_vv().to_vv();
-        for id in self.doc.shallow_since_frontiers().iter() {
-            let end = version.get(&id.peer).copied().unwrap_or(0).max(id.counter + 1);
-            version.insert(id.peer, end);
-        }
-        Version(version)
-    }
-
-    /// The changes this replica holds after `since`, oldest first: each with its origin (`None`
-    /// for a change whose commit message is not a KDM origin) and the version it makes with every
-    /// change it depends on, so [`Replica::fork_at`] that version reads the state just after it
-    /// (without changes made concurrently with it). `since` is a version this replica has and
-    /// [`Replica::reaches`]: from [`Replica::earliest_readable`], the list holds every change
-    /// the replica has; a version it does not have is [`KdmError::HistoryMissing`], as is one
-    /// before a shallow replica's root (its seal included: the seal is in the file, not after it).
-    ///
-    /// A change is the engine's: consecutive transactions of one replica with the same origin may
-    /// be one change. The order is causal (a change comes after every change it depends on);
-    /// concurrent changes are ordered by their Lamport number, then by actor.
-    pub fn history_since(&self, since: &Version) -> Result<Vec<HistoryChange>> {
-        if !self.version().includes(since) {
-            return Err(KdmError::HistoryMissing(VERSION_NOT_HELD.into()));
-        }
-        if !self.reaches(since) {
-            return Err(KdmError::HistoryMissing(VERSION_BEFORE_ROOT.into()));
-        }
-        let held = self.doc.oplog_vv();
-        let mut changes = Vec::new();
-        for span in held.sub_iter(&since.0) {
-            let mut counter = span.counter.start;
-            while counter < span.counter.end {
-                let change =
-                    self.doc.get_change(ID::new(span.peer, counter)).ok_or_else(|| KdmError::Engine(format!("no change holds {counter}@{}", span.peer)))?;
-                let len = Counter::try_from(change.len).map_err(|_| KdmError::Engine("a change too long for its counters".into()))?;
-                let last = ID::new(span.peer, change.id.counter + len - 1);
-                let version = self.doc.frontiers_to_vv(&Frontiers::from(last)).ok_or_else(|| KdmError::Engine(format!("no version for {last:?}")))?;
-                changes.push((
-                    change.lamport,
-                    span.peer,
-                    HistoryChange { origin: change.message.as_deref().and_then(Origin::decode), version: Version(version) },
-                ));
-                counter = change.id.counter + len;
-            }
-        }
-        changes.sort_by_key(|(lamport, peer, _)| (*lamport, *peer));
-        Ok(changes.into_iter().map(|(.., change)| change).collect())
-    }
-
-    /// Replaces this replica's document with `snapshot` (a full or shallow snapshot of the same
-    /// document, as a server answers it) plus every change this replica has that `snapshot`
-    /// lacks, and answers the objects whose state changed. For a shallow replica whose import
-    /// failed with [`KdmError::HistoryMissing`]: a newer snapshot from the server holds the
-    /// changes it could not take, rooted early enough for them, and this replica's own changes
-    /// (pushed or not) are kept on top. The state is what importing every change of both would
-    /// give.
-    ///
-    /// Refuses ([`KdmError::WrongDocument`]) a snapshot of another document, what
-    /// [`Replica::load`] refuses, and ([`KdmError::HistoryMissing`]) a shallow snapshot whose root
-    /// is after changes of this replica it lacks; a refused rebase changes nothing. Clears the undo
-    /// and redo history, like any load.
-    pub fn rebase(&mut self, snapshot: &[u8]) -> Result<BTreeSet<ObjectId>> {
-        let (doc_id, _) = envelope::open(snapshot)?;
-        if doc_id != self.doc_id {
-            return Err(KdmError::WrongDocument { expected: self.doc_id.to_string(), found: doc_id.to_string() });
-        }
-        let mut base = Self::load(Arc::clone(&self.schema), snapshot, self.actor)?;
-        if !base.version().includes(&self.version()) {
-            base.import_changes(&self.export_changes(&base.version())?)?;
-            if !base.version().includes(&self.version()) {
-                // This replica is shallow and the snapshot is older than its root: the changes in
-                // between are in neither.
-                return Err(KdmError::HistoryMissing(SNAPSHOT_BEFORE_ROOT.into()));
-            }
-        }
-        let objects = |value: Value| match value {
-            Value::Object(mut state) => match state.remove(OBJECTS) {
-                Some(Value::Object(objects)) => objects,
-                _ => serde_json::Map::new(),
-            },
-            _ => serde_json::Map::new(),
-        };
-        let before = objects(self.state_json()?);
-        let after = objects(base.state_json()?);
-        let changed: BTreeSet<ObjectId> =
-            before.keys().chain(after.keys()).filter(|id| before.get(*id) != after.get(*id)).map(|id| ObjectId::from_string(id.clone())).collect();
-        self.doc = base.doc;
-        self.undo = base.undo;
-        self.imported_registers.clear();
-        self.kept_registers.clear();
-        self.own_registers.clear();
-        self.local_writes.clear();
-        for (peer, end) in base.pending {
-            let known = self.pending.entry(peer).or_insert(end);
-            *known = (*known).max(end);
-        }
-        self.note_pending(None);
-        self.end_undo_group();
-        self.changed.extend(Changes::from(changed.clone()));
-        Ok(changed)
-    }
-
-    /// Undoes the person's last transaction on this replica (the `person` scope, M12a). Changes from
-    /// other replicas and from other scopes (an agent's) are kept, including later changes to the
-    /// same object and to the same field: a register another replica or scope wrote after the
-    /// undone transaction keeps that value (M12). The objects it changes are reported by
+    /// Undoes the person's last transaction on this replica (the `person` scope, M12a). Changes
+    /// from other scopes and imports are kept, including later changes to the same object and to
+    /// the same field: a register written since by someone else keeps that value (M12), and text
+    /// and list positions follow the changes made since. The objects it changes are reported by
     /// [`Replica::take_changed`].
     pub fn undo(&mut self) -> Result<bool> {
         self.undo_or_redo(UndoScope::Person, true)
     }
 
-    /// Redoes the person's last undone transaction, keeping other replicas' and scopes' later
-    /// changes and reporting what it changes like [`Replica::undo`].
+    /// Redoes the person's last undone transaction, keeping later changes like [`Replica::undo`].
     pub fn redo(&mut self) -> Result<bool> {
         self.undo_or_redo(UndoScope::Person, false)
     }
@@ -1017,247 +689,143 @@ impl Replica {
         self.undo_or_redo(scope, false)
     }
 
+    /// Takes back the top step of `scope`'s undo (or redo) stack as one new change: its parts'
+    /// inverses, last first, carried over the changes made since ([`through`]), each fitted to
+    /// the state ([`Store::fit`]); a register or map key someone else wrote since keeps that
+    /// value. A step that changes nothing that way (its objects gone, or its own changes
+    /// cancelling out) is passed over, and the one below it is taken back in the same call; what
+    /// the passed steps replayed joins that change. Answers whether a step was taken back.
     fn undo_or_redo(&mut self, scope: UndoScope, undo: bool) -> Result<bool> {
         self.end_undo_group();
-        // Who wrote each register's current value, when an undo must keep it: another replica
-        // (`None`), or another scope of this one.
-        let mut others: Vec<LaterWrite> = self.others_registers().into_iter().map(|(register, value)| (register, value, None)).collect();
-        others.extend(self.other_scopes_registers(scope).into_iter().map(|(register, value, by)| (register, value, Some(by))));
-        // A step that replays nothing (what it wrote is gone: another replica deleted the
-        // objects), and a step of several transactions (an undo group) whose replay comes to
-        // nothing because its own changes cancel out (Enter then Backspace, a value written and
-        // written back), are passed over: the one before it replays in the same undo or redo, as
-        // the engine does with its own steps. What such a step replayed joins the next step that
-        // changes something, or else the step on top of the other stack, so the engine's steps
-        // stay in the order the replica's refer to them. A step that writes values back is not
-        // passed over when later changes of others keep those values (M12, M12a), nor is one
-        // transaction whose replay writes the values its registers hold already.
-        let me = self.actor.get();
-        let written = |doc: &LoroDoc| doc.oplog_vv().get(&me).copied().unwrap_or(0);
-        let mut passed: Option<Step> = None;
+        let schema = Arc::clone(&self.schema);
+        let mut applied: Vec<Op> = Vec::new();
+        let mut touches: Vec<UndoTouch> = Vec::new();
+        let mut taken: Option<Ops> = None;
+        let mut kept_changes = Changes::default();
+        let mut steps = 0;
         let mut done = false;
         while let Some(step) = self.undo.of(scope).pop(undo) {
-            let group = step.parts.len() > 1;
-            let engine = group && step.parts.iter().any(|part| matches!(part, Part::Engine(_)));
-            let before = (written(&self.doc), engine.then(|| self.footprint_digest(&step.touches)));
-            let mut registers = Vec::new();
-            let mut seen = BTreeSet::new();
-            // The parts replay last first; each answers the part that replays it back, and those
-            // are kept in the order they replayed, so the step they make replays last first too.
-            let mut replayed = Vec::with_capacity(step.parts.len());
-            for part in step.parts.into_iter().rev() {
-                let back = match part {
-                    Part::Engine(serial) => self.replay_engine(scope, undo, serial, &mut registers, &mut seen)?,
-                    Part::Registers(entries) => self.write_back(entries, &mut registers)?,
-                };
-                replayed.extend(back);
-            }
-            let changed = written(&self.doc) != before.0
-                && match before.1 {
-                    // A group with steps of the engine: what the group wrote reads differently now,
-                    // or the engine changed an object outside it.
-                    Some(digest) => {
-                        let held: HashSet<&str> = step.touches.iter().map(|touch| touch.id.as_str()).collect();
-                        self.footprint_digest(&step.touches) != digest || seen.iter().any(|id| !held.contains(id.as_str()))
+            steps += 1;
+            let before = self.digest(&step.touches);
+            let mut kept = false;
+            let mut exact = step.parts.len() == 1;
+            let start = applied.len();
+            // The step's own later parts are not changes made since: they are taken back too, so
+            // each part's inverses are carried over the other changes only.
+            let own: std::collections::HashSet<u64> = step.parts.iter().map(|part| part.seq).collect();
+            for part in step.parts.iter().rev() {
+                let backward = part.ops.backward();
+                let mut later: Vec<Op> = Vec::new();
+                for entry in self.log.after(part.seq).filter(|entry| !own.contains(&entry.seq)) {
+                    later.extend(entry.ops.forward());
+                }
+                later.extend(applied.iter().take(start).cloned());
+                let (ops, moved) = through(backward, &later);
+                exact &= !moved;
+                for op in ops {
+                    // An operation with nothing left to act on (its object gone) is skipped.
+                    let Some(fitted) = self.store.fit(op.clone()) else {
+                        exact = false;
+                        continue;
+                    };
+                    if !self.holds_what_it_replaces(&fitted) {
+                        // Kept: reported with the value it keeps, which is what the replica holds.
+                        match &fitted {
+                            Op::MapSet { id, field, key, .. } => {
+                                let now = match self.store.field(id, field) {
+                                    Some(Field::Map(entries)) => entries.get(key).cloned(),
+                                    _ => None,
+                                };
+                                kept_changes.insert_map_write(id, field, key, now);
+                            }
+                            other => {
+                                if let Some(id) = other.object() {
+                                    kept_changes.insert_object(id.clone());
+                                }
+                            }
+                        }
+                        kept = true;
+                        exact = false;
+                        continue;
                     }
-                    None if group => self.registers_changed(&replayed),
-                    None => true,
-                };
-            self.settle(scope, &registers, &others)?;
-            let mut step = Step { parts: replayed, touches: step.touches };
-            if let Some(earlier) = passed.take() {
-                step = earlier.then(step);
+                    exact &= fitted == op;
+                    match self.store.apply(fitted, &schema) {
+                        Ok(done) => applied.push(done),
+                        Err(_) => exact = false,
+                    }
+                }
             }
+            merge_undo_touches(&mut touches, &step.touches);
+            let changed =
+                kept || self.digest(&step.touches) != before || applied.get(start..).is_some_and(|ops| ops.iter().any(|op| touches_outside(op, &step.touches)));
             if changed {
-                self.undo.of(scope).push_replayed(undo, step);
                 done = true;
+                if steps == 1 && exact && !kept && step.parts.len() == 1 {
+                    taken = step.parts.first().map(|part| part.ops.inverse());
+                }
                 break;
             }
-            passed = Some(step);
         }
-        let history = self.undo.of(scope);
-        if let Some(step) = passed.filter(|step| !step.parts.is_empty()) {
-            let other = if undo { &mut history.redo } else { &mut history.undo };
-            if let Some(top) = other.pop() {
-                other.push(top.then(step));
-            }
+        if !done {
+            self.store.revert(&applied, &schema);
+            return Ok(false);
         }
-        history.drop_consumed(undo);
-        Ok(done)
-    }
-
-    /// After a step's replay wrote `registers`: notes them as this scope's writes, then puts back
-    /// the value of each one another replica or another scope (`others`) wrote later.
-    fn settle(&mut self, scope: UndoScope, registers: &[Register], others: &[LaterWrite]) -> Result<()> {
-        for register in registers {
-            let map = self.doc.get_map(register.0.clone());
-            let value = match map.get(&register.1) {
-                Some(ValueOrContainer::Value(value)) => Some(value),
-                Some(ValueOrContainer::Container(_)) => continue,
-                None => None,
-            };
-            self.own_registers.insert(register.clone(), value.clone());
-            self.local_writes.insert(register.clone(), (Some(scope), value));
-        }
-        // The engine's inverse operation sets a register back even when another replica or another
-        // scope wrote it later; put those back to that value, in a `system` commit (not an undo
-        // step), so the result is as if the undo had skipped them.
-        let touched: HashSet<&Register> = registers.iter().collect();
-        let mut restored = false;
-        for (register, value, by) in others.iter().cloned() {
-            if !touched.contains(&register) {
-                continue;
-            }
-            let map = self.doc.get_map(register.0.clone());
-            let now = match map.get(&register.1) {
-                Some(ValueOrContainer::Value(value)) => Some(value),
-                Some(ValueOrContainer::Container(_)) => continue,
-                None => None,
-            };
-            if now == value {
-                continue;
-            }
-            match &value {
-                Some(value) => map.insert(&register.1, value.clone()).map_err(engine)?,
-                None => map.delete(&register.1).map_err(engine)?,
-            }
-            match by {
-                // Still the other scope's write, for its own undo and for this scope's next one.
-                Some(by) => {
-                    self.local_writes.insert(register, (by, value));
-                }
-                None => {
-                    self.local_writes.remove(&register);
-                    self.kept_registers.insert(register, value);
-                }
-            }
-            restored = true;
-        }
-        if restored {
-            self.doc.set_next_commit_origin(OriginKind::System.as_str());
-            self.doc.set_next_commit_message(&Origin::system("keep-later-changes").encode_commit(self.schema.schema_version));
-            // What the restore writes is part of what the undo changed (its values are the
-            // ones to report).
-            let doc = &self.doc;
-            let ((), kept, _) = observe_changes(doc, || doc.commit());
-            self.changed.extend(kept);
-        }
-        Ok(())
-    }
-
-    /// Undoes (or redoes) the engine's step `serial` of `scope`, adding the registers it changed
-    /// to `registers` and the objects it changed to `seen`. Answers the part that replays it back:
-    /// the step the engine recorded for it. The engine has no such step when it has nothing left
-    /// to replay (an earlier replay changed nothing, so the engine recorded none); then nothing
-    /// happens.
-    fn replay_engine(
-        &mut self,
-        scope: UndoScope,
-        undo: bool,
-        serial: i64,
-        registers: &mut Vec<Register>,
-        seen: &mut BTreeSet<ObjectId>,
-    ) -> Result<Option<Part>> {
-        let manager = &mut self.undo.of(scope).engine;
-        let top = if undo { manager.top_undo_value() } else { manager.top_redo_value() };
-        if history_serial(top) != Some(serial) {
-            return Ok(None);
-        }
-        let last = self.undo.serial.load(Ordering::Relaxed);
-        let manager = &mut self.undo.of(scope).engine;
-        let (done, changed, written) = observe_changes(&self.doc, || if undo { manager.undo() } else { manager.redo() });
-        // The engine's undo checks out across the history after the step and keeps what it read
-        // of it parsed and indexed: of a large document's history, more than the document. It
-        // reads it again for the next engine step.
-        self.doc.release_parsed_history();
-        seen.extend(changed.objects().iter().cloned());
-        self.changed.extend(changed);
-        done.map_err(engine)?;
-        registers.extend(written);
-        let manager = &self.undo.get(scope).engine;
-        let made = history_serial(if undo { manager.top_redo_value() } else { manager.top_undo_value() }).filter(|made| *made > last);
-        Ok(made.map(Part::Engine))
-    }
-
-    /// Writes back each register of a step the replica keeps ([`Part::Registers`]) to the value
-    /// its entry holds, in one commit, as the engine's undo writes back the registers of its own
-    /// steps: every one, also when it holds that value already. Like those, the registers another
-    /// replica or scope wrote later are then kept ([`Replica::undo_or_redo`]). Adds the registers
-    /// it wrote to `registers`, and answers the part that replays it back: each register it
-    /// changed, with the value it held before.
-    fn write_back(&mut self, entries: Vec<Entry>, registers: &mut Vec<Register>) -> Result<Option<Part>> {
-        let mut back = Vec::new();
-        let start = registers.len();
-        for mut entry in entries {
-            let Some(map) = self.entry_map(&entry) else { continue };
-            entry.container = map.id();
-            let now = match map.get(&entry.key) {
-                Some(ValueOrContainer::Value(value)) => Some(value),
-                Some(ValueOrContainer::Container(_)) => continue,
-                None => None,
-            };
-            if now == entry.value
-                && let Some(value) = &entry.value
-            {
-                // The engine skips setting a key to the value it holds; deleting it first writes
-                // it all the same.
-                map.delete(&entry.key).map_err(engine)?;
-                map.insert(&entry.key, value.clone()).map_err(engine)?;
+        self.changed.extend(kept_changes);
+        self.changed.extend(changes_of(&applied));
+        let ops = match taken {
+            Some(ops) => ops,
+            None => Ops::plain(applied),
+        };
+        let parts = if ops.is_empty() {
+            Vec::new()
+        } else {
+            let origin = Origin::new(if scope == UndoScope::Agent { OriginKind::Agent } else { OriginKind::Person }, "kdm").with_label(if undo {
+                "undo"
             } else {
-                put(&map, &entry.key, &entry.value)?;
-            }
-            match &entry.field {
-                Some(field) => {
-                    self.changed.insert_map_write(&entry.object, field, &entry.key, entry.value.clone().map(|value| canonical(value.to_json_value())))
-                }
-                None => self.changed.insert_object(entry.object.clone()),
-            }
-            registers.push((entry.container.clone(), entry.key.clone()));
-            if now != entry.value {
-                back.push(Entry { value: now, ..entry });
-            }
-        }
-        if registers.len() > start {
-            self.doc.set_next_commit_origin(ENGINE_UNDO);
-            self.doc.commit();
-        }
-        Ok((!back.is_empty()).then_some(Part::Registers(back)))
+                "redo"
+            });
+            let seq = self.commit(&origin, ops.clone(), self.schema.schema_version);
+            vec![Part { seq, ops }]
+        };
+        self.undo.of(scope).push_replayed(undo, Step { parts, touches });
+        Ok(true)
     }
 
-    /// The map holding an entry's register now: the one it was written in, or, when that one was
-    /// deleted (its object deleted and brought back by an undo, which makes it anew), the
-    /// object's map now. `None` when the object is gone.
-    fn entry_map(&self, entry: &Entry) -> Option<LoroMap> {
-        let map = self.doc.get_map(entry.container.clone());
-        if !map.is_deleted() {
-            return Some(map);
-        }
-        let object = read::object_map(&self.doc, &entry.object).ok()?;
-        match &entry.field {
-            None => Some(object),
-            Some(field) => match object.get(field) {
-                Some(ValueOrContainer::Container(Container::Map(map))) => Some(map),
-                _ => None,
+    /// Whether a register or map key an undo is about to write back still holds the value the
+    /// step wrote (M12, M12a): else someone wrote it since, and it keeps their value.
+    fn holds_what_it_replaces(&self, op: &Op) -> bool {
+        match op {
+            Op::Set { id, field, was, .. } => match self.store.field(id, field) {
+                None => was.is_null(),
+                Some(Field::Value(value)) => value == was,
+                Some(_) => false,
             },
+            Op::MapSet { id, field, key, was, .. } => {
+                let now = match self.store.field(id, field) {
+                    Some(Field::Map(entries)) => entries.get(key),
+                    _ => None,
+                };
+                now == was.as_ref()
+            }
+            _ => true,
         }
     }
 
     /// A digest of what `touches` holds now: whether each object exists, and its fields named
-    /// there (all of them for `fields: None`), read as [`Replica::state_json`] reads them. Two
-    /// digests differ when any of it does; neither keeps a copy of the state.
-    fn footprint_digest(&self, touches: &[UndoTouch]) -> Vec<u8> {
+    /// there (all of them for `fields: None`), read as [`Replica::state_json`] reads them.
+    fn digest(&self, touches: &[UndoTouch]) -> Vec<u8> {
         let mut digest = Sha256::new();
         for touch in touches {
             let id = ObjectId::from_string(touch.id.clone());
-            let state = match (&touch.fields, read::object_type(&self.doc, &id)) {
+            let state = match (&touch.fields, read::object_type(&self.store, &id)) {
                 (_, Err(_)) => None,
-                (None, Ok(_)) => read::object_json(&self.doc, &self.schema, &id).ok(),
+                (None, Ok(_)) => read::object_json(&self.store, &self.schema, &id).ok(),
                 (Some(fields), Ok(ty)) => Some(Value::Array(
                     fields
                         .iter()
                         .map(|name| {
                             let field = self.schema.field(&ty, name).ok();
-                            field.and_then(|field| read::field_json(&self.doc, &self.schema, &id, name, field).ok()).map_or(Value::Null, canonical)
+                            field.and_then(|field| read::field_json(&self.store, &self.schema, &id, name, field).ok()).unwrap_or(Value::Null)
                         })
                         .collect(),
                 )),
@@ -1269,106 +837,6 @@ impl Replica {
         digest.finalize().to_vec()
     }
 
-    /// Whether the register parts `replayed` (each register with the value it held before its
-    /// part replayed, in the order they replayed) left any register with another value than it
-    /// held before the first of them.
-    fn registers_changed(&self, replayed: &[Part]) -> bool {
-        let many = replayed.len() > 1;
-        let mut first = HashSet::new();
-        replayed
-            .iter()
-            .flat_map(|part| match part {
-                Part::Registers(entries) => entries.as_slice(),
-                Part::Engine(_) => &[],
-            })
-            .filter(|entry| !many || first.insert((&entry.container, &entry.key)))
-            .any(|entry| {
-                let Some(map) = self.entry_map(entry) else { return false };
-                let now = match map.get(&entry.key) {
-                    Some(ValueOrContainer::Value(value)) => Some(value),
-                    Some(ValueOrContainer::Container(_)) => return true,
-                    None => None,
-                };
-                now != entry.value
-            })
-    }
-
-    /// The registers whose current value this replica wrote in another scope than `scope` (or in
-    /// a `system` or `import` transaction), with that value and its scope. Forgets the writes
-    /// whose value was changed since by anyone.
-    fn other_scopes_registers(&mut self, scope: UndoScope) -> Vec<(Register, Option<LoroValue>, Option<UndoScope>)> {
-        let doc = &self.doc;
-        let me = self.actor.get();
-        let mut out = Vec::new();
-        self.local_writes.retain(|register, (by, value)| {
-            let map = doc.get_map(register.0.clone());
-            let now = match map.get(&register.1) {
-                Some(ValueOrContainer::Value(now)) => Some(now),
-                Some(ValueOrContainer::Container(_)) => return false,
-                None => None,
-            };
-            if &now != value || map.get_last_editor(&register.1) != Some(me) {
-                return false;
-            }
-            if *by != Some(scope) {
-                out.push((register.clone(), now, *by));
-            }
-            true
-        });
-        out
-    }
-
-    /// Records the registers a local transaction of `scope` wrote, with their values.
-    fn note_own_writes(&mut self, writes: Vec<crate::tx::RegisterWrite>, scope: Option<UndoScope>) {
-        for crate::tx::RegisterWrite { container, key, value } in writes {
-            self.local_writes.insert((container.clone(), key.clone()), (scope, value.clone()));
-            self.own_registers.insert((container, key), value);
-        }
-    }
-
-    /// The registers whose current value another replica wrote, with that value (`None`: deleted
-    /// there): an import changed them and another peer wrote them last, or an earlier undo or
-    /// redo kept them for another replica and nothing changed them since. Prunes both candidate
-    /// sets of registers that are this replica's own again.
-    fn others_registers(&mut self) -> Vec<(Register, Option<LoroValue>)> {
-        let doc = &self.doc;
-        let me = self.actor.get();
-        let current = |register: &Register| {
-            let map = doc.get_map(register.0.clone());
-            let value = match map.get(&register.1) {
-                Some(ValueOrContainer::Value(value)) => Some(Some(value)),
-                Some(ValueOrContainer::Container(_)) => None,
-                None => Some(None),
-            };
-            (map, value)
-        };
-        let mut out = Vec::new();
-        self.kept_registers.retain(|register, kept| match current(register) {
-            (_, Some(value)) if &value == kept => {
-                out.push((register.clone(), value));
-                true
-            }
-            _ => false,
-        });
-        let own = &self.own_registers;
-        self.imported_registers.retain(|register| {
-            if self.kept_registers.contains_key(register) {
-                return true;
-            }
-            let (map, value) = current(register);
-            match (map.get_last_editor(&register.1), value) {
-                // Another replica wrote this replica's own value again: nothing to keep.
-                (Some(peer), Some(value)) if peer != me && own.get(register) == Some(&value) => true,
-                (Some(peer), Some(value)) if peer != me => {
-                    out.push((register.clone(), value));
-                    true
-                }
-                _ => false,
-            }
-        });
-        out
-    }
-
     /// Whether [`Replica::undo`] has a transaction of the person to undo.
     pub fn can_undo(&self) -> bool {
         self.can_undo_in(UndoScope::Person)
@@ -1377,11 +845,6 @@ impl Replica {
     /// Whether [`Replica::redo`] has an undone transaction of the person to redo.
     pub fn can_redo(&self) -> bool {
         self.can_redo_in(UndoScope::Person)
-    }
-
-    /// Whether either scope has a step to undo or redo.
-    fn has_steps(&self) -> bool {
-        [&self.undo.person, &self.undo.agent].into_iter().any(|history| !history.undo.is_empty() || !history.redo.is_empty())
     }
 
     /// Whether [`Replica::undo_in`] has a transaction of `scope` to undo.
@@ -1408,10 +871,9 @@ impl Replica {
     /// Starts an undo group: the transactions until [`Replica::end_undo_group`] undo and redo as
     /// one step. Groups do not nest ([`KdmError::InvalidValue`]). An undo or a redo ends the open
     /// group first, so undo while grouping reverts the group as one step. It stays one undo step
-    /// when other replicas' changes arrive while it is open, also when they touch what the group
-    /// changed (rule M12b): one undo takes back all of it and keeps their changes. A group spans
-    /// both undo scopes (M12a): the person's transactions in it are one person step, and an
-    /// agent's are one agent step.
+    /// when imported changes arrive while it is open, also when they touch what the group changed
+    /// (rule M12b). A group spans both undo scopes (M12a): the person's transactions in it are one
+    /// person step, and an agent's are one agent step.
     pub fn begin_undo_group(&mut self) -> Result<()> {
         if self.grouping {
             return Err(KdmError::InvalidValue { ty: "$undo".into(), field: "group".into(), reason: "is already open".into() });
@@ -1427,195 +889,154 @@ impl Replica {
         self.undo.agent.grouped = false;
     }
 
-    /// A draft of this document (standard 2.0 A12): a new writable replica of `actor` holding
-    /// every change this one has, with no undo history. Edits made on it stay there until
-    /// [`Replica::merge_changes`] takes them into another replica of the document.
+    /// A draft of this document (standard 2.0 A12): a new writable replica of `actor` with the
+    /// same state and version, no undo history and an empty log. Edits made on it stay there until
+    /// [`Replica::merge_changes`] takes them into this replica.
     pub fn fork(&self, actor: ActorId) -> Result<Replica> {
-        self.fork_at(&self.version(), actor)
+        let mut draft = Self::attach(self.store.clone(), Arc::clone(&self.schema), actor, self.lineage, self.seq);
+        draft.author_schema = self.author_schema;
+        Ok(draft)
     }
 
-    /// A draft of this document as it was at `version` (see [`Replica::fork`]). `version` must be
-    /// one this replica has reached ([`KdmError::InvalidValue`] otherwise). A shallow replica
-    /// (one opened from a file's content snapshot, for instance) forks at any version from its
-    /// root on, as a shallow replica with the same root; a version before its root, whose state
-    /// it does not hold, is [`KdmError::HistoryMissing`]: earlier versions are read from whoever
-    /// keeps the whole history.
+    /// A draft of this document as it was at `version` (see [`Replica::fork`]): the current state
+    /// with the changes since `version` taken back. `version` must be one this replica has
+    /// ([`KdmError::InvalidValue`] otherwise) and its log still holds ([`KdmError::HistoryMissing`]
+    /// for an earlier one).
     pub fn fork_at(&self, version: &Version, actor: ActorId) -> Result<Replica> {
         if !self.version().includes(version) {
             return Err(KdmError::InvalidValue { ty: "$draft".into(), field: "version".into(), reason: "names changes this replica does not have".into() });
         }
-        let doc = if !self.is_shallow() {
-            self.doc.fork_at(&self.doc.vv_to_frontiers(&version.0)).map_err(engine)?
-        } else if *version == self.version() {
-            self.doc.fork()
-        } else if self.reaches(version) {
-            shallow_fork_at(&self.doc, &version.0)?
-        } else {
-            return Err(KdmError::HistoryMissing(VERSION_BEFORE_ROOT.into()));
-        };
-        crate::marks::configure(&doc, &self.schema);
-        Self::attach(doc, self.doc_id, Arc::clone(&self.schema), actor)
+        let Some((_, seq)) = version.0 else { return Err(KdmError::HistoryMissing(BEFORE_LOG.into())) };
+        if seq == self.seq {
+            return self.fork(actor);
+        }
+        if !self.log.covers(seq) {
+            return Err(KdmError::HistoryMissing(BEFORE_LOG.into()));
+        }
+        let mut store = self.store.clone();
+        let entries: Vec<&Entry> = self.log.after(seq).collect();
+        for entry in entries.into_iter().rev() {
+            for op in entry.ops.backward() {
+                store.apply(op, &self.schema).map_err(applying_failed)?;
+            }
+        }
+        let mut draft = Self::attach(store, Arc::clone(&self.schema), actor, self.lineage, seq);
+        draft.author_schema = self.author_schema;
+        Ok(draft)
     }
 
     /// A copy of this document as a **new document** (data model, "A copy is a new document"): the
-    /// same objects, ids and content under the new permanent `doc_id`, as a writable replica of
-    /// `actor`. For a template instantiated twice, a copied file, or the same bytes stored twice:
-    /// each copy is its own document, with its own co-editing room. Unlike [`Replica::fork`] (a
-    /// draft of the same document, merged back), a copy never merges with its source or another
-    /// copy: [`Replica::import_changes`], [`Replica::merge_changes`] and [`Replica::rebase`] refuse
-    /// each other's bytes ([`KdmError::WrongDocument`]).
-    ///
-    /// Answers a replica, as [`Replica::fork`] does, so a host edits it or stores its
-    /// [`Replica::snapshot`]. The copy is a shallow replica (rule M16a) rooted at its own first
-    /// change: it holds the current state and no history, so no deleted content, no earlier
-    /// version and not the source's `docId` travel with it; it forks only at its current version,
-    /// and [`Replica::changes_since`] a version before the copy is [`KdmError::HistoryMissing`]. Its
-    /// undo and redo histories are empty. Object ids, tree node ids and every value are kept; a
-    /// blob is its content-addressed reference, so it resolves wherever the source's blobs do (a
-    /// host whose blob store is per document copies the referenced blobs too).
-    ///
-    /// There is no option to keep the history: the copy would share the source's change ids with
-    /// another document's, every earlier version of it would name the source's `docId` (a fork or
-    /// a checkout there disagrees with its own envelope), and deleted content would travel.
-    ///
-    /// Refuses ([`KdmError::InvalidValue`]) `doc_id` equal to this document's. The changes still
-    /// pending on this replica are not in the copy.
+    /// same objects, ids and content under the new permanent `doc_id`, on a new line of changes,
+    /// as a writable replica of `actor` with no history. Refuses ([`KdmError::InvalidValue`])
+    /// `doc_id` equal to this document's.
     pub fn copy_as_new_document(&self, doc_id: DocId, actor: ActorId) -> Result<Replica> {
-        if doc_id == self.doc_id {
+        if doc_id == self.store.doc_id {
             return Err(KdmError::InvalidValue { ty: "$copy".into(), field: "docId".into(), reason: "is this document's; a copy needs a new one".into() });
         }
-        let encoding = |error: loro::LoroEncodeError| KdmError::Encoding(error.to_string());
-        // The current state alone first, so the change that writes the new id is the copy's first
-        // and only change, never one the engine merges with the source's last.
-        let state = self.doc.export(ExportMode::shallow_snapshot(&self.doc.oplog_frontiers())).map_err(encoding)?;
-        let doc = LoroDoc::new();
-        crate::marks::configure(&doc, &self.schema);
-        doc.import(&state).map_err(importing)?;
-        doc.set_peer_id(actor.get()).map_err(engine)?;
-        // The change records the copy's root below, its birth: the engine roots a shallow document
-        // at its last operation, which is this change's second write, this actor's next operation
-        // but one, so the root (as `shallow_root` answers it) is known before the change.
-        let mut birth = doc.oplog_vv();
-        let next = birth.get(&actor.get()).copied().unwrap_or(0);
-        birth.insert(actor.get(), next + 1);
-        doc.get_map(META).insert("docId", doc_id.to_string()).map_err(engine)?;
-        doc.get_map(BIRTH).insert(BIRTH_ROOT, LoroValue::Binary(Version(birth).encode().into())).map_err(engine)?;
-        doc.set_next_commit_origin(OriginKind::System.as_str());
-        doc.set_next_commit_message(&Origin::system(NEW_DOCUMENT).encode_commit(self.schema.schema_version));
-        doc.commit();
-        // Rooted after that change: the source's id is overwritten, not kept as history.
-        let bytes = doc.export(ExportMode::shallow_snapshot(&doc.oplog_frontiers())).map_err(encoding)?;
-        let copy = Self::load(Arc::clone(&self.schema), &envelope::wrap(doc_id, bytes), actor)?;
-        if !copy.carries_whole_history() {
-            return Err(KdmError::Engine("the copy is not rooted at the birth it records".into()));
-        }
+        let mut store = self.store.clone();
+        store.doc_id = doc_id;
+        let mut copy = Self::attach(store, Arc::clone(&self.schema), actor, new_lineage(), 0);
+        copy.author_schema = Some(self.schema.schema_version);
         Ok(copy)
     }
 
-    /// The canonical state this replica would have after importing `changes`, without changing it:
-    /// the "after" of a draft's comparison ([`crate::diff::diff_states`]). Refuses changes that
-    /// depend on changes this replica lacks, like [`Replica::merge_changes`].
+    /// The canonical state this replica would have after merging `changes` (a draft's) with
+    /// [`Replica::merge_changes`], without changing it: the "after" of a draft's comparison
+    /// ([`crate::diff::diff_states`]). Refuses what the merge refuses.
     pub fn merged_state(&self, changes: &[u8]) -> Result<Value> {
-        let merged = self.merged_doc(changes)?;
-        read::state_json(&merged, &self.schema)
+        let mut merged = self.fork(self.actor)?;
+        merged.log = self.log.clone();
+        merged.merge_changes(changes, &Origin::system("merged-state"))?;
+        merged.state_json()
     }
 
-    /// Takes another replica's changes (a draft's, made on a [`Replica::fork`]) into this one as
-    /// one transaction of its own, with `origin`: one undo step of the person (unless `origin` is
-    /// `system` or `import`), labelled as `origin` says. A draft's merge is the person's step even
-    /// when an agent made the draft (M12a, KitAgent A14): the person approved it. The result is the state a CRDT import would give, so
-    /// edits made here (or imported) since the draft was forked are kept; only the operations
-    /// that turn this state into the merged one are written, under this replica's actor. Answers
-    /// the objects that changed.
+    /// Takes a draft's changes (made on a [`Replica::fork`] of this replica) into this one as one
+    /// transaction of its own, with `origin`: one undo step of the person (unless `origin` is
+    /// `system` or `import`), even when an agent made the draft (M12a, KitAgent A14): the person
+    /// approved it. Answers the objects that changed.
     ///
-    /// The draft's changes themselves are not imported: merging the same changes twice writes
-    /// their effect twice (text inserted twice, for instance), so a host merges a draft once.
-    /// Refuses ([`KdmError::InvalidValue`]) changes that depend on changes this replica lacks,
-    /// changes of another document ([`KdmError::WrongDocument`]), and changes that raise the
-    /// minimum schema version beyond this replica's ([`KdmError::NewerSchema`]); a refused merge
-    /// changes nothing.
+    /// When this replica has not changed since the draft was forked, the draft's operations apply
+    /// as they are. When it has, they apply unless the draft and this replica both changed one
+    /// field of one object since the fork, or one of them changed an object the other deleted:
+    /// then the merge is refused ([`KdmError::Stale`], naming them), since positions in a text or
+    /// list the other side also edited would land in the wrong place. Also refused: another
+    /// document's changes ([`KdmError::WrongDocument`]), changes that do not follow a version of
+    /// this replica ([`KdmError::Stale`]), and changes that raise the minimum schema version beyond
+    /// this replica's ([`KdmError::NewerSchema`]), and operations the schema refuses, checked as
+    /// [`Replica::import_changes`] checks them. A refused merge changes nothing.
     pub fn merge_changes(&mut self, changes: &[u8], origin: &Origin) -> Result<BTreeSet<ObjectId>> {
-        let merged = self.merged_doc(changes)?;
-        let from = self.doc.oplog_frontiers();
-        let to = merged.oplog_frontiers();
-        if from == to {
+        let value = content::parse(changes, "KDM changes")?;
+        let doc_id = DocId::parse(value.get("docId").and_then(Value::as_str).ok_or_else(|| KdmError::Encoding("not KDM changes: no `docId`".into()))?)?;
+        if doc_id != self.store.doc_id {
+            return Err(KdmError::WrongDocument { expected: self.store.doc_id.to_string(), found: doc_id.to_string() });
+        }
+        let lineage = value.get("lineage").and_then(Value::as_str).and_then(|text| Uuid::parse_str(text).ok());
+        let Some(list) = value.get("changes").and_then(Value::as_array) else {
+            return Err(KdmError::Stale("a draft's changes are changes, not a snapshot".into()));
+        };
+        if lineage.map(|lineage| *lineage.as_bytes()) != Some(self.lineage) {
+            return Err(KdmError::Stale(OTHER_LINE.into()));
+        }
+        let base = value
+            .get("after")
+            .and_then(|after| after.get("seq"))
+            .and_then(Value::as_u64)
+            .ok_or_else(|| KdmError::Encoding("not KDM changes: no `after`".into()))?;
+        if base > self.seq {
+            return Err(KdmError::Stale(format!("the draft follows version {base}; this replica is at {}", self.seq)));
+        }
+        let drafted = list.iter().map(|change| Change::from_json(change, &self.schema)).collect::<Result<Vec<_>>>()?;
+        let ops: Vec<Op> = drafted.into_iter().filter(|change| change.seq > base).flat_map(|change| change.ops).collect();
+        if ops.is_empty() {
             return Ok(BTreeSet::new());
         }
-        let diff = merged.diff(&from, &to).map_err(engine)?;
-        let message = origin.encode_commit(self.schema.schema_version);
-        // A merge is the person's step even when an agent made the draft.
+        if base < self.seq {
+            if !self.log.covers(base) {
+                return Err(KdmError::Stale(BEFORE_LOG.into()));
+            }
+            let mut ours: Vec<Op> = Vec::new();
+            for entry in self.log.after(base) {
+                ours.extend(entry.ops.forward());
+            }
+            let conflicts = conflicts(&ops, &ours);
+            if !conflicts.is_empty() {
+                return Err(KdmError::Stale(format!("the draft and the document both changed {} since the draft was made", conflicts.join(", "))));
+            }
+        }
+        let schema = Arc::clone(&self.schema);
+        let applied = self.store.apply_all_checked(ops, &schema)?;
+        if self.store.schema_version > u64::from(schema.schema_version) {
+            let found = self.store.schema_version;
+            self.store.revert(&applied, &schema);
+            return Err(KdmError::NewerSchema { found, reads: schema.schema_version });
+        }
+        if let Err(error) = read::check_projected_storage(&self.store, &schema) {
+            self.store.revert(&applied, &schema);
+            return Err(error);
+        }
+        let changes = changes_of(&applied);
+        let objects = changes.objects().clone();
+        self.changed.extend(changes);
         let scope = UndoScope::of(origin.kind).map(|_| UndoScope::Person);
-        let last = scope.map(|scope| self.prepare_engine_step(scope));
-        let doc = &self.doc;
-        let (applied, changed, registers) = observe_changes(doc, || {
-            let applied = doc.apply_diff(diff);
-            if applied.is_ok() {
-                doc.set_next_commit_origin(scope.map_or(origin.kind.as_str(), UndoScope::as_str));
-                doc.set_next_commit_message(&message);
-                doc.commit();
-            }
-            applied
-        });
-        if let Err(error) = applied {
-            // The engine refused part of a difference it computed itself: put back what it
-            // applied, outside the undo history, as `transact` does.
-            self.doc.set_next_commit_origin(ROLLBACK);
-            self.doc.commit();
-            if self.doc.oplog_frontiers() != from {
-                self.doc.revert_to(&from).map_err(engine)?;
-                self.doc.set_next_commit_origin(ROLLBACK);
-                self.doc.set_next_commit_message(&Origin::system("rollback").encode_commit(self.schema.schema_version));
-                self.doc.commit();
-            }
-            return Err(engine(error));
+        let touches = objects.iter().map(|id| UndoTouch { id: id.to_string(), fields: None }).collect();
+        let ops = Ops::plain(applied);
+        let seq = self.commit(origin, ops.clone(), schema.schema_version);
+        if let Some(scope) = scope {
+            self.undo.record(scope, Part { seq, ops }, touches, self.grouping);
         }
-        if let (Some(scope), Some(last)) = (scope, last) {
-            // Its footprint: every object it changed, whole.
-            self.note_engine_step(scope, last, changed.objects().iter().map(|id| UndoTouch { id: id.to_string(), fields: None }).collect());
-        }
-        for register in registers {
-            let value = match self.doc.get_map(register.0.clone()).get(&register.1) {
-                Some(ValueOrContainer::Value(value)) => Some(value),
-                Some(ValueOrContainer::Container(_)) => continue,
-                None => None,
-            };
-            self.local_writes.insert(register.clone(), (scope, value.clone()));
-            self.own_registers.insert(register, value);
-        }
-        let objects = changed.objects().clone();
-        self.changed.extend(changed);
         Ok(objects)
     }
 
-    /// A copy of this document with `changes` imported, checked as [`Replica::merge_changes`] checks them.
-    fn merged_doc(&self, changes: &[u8]) -> Result<LoroDoc> {
-        let (doc_id, bytes) = envelope::open(changes)?;
-        if doc_id != self.doc_id {
-            return Err(KdmError::WrongDocument { expected: self.doc_id.to_string(), found: doc_id.to_string() });
-        }
-        let merged = self.doc.fork();
-        crate::marks::configure(&merged, &self.schema);
-        let status = merged.import(bytes).map_err(importing)?;
-        read::check_projected_storage(&merged, &self.schema)?;
-        if status.pending.is_some() {
-            return Err(KdmError::InvalidValue { ty: "$draft".into(), field: "changes".into(), reason: "depend on changes this replica does not have".into() });
-        }
-        if let Some(found) = read::min_schema_version(&merged).filter(|found| *found > u64::from(self.schema.schema_version)) {
-            return Err(KdmError::NewerSchema { found, reads: self.schema.schema_version });
-        }
-        Ok(merged)
-    }
-
     pub fn state_json(&self) -> Result<Value> {
-        read::state_json(&self.doc, &self.schema)
+        read::state_json(&self.store, &self.schema)
     }
 
-    /// What changed since `since` (a version this replica reached), as a write's receipt: a
-    /// [`crate::diff::StateDiff`] without `texts`, its values cut to excerpts, objects named by
-    /// their tool ids where the schema declares them (OM9). Only the objects the changes since
-    /// then touched are read, in this replica and in a fork at `since`; the answer equals
-    /// [`crate::diff::diff_states`] of the two whole states. A version this replica's history does
-    /// not hold (another document's, one from before a reload, one before a shallow root) is
+    /// What changed since `since` (a version this replica reached and its log holds), as a
+    /// write's receipt: a [`crate::diff::StateDiff`] without `texts`, its values cut to excerpts,
+    /// objects named by their tool ids where the schema declares them (OM9). Only the objects the
+    /// changes since then touched are read, here and in a fork at `since`; the answer equals
+    /// [`crate::diff::diff_states`] of the two whole states. A version this replica's log does not
+    /// hold (another document's, one from before a reload, one older than the log) is
     /// [`KdmError::HistoryMissing`].
     pub fn changes_since(&self, since: &Version) -> Result<crate::diff::StateDiff> {
         if !self.version().includes(since) {
@@ -1623,54 +1044,38 @@ impl Replica {
         }
         let schema = &self.schema;
         if *since == self.version() {
-            return Ok(crate::diff::diff_objects(&[], &serde_json::Map::new(), &serde_json::Map::new(), &|_| None, false));
+            return Ok(crate::diff::diff_objects(&[], &Map::new(), &Map::new(), &|_| None, false));
         }
         let before = self.fork_at(since, self.actor)?;
-        let mut probe = self.fork_at(since, self.actor)?;
-        let mut touched = probe.import_changes(&self.export_changes(since)?)?;
-        // The trees holding an object deleted since: a tree keeps its node, which reads skip, so
-        // the deletion is told at its place in them.
-        let deleted: Vec<ObjectId> = touched.iter().filter(|id| !self.exists(id) && before.exists(id)).cloned().collect();
-        touched.extend(before.tree_holders(&deleted));
-        let read = |doc: &LoroDoc| -> Result<serde_json::Map<String, Value>> {
-            let mut objects = serde_json::Map::new();
-            let live = |id: &str| read::object_map(doc, &ObjectId::from_string(id)).is_ok();
+        let seq = since.0.map_or(0, |(_, seq)| seq);
+        let mut touched: BTreeSet<ObjectId> = BTreeSet::new();
+        for entry in self.log.after(seq) {
+            for op in entry.ops.forward() {
+                if let Some(id) = op.object() {
+                    touched.insert(id.clone());
+                }
+                if let Op::Delete { trees, .. } | Op::Create { trees, .. } = &op {
+                    touched.extend(trees.iter().map(|place| place.owner.clone()));
+                }
+            }
+        }
+        let read = |store: &Store| -> Result<Map<String, Value>> {
+            let mut objects = Map::new();
             for id in &touched {
-                if read::object_map(doc, id).is_ok() {
-                    let mut object = read::object_json(doc, schema, id)?;
-                    crate::diff::with_live_nodes(&mut object, &live);
-                    objects.insert(id.to_string(), object);
+                if store.contains(id) {
+                    objects.insert(id.to_string(), read::object_json(store, schema, id)?);
                 }
             }
             Ok(objects)
         };
-        let (old, new) = (read(&before.doc)?, read(&self.doc)?);
+        let (old, new) = (read(&before.store)?, read(&self.store)?);
         let ids: Vec<String> = touched.iter().map(ToString::to_string).collect();
         let type_of_id = |id: &str| {
             let id = ObjectId::from_string(id);
-            read::object_type(&self.doc, &id).or_else(|_| read::object_type(&before.doc, &id)).ok()
+            read::object_type(&self.store, &id).or_else(|_| read::object_type(&before.store, &id)).ok()
         };
         let diff = crate::diff::diff_objects(&ids, &old, &new, &type_of_id, false).with_leaf_edits(schema);
         Ok(diff.with_tool_ids(schema, &crate::tool_ids::ToolIds::of_replica(&before), &crate::tool_ids::ToolIds::of_replica(self)))
-    }
-
-    /// The objects whose tree fields hold a node naming one of `ids`.
-    fn tree_holders(&self, ids: &[ObjectId]) -> BTreeSet<ObjectId> {
-        let mut found = BTreeSet::new();
-        if ids.is_empty() {
-            return found;
-        }
-        for (owner_type, def) in &self.schema.types {
-            for (field, _) in def.fields.iter().filter(|(_, def)| def.kind == FieldKind::Tree) {
-                for owner in self.objects_of_type(owner_type) {
-                    let Ok(Some(tree)) = read::tree(&self.doc, &self.schema, &owner, field) else { continue };
-                    if tree.nodes().into_iter().any(|node| read::node_object(&tree, node).is_some_and(|object| ids.contains(&object))) {
-                        found.insert(owner.clone());
-                    }
-                }
-            }
-        }
-        found
     }
 
     /// SHA-256 of the canonical state, as lowercase hex.
@@ -1680,130 +1085,157 @@ impl Replica {
     }
 }
 
-/// Whether `doc` is full, or shallow with its state at its root recording that root as its birth
-/// ([`Replica::carries_whole_history`]).
-fn carries_whole_history(doc: &LoroDoc) -> bool {
-    if !doc.is_shallow() {
-        return true;
+/// The (object, field) pairs both `ours` and `theirs` changed, and the objects one deleted that
+/// the other changed: a draft's merge refuses them.
+fn conflicts(theirs: &[Op], ours: &[Op]) -> Vec<String> {
+    fn written(ops: &[Op]) -> (BTreeSet<(ObjectId, String)>, BTreeSet<ObjectId>, BTreeSet<ObjectId>) {
+        let mut fields = BTreeSet::new();
+        let mut objects = BTreeSet::new();
+        let mut deleted = BTreeSet::new();
+        for op in ops {
+            // Placing or taking a node in a tree writes the owner's tree field.
+            if let Op::Create { trees, .. } | Op::Delete { trees, .. } = op {
+                fields.extend(trees.iter().map(|place| (place.owner.clone(), place.field.to_string())));
+            }
+            let Some(id) = op.object() else { continue };
+            objects.insert(id.clone());
+            match (op, op.field()) {
+                (Op::Delete { .. }, _) => {
+                    deleted.insert(id.clone());
+                }
+                (_, Some(field)) => {
+                    fields.insert((id.clone(), field.to_string()));
+                }
+                _ => {}
+            }
+        }
+        (fields, objects, deleted)
     }
-    let root = Version(doc.shallow_since_vv().to_vv());
-    let Ok(state) = doc.export(ExportMode::StateOnly(Some(Cow::Owned(doc.shallow_since_frontiers())))) else { return false };
-    let at_root = LoroDoc::new();
-    if at_root.import(&state).is_err() {
-        return false;
+    let (their_fields, their_objects, their_deleted) = written(theirs);
+    let (our_fields, our_objects, our_deleted) = written(ours);
+    let mut out: Vec<String> = their_fields.intersection(&our_fields).map(|(id, field)| format!("{id}.{field}")).collect();
+    out.extend(their_objects.intersection(&our_deleted).map(|id| format!("{id} (deleted in the document)")));
+    out.extend(our_objects.intersection(&their_deleted).filter(|id| !our_deleted.contains(*id)).map(|id| format!("{id} (deleted in the draft)")));
+    out
+}
+
+/// The objects and fields applied operations wrote, one touch per object sorted by id (see
+/// [`UndoTouch`]): a created or deleted object whole, a field written by name, and an item a list
+/// or tree took or let go by its existence and placement.
+fn touches_of(ops: &[Op]) -> Vec<UndoTouch> {
+    let mut touches: BTreeMap<String, Option<BTreeSet<String>>> = BTreeMap::new();
+    for op in ops {
+        match op {
+            Op::Create { id, .. } | Op::Delete { id, .. } => {
+                touches.insert(id.to_string(), None);
+            }
+            Op::SchemaVersion { .. } => {}
+            op => {
+                if let (Some(id), Some(field)) = (op.object(), op.field())
+                    && let Some(fields) = touches.entry(id.to_string()).or_insert_with(|| Some(BTreeSet::new()))
+                {
+                    fields.insert(field.to_string());
+                }
+                let item = match op {
+                    Op::ListInsert { item, .. } => Some(item),
+                    Op::ListRemove { item: Some(item), .. } | Op::ListMove { item: Some(item), .. } => Some(item),
+                    Op::TreeCreate { node, .. } | Op::TreeMove { node, .. } | Op::TreeDelete { node, .. } => Some(node),
+                    _ => None,
+                };
+                if let Some(item) = item {
+                    touches.entry(item.to_string()).or_insert_with(|| Some(BTreeSet::new()));
+                }
+            }
+        }
     }
-    match at_root.get_map(BIRTH).get(BIRTH_ROOT) {
-        Some(ValueOrContainer::Value(LoroValue::Binary(bytes))) => Version::decode(&bytes).is_ok_and(|birth| birth == root),
-        _ => false,
+    touches.into_iter().map(|(id, fields)| UndoTouch { id, fields }).collect()
+}
+
+/// Whether an operation an undo applied changed an object `touches` does not hold.
+fn touches_outside(op: &Op, touches: &[UndoTouch]) -> bool {
+    op.object().is_some_and(|id| touches.binary_search_by(|touch| touch.id.as_str().cmp(id.as_str())).is_err())
+}
+
+/// The objects applied operations changed ([`Changes`]: with the keys written in map fields).
+fn changes_of(ops: &[Op]) -> Changes {
+    let mut changes = Changes::default();
+    for op in ops {
+        match op {
+            Op::MapSet { id, field, key, value, .. } => changes.insert_map_write(id, field, key, value.clone()),
+            op => {
+                if let Some(id) = op.object() {
+                    changes.insert_object(id.clone());
+                }
+                if let Op::Delete { trees, .. } | Op::Create { trees, .. } = op {
+                    for place in trees {
+                        changes.insert_object(place.owner.clone());
+                    }
+                }
+            }
+        }
+    }
+    changes
+}
+
+/// What [`Replica::transact`] answers for a schema raise outside a `system` transaction.
+fn raise_refused(origin: &Origin) -> KdmError {
+    KdmError::InvalidValue {
+        ty: "$meta".into(),
+        field: "schemaVersion".into(),
+        reason: format!("is raised only in a `system` transaction, not `{}`", origin.kind.as_str()),
     }
 }
 
-/// The label of a content seal's `system` change ([`Replica::seal`]).
-const CONTENT_SEAL: &str = "content-seal";
+/// What an import answers for changes of another line.
+const OTHER_LINE: &str = "the changes continue another line of changes (another replica's history)";
 
-/// The label of the `system` change that makes a copy ([`Replica::copy_as_new_document`]).
-const NEW_DOCUMENT: &str = "new-document";
+/// What an import answers for changes that went another way from the same version.
+const DIVERGED: &str = "the changes went another way from this replica's version";
 
-/// The label of the `system` change of a rebirth ([`Replica::rebirth`]).
-const REBIRTH: &str = "rebirth";
+/// What a replica answers for a version its log no longer holds.
+const BEFORE_LOG: &str = "the version is older than this replica's change log";
 
-/// The labels of the `system` changes that seal a version ([`Replica::is_sealed`]): each is one
-/// change by the KDM that depends on every head and writes nothing of the document's content.
-const SEALS: [&str; 3] = [CONTENT_SEAL, NEW_DOCUMENT, REBIRTH];
-
-/// What [`Replica::sealed_content_snapshot`] answers for a replica that is not sealed; the
-/// TypeScript `sealedContentSnapshot` says the same.
-const NOT_SEALED: &str = "is not sealed: seal the replica first (seal), or take content_snapshot";
-
-/// What [`Replica::rebirth`] answers while changes are pending; the TypeScript `rebirth` says the
-/// same.
-const PENDING_REBIRTH: &str = "has pending changes, which a rebirth would lose: fetch what they depend on first";
-
-/// What a shallow replica answers for a version before its root; the TypeScript
-/// `errors.historyMissing` says the same.
-const VERSION_BEFORE_ROOT: &str = "the version is before this shallow replica's root; read earlier versions from the server";
-
-/// What [`Replica::changes_since`] answers for a version its history does not hold; the
-/// TypeScript `changesSince` says the same.
+/// What [`Replica::changes_since`] answers for a version its history does not hold.
 const VERSION_NOT_HELD: &str = "the version is not in this replica's history (another document's, or the document was replaced since)";
 
-/// What [`Replica::rebase`] answers for a snapshot older than a shallow replica's root.
-const SNAPSHOT_BEFORE_ROOT: &str = "the snapshot is older than this shallow replica's root; rebase it on a newer one";
-
-/// A shallow document as it was at `version` (at or after its root), with the same root: its
-/// state at the root, then its retained changes up to `version`. The engine has no `fork_at` for
-/// shallow documents.
-fn shallow_fork_at(doc: &LoroDoc, version: &VersionVector) -> Result<LoroDoc> {
-    let root = doc.shallow_since_frontiers();
-    let encoding = |error: loro::LoroEncodeError| KdmError::Encoding(error.to_string());
-    let forked = LoroDoc::new();
-    forked.import(&doc.export(ExportMode::StateOnly(Some(Cow::Borrowed(&root)))).map_err(encoding)?).map_err(engine)?;
-    let spans: Vec<IdSpan> = version.sub_iter(&forked.oplog_vv()).collect();
-    if !spans.is_empty() {
-        forked.import(&doc.export(ExportMode::UpdatesInRange { spans: Cow::Owned(spans) }).map_err(encoding)?).map_err(engine)?;
-    }
-    if forked.oplog_vv() != *version {
-        return Err(KdmError::HistoryMissing(VERSION_BEFORE_ROOT.into()));
-    }
-    Ok(forked)
+/// A failure while applying operations that validation accepted.
+fn applying_failed(error: KdmError) -> KdmError {
+    KdmError::Engine(format!("applying a validated transaction failed: {error}"))
 }
 
 /// A replica's undo histories, one per undo scope (M12a). Each treats the other's transactions
-/// as it treats other replicas' changes: they are not its steps, and its undo keeps them.
+/// as it treats imported changes: they are not its steps, and its undo keeps them.
+#[derive(Default)]
 struct Histories {
     person: History,
     agent: History,
-    /// The last serial given to a step of either engine history ([`Part::Engine`]).
-    serial: Arc<AtomicI64>,
 }
 
-/// The undo and redo steps of one scope, last on top. The engine's history of the scope holds
-/// the engine steps they refer to.
+/// The undo and redo steps of one scope, last on top.
+#[derive(Default)]
 struct History {
     undo: Vec<Step>,
     redo: Vec<Step>,
-    engine: UndoManager,
     /// Whether the top undo step is the open undo group's (M12b): the group's next transaction of
     /// this scope joins it.
     grouped: bool,
 }
 
-/// One undo (or redo) step: one transaction, or the transactions of one undo group, as the parts
-/// that replay it in order (undone last first), with its original write footprint.
+/// One undo (or redo) step: one change, or the changes of one undo group, with its original
+/// write footprint.
 struct Step {
     parts: Vec<Part>,
     touches: Vec<UndoTouch>,
 }
 
-/// One transaction of a step, as the history replays it.
-enum Part {
-    /// A transaction the engine's history recorded, by the serial of its step there: any
-    /// transaction but one that only writes registers. The engine undoes it as an inverse of its
-    /// operations, transformed over later changes.
-    Engine(i64),
-    /// A transaction that only writes registers (register fields and keys of map fields of
-    /// objects that existed before it): the registers it changed, each with the value to write
-    /// back. Undoing it writes them back, and needs nothing of the document's history.
-    Registers(Vec<Entry>),
-}
-
-/// One register of a [`Part::Registers`]: key `key` of map `container` (the object's own map for
-/// a register field, `field`'s map for a key of a map field), and the value to write back
-/// (`None`: delete the key).
-pub(crate) struct Entry {
-    pub(crate) container: ContainerID,
-    pub(crate) key: String,
-    pub(crate) object: ObjectId,
-    pub(crate) field: Option<String>,
-    pub(crate) value: Option<LoroValue>,
+/// One change of a step: its number in the log and its operations.
+#[derive(Clone)]
+struct Part {
+    seq: u64,
+    ops: Ops,
 }
 
 impl Histories {
-    fn new(doc: &LoroDoc) -> Self {
-        let serial = Arc::new(AtomicI64::new(0));
-        Self { person: History::new(doc, UndoScope::Person, &serial), agent: History::new(doc, UndoScope::Agent, &serial), serial }
-    }
-
     fn get(&self, scope: UndoScope) -> &History {
         match scope {
             UndoScope::Person => &self.person,
@@ -1815,6 +1247,21 @@ impl Histories {
         match scope {
             UndoScope::Person => &mut self.person,
             UndoScope::Agent => &mut self.agent,
+        }
+    }
+
+    /// Drops the undo and redo steps with a part older than `base`, the log's first change: an
+    /// undo carries a part's inverse over every change logged after it ([`through`]), and the log
+    /// no longer holds all of those, so the transform would be silently wrong.
+    fn drop_before(&mut self, base: u64) {
+        for history in [&mut self.person, &mut self.agent] {
+            let held = |step: &Step| step.parts.iter().all(|part| part.seq >= base);
+            let had = history.undo.len();
+            history.undo.retain(held);
+            history.redo.retain(held);
+            if history.undo.len() < had && history.undo.is_empty() {
+                history.grouped = false;
+            }
         }
     }
 
@@ -1837,15 +1284,6 @@ impl Histories {
 }
 
 impl History {
-    fn new(doc: &LoroDoc, scope: UndoScope, serial: &Arc<AtomicI64>) -> Self {
-        Self { undo: Vec::new(), redo: Vec::new(), engine: undo_manager(doc, scope, serial), grouped: false }
-    }
-
-    /// The engine steps the undo steps refer to.
-    fn engine_items(&self) -> usize {
-        self.undo.iter().flat_map(|step| &step.parts).filter(|part| matches!(part, Part::Engine(_))).count()
-    }
-
     /// Pushes an undo step, dropping the oldest beyond [`MAX_STEPS`].
     fn push(&mut self, step: Step) {
         self.undo.push(step);
@@ -1859,7 +1297,7 @@ impl History {
         if undo { self.undo.pop() } else { self.redo.pop() }
     }
 
-    /// Pushes the step an undo (`undo`) or a redo replayed onto the other stack.
+    /// Pushes the step an undo (`undo`) or a redo made onto the other stack.
     fn push_replayed(&mut self, undo: bool, step: Step) {
         if undo {
             self.redo.push(step);
@@ -1867,173 +1305,6 @@ impl History {
             self.push(step);
         }
     }
-
-    /// After an undo (`undo`) or a redo: drops from the stack it took steps from the engine steps
-    /// the engine no longer holds there. When the undo of one of its steps changes nothing, the
-    /// engine undoes the step below it in the same call, so the replica's step that refers to
-    /// that one would replay nothing. The engine's steps are numbered in the order it pushed
-    /// them, so those are the ones above the engine's top step.
-    fn drop_consumed(&mut self, undo: bool) {
-        let top = history_serial(if undo { self.engine.top_undo_value() } else { self.engine.top_redo_value() });
-        let steps = if undo { &mut self.undo } else { &mut self.redo };
-        let held = |part: &Part| match part {
-            Part::Engine(serial) => top.is_some_and(|top| *serial <= top),
-            Part::Registers(_) => true,
-        };
-        while let Some(step) = steps.last_mut() {
-            if step.parts.iter().all(held) {
-                break;
-            }
-            step.parts.retain(held);
-            if !step.parts.is_empty() {
-                break;
-            }
-            steps.pop();
-        }
-    }
-}
-
-impl Step {
-    /// This step and `later` (replayed after it) as one step: the engine holds `later`'s steps
-    /// above this one's, so they replay first.
-    fn then(mut self, later: Step) -> Step {
-        self.parts.extend(later.parts);
-        merge_undo_touches(&mut self.touches, &later.touches);
-        self
-    }
-}
-
-/// The serial of an engine step, from its value.
-fn history_serial(value: Option<LoroValue>) -> Option<i64> {
-    match value {
-        Some(LoroValue::I64(serial)) => Some(serial),
-        _ => None,
-    }
-}
-
-/// Sets `key` of `map` to `value`, or deletes it.
-fn put(map: &LoroMap, key: &str, value: &Option<LoroValue>) -> Result<()> {
-    match value {
-        Some(value) => map.insert(key, value.clone()).map_err(engine),
-        None => map.delete(key).map_err(engine),
-    }
-}
-
-/// The engine's undo history of `scope` on a replica's document: the transactions of the scope
-/// that are not only register writes (those are the replica's own, [`Part::Registers`]).
-fn undo_manager(doc: &LoroDoc, scope: UndoScope, serial: &Arc<AtomicI64>) -> UndoManager {
-    let mut undo = UndoManager::new(doc);
-    undo.set_merge_interval(0);
-    // Each step carries a new serial, which the replica's steps refer to it by.
-    let pushing = Arc::clone(serial);
-    undo.set_on_push(Some(Box::new(move |_, _, _| UndoItemMeta { value: LoroValue::I64(pushing.fetch_add(1, Ordering::Relaxed) + 1), cursors: Vec::new() })));
-    undo.add_exclude_origin_prefix(ROLLBACK);
-    // `system` transactions (repairs, migrations) are not undo steps: undo skips them like
-    // changes from another replica, and they survive the undo of earlier transactions.
-    undo.add_exclude_origin_prefix(OriginKind::System.as_str());
-    // `import` transactions (changes merged from a file edited elsewhere) are not undo steps
-    // either: a person's undo never reverts another tool's edit.
-    undo.add_exclude_origin_prefix(OriginKind::Import.as_str());
-    // The other scope's transactions, and its undo and redo, are not this scope's steps.
-    let other = match scope {
-        UndoScope::Person => UndoScope::Agent,
-        UndoScope::Agent => UndoScope::Person,
-    };
-    undo.add_exclude_origin_prefix(other.as_str());
-    undo.add_exclude_origin_prefix(ENGINE_UNDO);
-    // Transactions that only write registers are the replica's steps, not the engine's; for
-    // the engine's steps they are changes made since, as another replica's are.
-    undo.add_exclude_origin_prefix(REGISTER_STEP);
-    undo
-}
-
-/// Runs `run` while observing which objects change ([`Changes`]: with the keys written in map
-/// fields), and which registers inside objects. Change events are observed only during the call:
-/// a document-wide subscription makes large local transactions slow to commit.
-fn observe_changes<T>(doc: &LoroDoc, run: impl FnOnce() -> T) -> (T, Changes, Vec<Register>) {
-    let found = Arc::new(Mutex::new((Changes::default(), Vec::new())));
-    let sink = Arc::clone(&found);
-    let subscription = doc.subscribe_root(Arc::new(move |event| {
-        let Ok(mut found) = sink.lock() else { return };
-        let (changes, registers) = &mut *found;
-        for diff in event.events.iter() {
-            let in_objects = matches!(diff.path.first(), Some((_, Index::Key(key))) if key.to_string() == OBJECTS);
-            if !in_objects {
-                continue;
-            }
-            match diff.path.get(1) {
-                Some((_, Index::Key(key))) => {
-                    let id = ObjectId::from_string(key.to_string());
-                    if let Diff::Map(map) = &diff.diff {
-                        for (field, value) in map.updated.iter() {
-                            if !matches!(value, Some(ValueOrContainer::Container(_))) {
-                                registers.push((diff.target.clone(), field.to_string()));
-                            }
-                        }
-                    }
-                    // Keys of a map field (the object's map, one level down) set to values or
-                    // deleted; any other change is the object's.
-                    match (&diff.diff, diff.path.get(2), diff.path.len()) {
-                        (Diff::Map(map), Some((_, Index::Key(field))), 3)
-                            if map.updated.values().all(|value| !matches!(value, Some(ValueOrContainer::Container(_)))) =>
-                        {
-                            for (key, value) in map.updated.iter() {
-                                let value = match value {
-                                    Some(ValueOrContainer::Value(value)) => Some(canonical(value.to_json_value())),
-                                    _ => None,
-                                };
-                                changes.insert_map_write(&id, field.as_ref(), key.as_ref(), value);
-                            }
-                        }
-                        _ => changes.insert_object(id),
-                    }
-                }
-                _ => {
-                    if let Diff::Map(map) = &diff.diff {
-                        for key in map.updated.keys() {
-                            changes.insert_object(ObjectId::from_string(key.to_string()));
-                        }
-                    }
-                }
-            }
-        }
-    }));
-    let value = run();
-    drop(subscription);
-    let (changed, registers) = found.lock().map(|mut found| mem::take(&mut *found)).unwrap_or_default();
-    (value, changed, registers)
-}
-
-/// Every byte string a replica exports: 4-byte magic, the 16-byte document UUID, then the engine's
-/// bytes. The id keeps two documents from being merged by mistake.
-mod envelope {
-    use crate::{DocId, KdmError, Result};
-
-    const MAGIC: &[u8; 4] = b"KDM\x01";
-
-    /// Puts the envelope in front of the engine's bytes in their own buffer: a copy would hold a
-    /// large document's snapshot twice.
-    pub(super) fn wrap(doc_id: DocId, mut bytes: Vec<u8>) -> Vec<u8> {
-        let header: Vec<u8> = [MAGIC.as_slice(), doc_id.as_bytes().as_slice()].concat();
-        bytes.reserve_exact(header.len());
-        bytes.splice(0..0, header);
-        bytes
-    }
-
-    pub(super) fn open(bytes: &[u8]) -> Result<(DocId, &[u8])> {
-        let not_kdm = || KdmError::Encoding("the bytes are not a KDM export".into());
-        let (magic, rest) = bytes.split_first_chunk::<4>().ok_or_else(not_kdm)?;
-        if magic != MAGIC {
-            return Err(not_kdm());
-        }
-        let (doc_id, rest) = rest.split_first_chunk::<16>().ok_or_else(not_kdm)?;
-        Ok((DocId::from_bytes(*doc_id), rest))
-    }
-}
-
-/// An engine failure while applying operations that validation accepted.
-fn applying_failed(error: KdmError) -> KdmError {
-    KdmError::Engine(format!("applying a validated transaction failed: {error}"))
 }
 
 #[cfg(test)]
@@ -2042,46 +1313,16 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn an_engine_failure_while_applying_is_reverted_out_of_undo_history() {
+    fn replica() -> Replica {
         let schema = Arc::new(Schema::parse(include_str!("../tests/fixtures/test-schema.json")).unwrap());
-        let mut replica = Replica::create(schema, DocId::new(), ActorId::from_u64(1).unwrap()).unwrap();
-        let person = Origin::person("user:test");
-        let shape = replica
-            .transact(&person, |tx| {
-                let mut fields = serde_json::Map::new();
-                for (key, value) in [("kind", json!("rect")), ("x", json!(10)), ("y", json!(20))] {
-                    fields.insert(key.into(), value);
-                }
-                tx.create("Shape", fields)
-            })
-            .unwrap();
-        replica.take_changed();
-        crate::op::FAIL_AT.with(|at| at.set(Some(2)));
-        let error = replica
-            .transact(&person, |tx| {
-                tx.set(&shape, "x", json!(99))?;
-                tx.text_insert(&shape, "label", 0, "partial")?;
-                tx.set(&shape, "y", json!(5))
-            })
-            .unwrap_err();
-        assert!(matches!(&error, KdmError::Engine(message) if message.contains("forced failure")), "{error:?}");
-        assert_eq!(replica.get(&shape, "x").unwrap(), json!(10));
-        assert_eq!(replica.text(&shape, "label").unwrap(), "");
-        assert!(replica.take_changed().is_empty());
-        // The partial commit and its reversal are not undo steps: undo reverts the creation.
-        assert!(replica.undo().unwrap());
-        assert!(!replica.exists(&shape));
+        Replica::create(schema, DocId::new(), ActorId::from_u64(1).unwrap()).unwrap()
     }
 
-    /// A bulk create (a table's records) kept a note of every cell it wrote, which grew the
-    /// replica's memory with every record: notes of registers in objects the same transaction
-    /// creates are never read, since no undo reaches such a register before a later write replaces
-    /// the note (undoing the creation deletes the whole object).
+    /// A bulk create (a table's records) is one change in the log, whose undo step refers to it,
+    /// and an exact undo shares its operations instead of copying them.
     #[test]
-    fn a_transaction_keeps_no_notes_of_the_objects_it_creates() {
-        let schema = Arc::new(Schema::parse(include_str!("../tests/fixtures/test-schema.json")).unwrap());
-        let mut replica = Replica::create(schema, DocId::new(), ActorId::from_u64(1).unwrap()).unwrap();
+    fn an_exact_undo_and_redo_share_the_operations_of_the_change_they_take_back() {
+        let mut replica = replica();
         let person = Origin::person("user:test");
         let sheet = replica
             .transact(&person, |tx| {
@@ -2092,11 +1333,37 @@ mod tests {
                 Ok(sheet)
             })
             .unwrap();
-        assert_eq!((replica.own_registers.len(), replica.local_writes.len()), (0, 0));
-        // A later write to one of them is noted, and an agent's later write survives the person's
-        // undo of it, as before.
         replica.transact(&person, |tx| tx.map_set(&sheet, "cells", "c1", json!("person"))).unwrap();
-        assert_eq!((replica.own_registers.len(), replica.local_writes.len()), (1, 1));
+        assert!(replica.undo().unwrap());
+        let last = replica.log.entries.back().unwrap();
+        assert!(last.ops.inverted && last.size < 200);
+        assert!(replica.redo().unwrap());
+        assert_eq!(replica.map_get(&sheet, "cells", "c1").unwrap(), json!("person"));
+        assert!(!replica.log.entries.back().unwrap().ops.inverted);
+    }
+
+    /// A bulk create (a table's records) keeps no note of the cells it writes: its undo step
+    /// refers to the one change the log holds. A later write is a step too, and an agent's later
+    /// write survives the person's undo of it, as before.
+    #[test]
+    fn a_transaction_keeps_no_notes_of_the_objects_it_creates() {
+        let mut replica = replica();
+        let person = Origin::person("user:test");
+        let sheet = replica
+            .transact(&person, |tx| {
+                let sheet = tx.create("Sheet", serde_json::Map::new())?;
+                for cell in 0..100 {
+                    tx.map_set(&sheet, "cells", &format!("c{cell}"), json!(cell))?;
+                }
+                Ok(sheet)
+            })
+            .unwrap();
+        let step = replica.undo.person.undo.last().unwrap();
+        let logged = replica.log.entries.back().unwrap();
+        assert_eq!(step.parts.len(), 1);
+        assert!(Arc::ptr_eq(&step.parts.first().unwrap().ops.ops, &logged.ops.ops), "the step shares the logged change");
+        replica.transact(&person, |tx| tx.map_set(&sheet, "cells", "c1", json!("person"))).unwrap();
+        assert_eq!(replica.undo.person.undo.len(), 2);
         replica.transact(&Origin::agent("agent:test"), |tx| tx.map_set(&sheet, "cells", "c1", json!("agent"))).unwrap();
         assert!(replica.undo().unwrap());
         assert_eq!(replica.map_get(&sheet, "cells", "c1").unwrap(), json!("agent"));
@@ -2104,16 +1371,15 @@ mod tests {
         assert!(!replica.exists(&sheet));
     }
 
-    /// Loading a table replays its stored changes as imports: the replica kept a note of every
-    /// cell they wrote, though without undo or redo steps no undo can reach them (a later step
-    /// writes such a register before its undo can).
+    /// Loading a table replays its stored changes as imports: an import is no undo step and
+    /// keeps no notes. After a step of the replica's own, the person's undo keeps another
+    /// replica's later write, as before.
     #[test]
     fn an_import_before_any_undo_step_keeps_no_notes() {
-        let schema = Arc::new(Schema::parse(include_str!("../tests/fixtures/test-schema.json")).unwrap());
         let person = Origin::person("user:test");
-        let mut theirs = Replica::create(Arc::clone(&schema), DocId::new(), ActorId::from_u64(1).unwrap()).unwrap();
+        let mut theirs = replica();
         let sheet = theirs.transact(&Origin::system("fixture"), |tx| tx.create("Sheet", serde_json::Map::new())).unwrap();
-        let mut mine = Replica::load(schema, &theirs.snapshot().unwrap(), ActorId::from_u64(2).unwrap()).unwrap();
+        let mut mine = Replica::load(Arc::clone(&theirs.schema), &theirs.snapshot().unwrap(), ActorId::from_u64(2).unwrap()).unwrap();
         theirs
             .transact(&person, |tx| {
                 for cell in 0..100 {
@@ -2123,15 +1389,36 @@ mod tests {
             })
             .unwrap();
         mine.import_changes(&theirs.export_changes(&mine.version()).unwrap()).unwrap();
-        assert!(mine.imported_registers.is_empty());
-        // After a step of its own, an import is noted, and the person's undo keeps the other
-        // replica's later write, as before.
+        assert!(!mine.can_undo() && !mine.can_redo());
+        assert!(mine.undo.person.undo.is_empty() && mine.undo.agent.undo.is_empty());
         mine.transact(&person, |tx| tx.map_set(&sheet, "cells", "c1", json!("mine"))).unwrap();
         theirs.import_changes(&mine.export_changes(&theirs.version()).unwrap()).unwrap();
         theirs.transact(&person, |tx| tx.map_set(&sheet, "cells", "c1", json!("theirs"))).unwrap();
         mine.import_changes(&theirs.export_changes(&mine.version()).unwrap()).unwrap();
-        assert_eq!(mine.imported_registers.len(), 1);
         assert!(mine.undo().unwrap());
         assert_eq!(mine.map_get(&sheet, "cells", "c1").unwrap(), json!("theirs"));
+    }
+
+    /// The log keeps at most its number of changes: older versions answer a snapshot and
+    /// `HistoryMissing`.
+    #[test]
+    fn the_log_drops_its_oldest_changes_beyond_its_limit() {
+        let mut replica = replica();
+        let start = replica.version();
+        let person = Origin::system("bulk");
+        let sheet = replica.transact(&person, |tx| tx.create("Sheet", serde_json::Map::new())).unwrap();
+        let first = replica.version();
+        for n in 0..LOG_CHANGES + 5 {
+            replica.transact(&person, |tx| tx.map_set(&sheet, "cells", "n", json!(n))).unwrap();
+        }
+        assert_eq!(replica.log.entries.len(), LOG_CHANGES);
+        assert!(matches!(replica.fork_at(&first, ActorId::random()), Err(KdmError::HistoryMissing(_))));
+        assert!(matches!(replica.changes_since(&start), Err(KdmError::HistoryMissing(_))));
+        let bytes = replica.export_changes(&first).unwrap();
+        assert!(serde_json::from_slice::<Value>(&bytes).unwrap().get("objects").is_some(), "an old version gets a snapshot");
+        let recent = Version::at(replica.lineage, replica.seq - 3);
+        let bytes = replica.export_changes(&recent).unwrap();
+        assert_eq!(serde_json::from_slice::<Value>(&bytes).unwrap().get("changes").and_then(Value::as_array).map(Vec::len), Some(3));
+        assert!(replica.fork_at(&recent, ActorId::random()).is_ok());
     }
 }

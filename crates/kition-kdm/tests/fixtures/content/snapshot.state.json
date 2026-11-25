@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "docId": "0193a5c4-0000-7000-8000-000000000003",
+    "kdm": 1,
+    "kit": "kit.content",
+    "schemaVersion": 2
+  },
+  "objects": {
+    "0193a5c4-0000-7000-8000-0000000000a1": {
+      "$type": "Board",
+      "notes": "",
+      "outline": [],
+      "pages": [],
+      "title": "Q4",
+      "vars": {}
+    }
+  }
+}

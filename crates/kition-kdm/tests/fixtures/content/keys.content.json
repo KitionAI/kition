@@ -1,0 +1,5 @@
+{"kdm":1,"kit":"kit.content","docId":"0193a5c4-0000-7000-8000-000000000002","schemaVersion":1,"objects":{
+"Z9":{"$type":"Page","body":[{"insert":"😀 "},{"attributes":{"bold":true},"insert":"bold 𝄞"}],"name":"Z"},
+"_m":{"$type":"Page","name":"m"},
+"a0":{"$type":"Board","notes":"line1\nline2 😀","pages":["Z9","_m"],"title":"Tab\there \"quoted\" back\\slash 😀 é \u0001","vars":{"B":1,"_":2,"a":3,"é":4,"ｚ":5,"😀":6}}
+}}

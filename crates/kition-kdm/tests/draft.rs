@@ -124,9 +124,8 @@ fn live_edits_made_during_a_draft_survive_its_merge_and_its_undo() {
     draft.transact(&Origin::agent("user:test"), |tx| tx.text_insert(&shape, "label", 2, "Z")).expect("draft text");
     draft.transact(&Origin::agent("user:test"), |tx| tx.set(&shape, "x", json!(42))).expect("draft x");
 
-    // Meanwhile the person types at the start and moves the shape vertically, and a collaborator
-    // renames the page.
-    live.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "12")).expect("live text");
+    // Meanwhile the person moves the shape vertically, and a collaborator renames the page: other
+    // fields than the draft's.
     live.transact(&person(), |tx| tx.set(&shape, "y", json!(7))).expect("live y");
     let mut collaborator = Replica::load(schema(), &live.snapshot().expect("snapshot"), actor(5)).expect("load");
     collaborator.transact(&person(), |tx| tx.set(&page, "title", json!("Theirs"))).expect("collaborator");
@@ -134,15 +133,10 @@ fn live_edits_made_during_a_draft_survive_its_merge_and_its_undo() {
 
     let changes = draft.export_changes(&base).expect("export");
     live.merge_changes(&changes, &agent()).expect("merge");
-    assert_eq!(live.text(&shape, "label").expect("text"), "12abZ");
+    assert_eq!(live.text(&shape, "label").expect("text"), "abZ");
     assert_eq!(live.get(&shape, "x").expect("x"), json!(42));
     assert_eq!(live.get(&shape, "y").expect("y"), json!(7));
     assert_eq!(live.get(&page, "title").expect("title"), json!("Theirs"));
-
-    // The merged state is what a CRDT import of the draft gives.
-    let mut crdt = Replica::load(schema(), &collaborator.snapshot().expect("snapshot"), actor(7)).expect("load");
-    crdt.import_changes(&live.export_changes(&base).expect("export")).expect("import");
-    assert_eq!(crdt.state_json().expect("state"), live.state_json().expect("state"));
 
     // Undoing the merge keeps everyone else's edits, including a later one to the same object.
     live.import_changes(&{
@@ -152,11 +146,42 @@ fn live_edits_made_during_a_draft_survive_its_merge_and_its_undo() {
     })
     .expect("import");
     assert!(live.undo().expect("undo"));
-    assert_eq!(live.text(&shape, "label").expect("text"), "12ab");
+    assert_eq!(live.text(&shape, "label").expect("text"), "ab");
     assert_eq!(live.get(&shape, "x").expect("x"), json!(10));
     assert_eq!(live.get(&shape, "y").expect("y"), json!(7));
     assert_eq!(live.get(&shape, "fill").expect("fill"), json!("red"));
     assert_eq!(live.get(&page, "title").expect("title"), json!("Theirs"));
+}
+
+/// A draft and the live document that both changed one field of one object since the draft was
+/// made cannot be merged (positions in a text both edited would land in the wrong place): the
+/// merge is refused as stale, names the field, and changes nothing. So is a draft that changed an
+/// object the document deleted since.
+#[test]
+fn a_merge_refuses_a_field_both_sides_changed_and_changes_nothing() {
+    let mut live = live();
+    let (page, shape) = page_with_shape(&mut live);
+    live.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "ab")).expect("edit");
+    let base = live.version();
+    let mut draft = live.fork(actor(9)).expect("fork");
+    draft.transact(&Origin::agent("user:test"), |tx| tx.text_insert(&shape, "label", 2, "Z")).expect("draft text");
+    live.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "12")).expect("live text");
+    let before = (live.version(), live.state_json().expect("state"), live.can_redo());
+    let error = live.merge_changes(&draft.export_changes(&base).expect("export"), &agent()).expect_err("conflict");
+    assert!(matches!(&error, KdmError::Stale(message) if message.contains(&format!("{shape}.label"))), "{error:?}");
+    assert!(live.merged_state(&draft.export_changes(&base).expect("export")).is_err());
+    assert_eq!((live.version(), live.state_json().expect("state"), live.can_redo()), before);
+
+    let mut other = live.fork(actor(10)).expect("fork");
+    let since = other.version();
+    other.transact(&Origin::agent("user:test"), |tx| tx.set(&shape, "x", json!(1))).expect("draft x");
+    live.transact(&person(), |tx| {
+        tx.list_remove(&page, "shapes", 0)?;
+        tx.delete(&shape)
+    })
+    .expect("delete");
+    let error = live.merge_changes(&other.export_changes(&since).expect("export"), &agent()).expect_err("deleted");
+    assert!(matches!(&error, KdmError::Stale(message) if message.contains("deleted")), "{error:?}");
 }
 
 #[test]
@@ -173,7 +198,7 @@ fn a_merge_refuses_changes_it_cannot_take_and_changes_nothing() {
     let gap = ahead.version();
     ahead.transact(&person(), |tx| tx.set(&page, "title", json!("B"))).expect("edit");
     let error = live.merge_changes(&ahead.export_changes(&gap).expect("export"), &agent()).expect_err("pending");
-    assert!(matches!(error, KdmError::InvalidValue { .. }), "{error:?}");
+    assert!(matches!(error, KdmError::Stale(_)), "{error:?}");
     assert!(live.merge_changes(b"not a kdm export", &agent()).is_err());
     assert_eq!((live.version(), live.state_json().expect("state")), before);
     // An empty draft merges to nothing, with no undo step.

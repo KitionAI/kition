@@ -50,7 +50,7 @@ pub fn build(text: &str) -> Result<Replica, String> {
 }
 
 pub fn text_of(replica: &Replica) -> Result<String, String> {
-    replica.snapshot().map(|bytes| json!(bytes).to_string()).map_err(|e| e.to_string())
+    replica.content_snapshot().map(|bytes| json!(bytes).to_string()).map_err(|e| e.to_string())
 }
 
 pub fn under(command: &str, params: &Map<String, Value>) -> Value {

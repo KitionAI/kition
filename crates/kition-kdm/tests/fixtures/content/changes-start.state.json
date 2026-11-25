@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "docId": "0193a5c4-0000-7000-8000-000000000004",
+    "kdm": 1,
+    "kit": "kit.content",
+    "schemaVersion": 2
+  },
+  "objects": {
+    "0193a5c4-0000-7000-8000-0000000000a1": {
+      "$type": "Board",
+      "notes": "a😀b",
+      "outline": [],
+      "pages": [
+        "0193a5c4-0000-7000-8000-0000000000b1",
+        "0193a5c4-0000-7000-8000-0000000000b2"
+      ],
+      "title": "Start",
+      "vars": {
+        "gap": 8,
+        "zoom": 1.5
+      }
+    },
+    "0193a5c4-0000-7000-8000-0000000000b1": {
+      "$type": "Page",
+      "body": [
+        {
+          "insert": "Hi "
+        },
+        {
+          "attributes": {
+            "bold": true
+          },
+          "insert": "there"
+        }
+      ],
+      "box": null,
+      "count": null,
+      "done": null,
+      "image": null,
+      "kind": null,
+      "name": "One",
+      "next": null,
+      "scale": null
+    },
+    "0193a5c4-0000-7000-8000-0000000000b2": {
+      "$type": "Page",
+      "body": [],
+      "box": null,
+      "count": 2,
+      "done": null,
+      "image": null,
+      "kind": null,
+      "name": "Two",
+      "next": null,
+      "scale": null
+    }
+  }
+}

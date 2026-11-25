@@ -396,11 +396,6 @@ document_store_command!(delete_document_store, docstore::delete_entry_request);
 document_store_command!(read_document_index, docstore::read_index_request);
 document_store_command!(write_document_index, docstore::write_index_request);
 document_store_command!(read_document_history, docstore::read_history_request);
-document_store_command!(
-    record_document_checkpoint,
-    docstore::record_checkpoint_request
-);
-document_store_command!(read_document_checkpoint, docstore::read_checkpoint_request);
 // A document's checkpoints as kits see them (Kit UI protocol section 7m).
 document_store_command!(list_kit_checkpoints, docstore::checkpoints::list_request);
 document_store_command!(find_kit_checkpoint, docstore::checkpoints::find_request);

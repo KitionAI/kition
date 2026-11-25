@@ -45,12 +45,6 @@ pub fn page_with_shape(replica: &mut Replica) -> (ObjectId, ObjectId) {
         .expect("page and shape")
 }
 
-/// Wraps engine bytes the way the KDM exports them: magic, document UUID, engine bytes.
-pub fn envelope(doc: &kition_kdm::DocId, bytes: &[u8]) -> Vec<u8> {
-    let uuid = uuid::Uuid::parse_str(&doc.to_string()).expect("doc ids are UUIDs");
-    [b"KDM\x01".as_slice(), uuid.as_bytes(), bytes].concat()
-}
-
 /// The test schema's next version: a new `Note` type and a new `caption` text on `Shape`.
 pub fn schema_v2() -> Arc<Schema> {
     let mut json: Value = serde_json::from_str(include_str!("fixtures/test-schema.json")).expect("test schema is JSON");
@@ -60,16 +54,9 @@ pub fn schema_v2() -> Arc<Schema> {
     Arc::new(Schema::parse(&json.to_string()).expect("v2 schema parses"))
 }
 
-/// A snapshot of an empty `kit.test` document written directly with the engine, with the given
-/// `meta.kdm` and `meta.schemaVersion`.
+/// The content of an empty `kit.test` document with the given `kdm` and `schemaVersion`, written
+/// by hand.
 pub fn raw_snapshot(kdm: i64, schema_version: i64) -> Vec<u8> {
-    let doc = loro::LoroDoc::new();
-    let meta = doc.get_map("meta");
-    let doc_id = kition_kdm::DocId::new();
-    meta.insert("docId", doc_id.to_string()).expect("meta");
-    meta.insert("kit", "kit.test").expect("meta");
-    meta.insert("schemaVersion", schema_version).expect("meta");
-    meta.insert("kdm", kdm).expect("meta");
-    doc.commit();
-    envelope(&doc_id, &doc.export(loro::ExportMode::Snapshot).expect("snapshot"))
+    format!("{{\"kdm\":{kdm},\"kit\":\"kit.test\",\"docId\":\"{}\",\"schemaVersion\":{schema_version},\"objects\":{{\n}}}}\n", kition_kdm::DocId::new())
+        .into_bytes()
 }

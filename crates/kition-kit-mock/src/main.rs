@@ -18,7 +18,7 @@
 //! numbers (tool ids, KitObjectModel OM9). `KITION_KIT_MOCK_REPLICA=full` enables snapshot export/open for draft review;
 //! `export` enables only export, exercising file-copy review when replica opening fails. Without
 //! this option replica transport is absent. `KITION_KIT_MOCK_FILE_REPLICA=1` keeps the document's
-//! replica in its file (the text, a marker line, the snapshot in base64), as kits whose files embed
+//! replica in its file (the text, a marker line, the content in base64), as kits whose files embed
 //! their replica do, and serves `document.identity` and `document.fork` (feature
 //! `document.identity`), `model.export` and `model.import`; without it the mock declares neither
 //! request and answers both "method not found". `KITION_KIT_MOCK_SCHEMA=none` leaves documents without

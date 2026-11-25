@@ -1,0 +1,247 @@
+{
+  "after": {
+    "actor": null,
+    "seq": 7
+  },
+  "changes": [
+    {
+      "actor": "0000000000000007",
+      "ops": [
+        {
+          "id": "0193a5c4-0000-7000-8000-0000000000c1",
+          "object": {
+            "$type": "Page",
+            "kind": "sticky",
+            "name": "Three"
+          },
+          "op": "create"
+        },
+        {
+          "field": "pages",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "index": 2,
+          "item": "0193a5c4-0000-7000-8000-0000000000c1",
+          "op": "listInsert"
+        },
+        {
+          "field": "outline",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "index": 0,
+          "node": "0193a5c4-0000-7000-8000-0000000000b1",
+          "op": "treeCreate",
+          "parent": null
+        },
+        {
+          "field": "outline",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "index": 1,
+          "node": "0193a5c4-0000-7000-8000-0000000000b2",
+          "op": "treeCreate",
+          "parent": null
+        },
+        {
+          "field": "outline",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "index": 0,
+          "node": "0193a5c4-0000-7000-8000-0000000000c1",
+          "op": "treeCreate",
+          "parent": "0193a5c4-0000-7000-8000-0000000000b1"
+        },
+        {
+          "field": "count",
+          "id": "0193a5c4-0000-7000-8000-0000000000b2",
+          "op": "set",
+          "value": 3,
+          "was": 2
+        },
+        {
+          "field": "kind",
+          "id": "0193a5c4-0000-7000-8000-0000000000b1",
+          "op": "set",
+          "value": "frame",
+          "was": null
+        },
+        {
+          "field": "vars",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "key": "pad",
+          "op": "mapSet",
+          "value": 4
+        },
+        {
+          "field": "vars",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "key": "zoom",
+          "op": "mapDelete",
+          "was": 1.5
+        }
+      ],
+      "origin": [
+        "person",
+        "user:test",
+        null,
+        2
+      ],
+      "seq": 8
+    },
+    {
+      "actor": "0000000000000007",
+      "ops": [
+        {
+          "field": "body",
+          "id": "0193a5c4-0000-7000-8000-0000000000b1",
+          "index": 8,
+          "marks": {
+            "bold": true
+          },
+          "op": "textInsert",
+          "text": "!"
+        },
+        {
+          "field": "body",
+          "id": "0193a5c4-0000-7000-8000-0000000000b1",
+          "index": 0,
+          "marks": {},
+          "op": "textInsert",
+          "text": "😀"
+        },
+        {
+          "count": 3,
+          "field": "body",
+          "id": "0193a5c4-0000-7000-8000-0000000000b1",
+          "index": 1,
+          "op": "textDelete",
+          "was": [
+            {
+              "insert": "Hi "
+            }
+          ]
+        },
+        {
+          "end": 2,
+          "field": "body",
+          "id": "0193a5c4-0000-7000-8000-0000000000b1",
+          "key": "link",
+          "op": "textMark",
+          "start": 0,
+          "value": "https://kition.ai",
+          "was": [
+            [
+              0,
+              2,
+              null
+            ]
+          ]
+        },
+        {
+          "end": 3,
+          "field": "body",
+          "id": "0193a5c4-0000-7000-8000-0000000000b1",
+          "key": "bold",
+          "op": "textMark",
+          "start": 1,
+          "value": null,
+          "was": [
+            [
+              1,
+              3,
+              true
+            ]
+          ]
+        },
+        {
+          "field": "notes",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "index": 3,
+          "marks": {},
+          "op": "textInsert",
+          "text": "c"
+        },
+        {
+          "count": 1,
+          "field": "notes",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "index": 1,
+          "op": "textDelete",
+          "was": [
+            {
+              "insert": "😀"
+            }
+          ]
+        }
+      ],
+      "origin": [
+        "person",
+        "user:test",
+        null,
+        2
+      ],
+      "seq": 9
+    },
+    {
+      "actor": "0000000000000007",
+      "ops": [
+        {
+          "field": "pages",
+          "from": 0,
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "item": "0193a5c4-0000-7000-8000-0000000000b1",
+          "op": "listMove",
+          "to": 2
+        },
+        {
+          "field": "pages",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "index": 1,
+          "item": "0193a5c4-0000-7000-8000-0000000000c1",
+          "op": "listRemove"
+        },
+        {
+          "field": "outline",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "index": 2,
+          "node": "0193a5c4-0000-7000-8000-0000000000c1",
+          "op": "treeMove",
+          "parent": null,
+          "wasIndex": 0,
+          "wasParent": "0193a5c4-0000-7000-8000-0000000000b1"
+        },
+        {
+          "field": "outline",
+          "id": "0193a5c4-0000-7000-8000-0000000000a1",
+          "node": "0193a5c4-0000-7000-8000-0000000000b2",
+          "op": "treeDelete",
+          "wasIndex": 1,
+          "wasParent": null
+        },
+        {
+          "id": "0193a5c4-0000-7000-8000-0000000000c1",
+          "op": "delete",
+          "trees": [
+            {
+              "field": "outline",
+              "id": "0193a5c4-0000-7000-8000-0000000000a1",
+              "index": 1,
+              "parent": null
+            }
+          ],
+          "was": {
+            "$type": "Page",
+            "kind": "sticky",
+            "name": "Three"
+          }
+        }
+      ],
+      "origin": [
+        "agent",
+        "agent:bot",
+        "tidy",
+        2
+      ],
+      "seq": 10
+    }
+  ],
+  "docId": "0193a5c4-0000-7000-8000-000000000004",
+  "kdm": 1,
+  "lineage": "0193a5c4-0000-7000-8000-0000000000fe"
+}

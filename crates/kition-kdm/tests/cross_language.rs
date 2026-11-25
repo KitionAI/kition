@@ -1,162 +1,155 @@
 // Copied from kition-sdk crates/kition-kdm/tests/cross_language.rs by scripts/sync-kit-host.mjs; change it there, not here.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-//! Documents made by the TypeScript KDM (`packages/kdm`) open in this crate to the same canonical
-//! state. `fixtures/ts-page.{bin,json,sha256}` are written by
-//! `KDM_WRITE_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`; never
-//! regenerate them to make this test pass. This test compares the state's SHA-256
-//! (`ts-page.sha256`) rather than its JSON (`ts-page.json`, compared by the TypeScript suite), so
-//! hosts that carry this crate without the non-ASCII fixture text run it too.
+//! Rust writes, other implementations read (plan 2026-11-24, section 4): the canonical content
+//! fixtures under `fixtures/content/`, which the TypeScript reader checks
+//! (`packages/kdm/test/cross-language.test.ts`), are what this crate's replicas write. The board
+//! fixture is built here with transactions, as a kit builds a document, and its content is the
+//! fixture's bytes exactly. The change-list fixture (`changes.json`) is what transactions on the
+//! snapshot `changes-start.content.json` export: every kind of operation, as applied, with what
+//! its inverse needs; `changes.state.json` is the state they leave. Fixtures are written by hand
+//! from the rules and never regenerated to make a test pass.
 
-use kition_kdm::{ActorId, DocId, Replica};
+use std::sync::Arc;
 
-mod common;
-use common::{person, schema};
+use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, Schema, Version};
+use serde_json::{Map, Value, json};
 
-#[test]
-fn a_typescript_document_opens_to_the_identical_canonical_state() {
-    let replica = Replica::load(schema(), include_bytes!("fixtures/ts-page.bin"), ActorId::from_u64(9).unwrap()).unwrap();
-    assert_eq!(replica.doc_id(), DocId::parse("01920000-0000-7000-8000-0000000000aa").unwrap());
-    let state = replica.state_json().unwrap().to_string();
-    assert_eq!(replica.state_hash().unwrap(), include_str!("fixtures/ts-page.sha256"), "canonical state differs from fixtures/ts-page.json:\n{state}");
+fn schema() -> Arc<Schema> {
+    Arc::new(Schema::parse(include_str!("fixtures/content/schema.json")).expect("content schema parses"))
+}
+
+fn id(suffix: &str) -> ObjectId {
+    ObjectId::from_string(format!("0193a5c4-0000-7000-8000-0000000000{suffix}"))
+}
+
+fn fields(value: Value) -> Map<String, Value> {
+    value.as_object().cloned().unwrap_or_default()
 }
 
 #[test]
-fn a_typescript_document_keeps_converging_when_edited_from_rust() {
-    let mut a = Replica::load(schema(), include_bytes!("fixtures/ts-page.bin"), ActorId::from_u64(10).unwrap()).unwrap();
-    let mut b = Replica::load(schema(), include_bytes!("fixtures/ts-page.bin"), ActorId::from_u64(11).unwrap()).unwrap();
-    let shape = a.objects_of_type("Shape").into_iter().next().unwrap();
-    a.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "RS:")).unwrap();
-    b.transact(&person(), |tx| tx.set(&shape, "x", serde_json::json!(1.25))).unwrap();
-    let bytes = b.export_changes(&a.version()).unwrap();
-    a.import_changes(&bytes).unwrap();
-    let bytes = a.export_changes(&b.version()).unwrap();
-    b.import_changes(&bytes).unwrap();
-    assert_eq!(a.state_hash().unwrap(), b.state_hash().unwrap());
-    assert!(a.text(&shape, "label").unwrap().starts_with("RS:"));
+fn a_document_built_by_transactions_writes_the_board_fixture_exactly() {
+    let doc = DocId::parse("0193a5c4-0000-7000-8000-000000000001").unwrap();
+    let mut replica = Replica::create(schema(), doc, ActorId::from_u64(1).unwrap()).unwrap();
+    let person = Origin::person("user:test");
+    let (board, p1, p2, p3) = (id("a1"), id("b1"), id("b2"), id("b3"));
+    let image = json!({ "hash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", "mime": "image/png", "size": 5120 });
+    replica
+        .transact(&person, |tx| {
+            tx.create_with_id("Board", &board, fields(json!({ "title": "Q4" })))?;
+            tx.create_with_id("Page", &p2, fields(json!({ "name": "" })))?;
+            tx.create_with_id(
+                "Page",
+                &p1,
+                fields(json!({ "name": "Page 1", "kind": "sticky", "count": 3, "done": false, "scale": 0.5, "box": [0, 0, 200, 120], "image": image, "next": p2.as_str() })),
+            )?;
+            tx.create_with_id("Page", &p3, fields(json!({ "name": "Page 3", "kind": "frame", "count": 0, "done": true, "scale": -2.25, "box": {} })))?;
+            for (index, page) in [&p1, &p2, &p3].into_iter().enumerate() {
+                tx.list_insert(&board, "pages", index, page)?;
+            }
+            let first = tx.tree_create(&board, "outline", None, &p1)?;
+            tx.tree_create(&board, "outline", None, &p3)?;
+            tx.tree_create(&board, "outline", Some(&first), &p2)?;
+            tx.map_set(&board, "vars", "zoom", json!(1.5))?;
+            tx.map_set(&board, "vars", "gap", json!(8))?;
+            tx.text_insert(&p1, "body", 0, "Ship it")?;
+            tx.text_mark(&p1, "body", 5, 7, "bold", json!(true))?;
+            tx.text_insert(&p3, "body", 0, "site")?;
+            tx.text_mark(&p3, "body", 0, 4, "link", json!("https://kition.ai"))?;
+            // Typed and deleted: an empty text is left out.
+            tx.text_insert(&board, "notes", 0, "draft")?;
+            tx.text_delete(&board, "notes", 0, 5)
+        })
+        .unwrap();
+    let written = String::from_utf8(replica.content_snapshot().unwrap()).unwrap();
+    assert_eq!(written, include_str!("fixtures/content/board.content.json"));
+    // Read back, it is the same document and writes the same bytes.
+    let read = Replica::load(schema(), written.as_bytes(), ActorId::from_u64(2).unwrap()).unwrap();
+    assert_eq!(read.state_json().unwrap(), replica.state_json().unwrap());
+    assert_eq!(String::from_utf8(read.content_snapshot().unwrap()).unwrap(), written);
 }
 
-/// A shallow snapshot made by the TypeScript KDM (`fixtures/ts-shallow.*`, written by
-/// `KDM_WRITE_SHALLOW_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`) opens
-/// here as a shallow replica with the identical canonical state, and keeps converging when edited
-/// from Rust.
-#[test]
-fn a_typescript_shallow_snapshot_opens_to_the_identical_canonical_state() {
-    let mut shallow = Replica::load(schema(), include_bytes!("fixtures/ts-shallow.bin"), ActorId::from_u64(12).unwrap()).unwrap();
-    assert!(shallow.is_shallow());
-    let state = shallow.state_json().unwrap().to_string();
-    assert_eq!(shallow.state_hash().unwrap(), include_str!("fixtures/ts-shallow.sha256"), "canonical state differs from fixtures/ts-shallow.json:\n{state}");
-    let shape = shallow.objects_of_type("Shape").into_iter().next().unwrap();
-    shallow.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "RS:")).unwrap();
-    let mut other = Replica::load(schema(), include_bytes!("fixtures/ts-shallow.bin"), ActorId::from_u64(14).unwrap()).unwrap();
-    other.transact(&person(), |tx| tx.set(&shape, "x", serde_json::json!(7))).unwrap();
-    let to_other = shallow.export_changes(&other.version()).unwrap();
-    other.import_changes(&to_other).unwrap();
-    let to_shallow = other.export_changes(&shallow.version()).unwrap();
-    shallow.import_changes(&to_shallow).unwrap();
-    assert_eq!(shallow.state_hash().unwrap(), other.state_hash().unwrap());
-    assert!(other.text(&shape, "label").unwrap().starts_with("RS:"));
+/// The snapshot the change-list fixture continues (lineage `...fe`, seq 7).
+const START: &str = include_str!("fixtures/content/changes-start.content.json");
+
+/// The canonical text of a value, keys sorted, for an assertion that shows the whole of both.
+fn pretty(value: &Value) -> String {
+    serde_json::to_string_pretty(value).expect("JSON prints")
 }
 
-/// The committed `fixtures/ts-page.bin` copied as a new document by the TypeScript KDM
-/// (`fixtures/ts-new-document.*`, written by
-/// `KDM_WRITE_NEW_DOCUMENT_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`)
-/// opens here as the new document with the source's objects, and the two refuse each other.
-#[test]
-fn a_typescript_copy_as_a_new_document_opens_with_the_new_id_and_the_same_content() {
-    let mut copy = Replica::load(schema(), include_bytes!("fixtures/ts-new-document.bin"), ActorId::from_u64(15).unwrap()).unwrap();
-    let mut source = Replica::load(schema(), include_bytes!("fixtures/ts-page.bin"), ActorId::from_u64(16).unwrap()).unwrap();
-    assert_eq!(copy.doc_id(), DocId::parse("01920000-0000-7000-8000-0000000000ab").unwrap());
-    assert!(copy.is_shallow());
-    let state = copy.state_json().unwrap().to_string();
-    assert_eq!(
-        copy.state_hash().unwrap(),
-        include_str!("fixtures/ts-new-document.sha256"),
-        "canonical state differs from fixtures/ts-new-document.json:\n{state}"
-    );
-    assert_eq!(copy.state_json().unwrap()["objects"], source.state_json().unwrap()["objects"]);
-    assert!(matches!(copy.rebase(include_bytes!("fixtures/ts-page.bin")), Err(kition_kdm::KdmError::WrongDocument { .. })));
-    let changes = copy.export_changes(&source.version()).unwrap();
-    assert!(matches!(source.import_changes(&changes), Err(kition_kdm::KdmError::WrongDocument { .. })));
+fn fixture(text: &str) -> Value {
+    serde_json::from_str(text).expect("the fixture is JSON")
 }
 
-/// regressions/issue-kdm-shallow-export: a shallow replica's export of every change, made by the
-/// TypeScript KDM (`fixtures/ts-shallow-export.*`: the committed `ts-new-document.bin` with its
-/// page retitled, `exportChanges(Version.empty())`, written by
-/// `KDM_WRITE_SHALLOW_EXPORT_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`),
-/// loads here as the forked document with its edit, as a shallow replica.
-#[test]
-fn a_typescript_shallow_export_of_every_change_loads_as_the_document() {
-    let exported = Replica::load(schema(), include_bytes!("fixtures/ts-shallow-export.bin"), ActorId::from_u64(17).unwrap()).unwrap();
-    let copy = Replica::load(schema(), include_bytes!("fixtures/ts-new-document.bin"), ActorId::from_u64(18).unwrap()).unwrap();
-    assert_eq!(exported.doc_id(), DocId::parse("01920000-0000-7000-8000-0000000000ab").unwrap());
-    assert!(exported.is_shallow());
-    assert_eq!(exported.shallow_root(), copy.shallow_root());
-    let state = exported.state_json().unwrap().to_string();
-    assert_eq!(
-        exported.state_hash().unwrap(),
-        include_str!("fixtures/ts-shallow-export.sha256"),
-        "canonical state differs from fixtures/ts-shallow-export.json:\n{state}"
-    );
-    let page = exported.objects_of_type("Page").into_iter().next().unwrap();
-    assert_eq!(exported.get(&page, "title").unwrap(), serde_json::json!("Forked page"));
-    // Exported again from here, every change still loads.
-    let again = Replica::load(schema(), &exported.export_changes(&kition_kdm::Version::empty()).unwrap(), ActorId::from_u64(19).unwrap()).unwrap();
-    assert_eq!(again.state_hash().unwrap(), exported.state_hash().unwrap());
+/// The start snapshot after three transactions of actor 7 that use every kind of operation, and
+/// the version before them.
+fn edited() -> (Replica, Version) {
+    let mut replica = Replica::load(schema(), START.as_bytes(), ActorId::from_u64(7).unwrap()).unwrap();
+    let start = replica.version();
+    let person = Origin::person("user:test");
+    let (board, one, two, three) = (id("a1"), id("b1"), id("b2"), id("c1"));
+    replica
+        .transact(&person, |tx| {
+            tx.create_with_id("Page", &three, fields(json!({ "name": "Three", "kind": "sticky" })))?;
+            tx.list_insert(&board, "pages", 2, &three)?;
+            let first = tx.tree_create(&board, "outline", None, &one)?;
+            tx.tree_create(&board, "outline", None, &two)?;
+            tx.tree_create(&board, "outline", Some(&first), &three)?;
+            tx.set(&two, "count", json!(3))?;
+            tx.set(&one, "kind", json!("frame"))?;
+            tx.map_set(&board, "vars", "pad", json!(4))?;
+            tx.map_delete(&board, "vars", "zoom")
+        })
+        .unwrap();
+    replica
+        .transact(&person, |tx| {
+            // At the end of the bold `there`: bold expands after.
+            tx.text_insert(&one, "body", 8, "!")?;
+            // A character outside the BMP: one position.
+            tx.text_insert(&one, "body", 0, "\u{1f600}")?;
+            tx.text_delete(&one, "body", 1, 3)?;
+            tx.text_mark(&one, "body", 0, 2, "link", json!("https://kition.ai"))?;
+            tx.text_unmark(&one, "body", 1, 3, "bold")?;
+            tx.text_insert(&board, "notes", 3, "c")?;
+            tx.text_delete(&board, "notes", 1, 1)
+        })
+        .unwrap();
+    let nodes = replica.tree(&board, "outline").unwrap();
+    let node = |object: &ObjectId| nodes.iter().find(|entry| &entry.object == object).map(|entry| entry.node.clone()).expect("a node");
+    let (three_node, two_node) = (node(&three), node(&two));
+    replica
+        .transact(&Origin::agent("agent:bot").with_label("tidy"), |tx| {
+            tx.list_move(&board, "pages", 0, 2)?;
+            tx.list_remove(&board, "pages", 1)?;
+            tx.tree_move(&board, "outline", &three_node, None)?;
+            tx.tree_delete(&board, "outline", &two_node)?;
+            // A node of the outline: it leaves the tree with the object.
+            tx.delete(&three)
+        })
+        .unwrap();
+    (replica, start)
 }
 
-/// A copy made by the TypeScript KDM and retitled (`fixtures/ts-birth*.bin`, written by
-/// `KDM_WRITE_BIRTH_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`) carries
-/// the whole history here as its snapshot (rooted at its birth), and not as a shallow snapshot at
-/// its last version: both implementations read the same birth (sync protocol S20).
 #[test]
-fn a_typescript_copy_carries_its_whole_history_and_its_truncation_does_not() {
-    let born = Replica::load(schema(), include_bytes!("fixtures/ts-birth.bin"), ActorId::from_u64(20).unwrap()).unwrap();
-    let truncated = Replica::load(schema(), include_bytes!("fixtures/ts-birth-truncated.bin"), ActorId::from_u64(21).unwrap()).unwrap();
-    for replica in [&born, &truncated] {
-        assert_eq!(replica.doc_id(), DocId::parse("01920000-0000-7000-8000-0000000000ac").unwrap());
-        assert!(replica.is_shallow());
-        let page = replica.objects_of_type("Page").into_iter().next().unwrap();
-        assert_eq!(replica.get(&page, "title").unwrap(), serde_json::json!("Born page"));
-    }
-    assert!(born.carries_whole_history());
-    assert!(!truncated.carries_whole_history());
-    // A replica loaded from the copy and copied again here is born again.
-    assert!(born.copy_as_new_document(DocId::new(), ActorId::from_u64(22).unwrap()).unwrap().carries_whole_history());
+fn the_start_snapshot_reads_as_its_state_fixture() {
+    let replica = Replica::load(schema(), START.as_bytes(), ActorId::from_u64(7).unwrap()).unwrap();
+    assert_eq!(pretty(&replica.state_json().unwrap()), pretty(&fixture(include_str!("fixtures/content/changes-start.state.json"))));
 }
 
-/// A content snapshot made by the TypeScript KDM (`fixtures/ts-content.*`, written by
-/// `KDM_WRITE_CONTENT_FIXTURE=1 pnpm vitest run packages/kdm/test/write-ts-fixture.test.ts`: the
-/// committed `ts-page.bin` edited by two replicas, merged, as `contentSnapshot()`) opens here as
-/// the document with the identical canonical state, holds no deleted text, overwritten title or
-/// person's origin, and only the seal of the history; it is sealed, does not carry the whole
-/// history until a rebirth, and keeps converging when edited from Rust. The TypeScript suite
-/// checks the Rust-made `rust-content.*` the same way.
 #[test]
-fn a_typescript_content_snapshot_opens_as_the_document_with_no_history() {
-    let bytes = include_bytes!("fixtures/ts-content.bin");
-    let mut file = Replica::load(schema(), bytes, ActorId::from_u64(17).unwrap()).unwrap();
-    assert_eq!(file.doc_id(), DocId::parse("01920000-0000-7000-8000-0000000000aa").unwrap());
-    assert!(file.is_shallow());
-    let state = file.state_json().unwrap().to_string();
-    assert_eq!(file.state_hash().unwrap(), include_str!("fixtures/ts-content.sha256"), "canonical state differs from fixtures/ts-content.json:\n{state}");
-    for needle in ["Jx4Hb8Ty3Nc6", "Ug5Le1Fo0Dw4", "Hs6Pn2Dc9Lx", "Ty5Ga1Ve7Oj", "Mz8Cu4Ki0Ef", "Rb2Wn6Xs3Ip"] {
-        assert!(!bytes.windows(needle.len()).any(|window| window == needle.as_bytes()), "{needle}");
-    }
-    let doc = loro::LoroDoc::new();
-    doc.import(&bytes[20..]).unwrap();
-    let changes = doc.export_json_updates(&loro::VersionVector::default(), &doc.oplog_vv()).changes;
-    assert_eq!(changes.len(), 1);
-    assert_eq!(kition_kdm::Origin::decode(changes[0].msg.as_deref().unwrap()), Some(kition_kdm::Origin::system("content-seal")));
-    assert!(file.is_sealed());
-    assert_eq!(file.content_snapshot().unwrap().len(), file.sealed_content_snapshot().unwrap().len());
-    assert!(!file.carries_whole_history());
-    let mut other = Replica::load(schema(), bytes, ActorId::from_u64(18).unwrap()).unwrap();
-    let shape = file.objects_of_type("Shape").into_iter().next().unwrap();
-    file.transact(&person(), |tx| tx.text_insert(&shape, "label", 0, "RS:")).unwrap();
-    other.transact(&person(), |tx| tx.set(&shape, "x", serde_json::json!(3))).unwrap();
-    other.import_changes(&file.export_changes(&other.version()).unwrap()).unwrap();
-    file.import_changes(&other.export_changes(&file.version()).unwrap()).unwrap();
-    assert_eq!(file.state_hash().unwrap(), other.state_hash().unwrap());
-    assert!(file.rebirth().unwrap());
-    assert!(Replica::snapshot_carries_whole_history(&file.content_snapshot().unwrap()).unwrap());
+fn transactions_on_the_start_snapshot_export_the_change_list_fixture_exactly() {
+    let (replica, start) = edited();
+    let exported: Value = serde_json::from_slice(&replica.export_changes(&start).unwrap()).expect("changes are JSON");
+    assert_eq!(pretty(&exported), pretty(&fixture(include_str!("fixtures/content/changes.json"))), "the export differs from fixtures/content/changes.json");
+    assert_eq!(pretty(&replica.state_json().unwrap()), pretty(&fixture(include_str!("fixtures/content/changes.state.json"))));
+}
+
+#[test]
+fn a_replica_of_the_start_snapshot_imports_the_change_list_fixture_to_its_state() {
+    let changes = include_bytes!("fixtures/content/changes.json");
+    let mut replica = Replica::load(schema(), START.as_bytes(), ActorId::from_u64(9).unwrap()).unwrap();
+    let changed = replica.import_changes(changes).unwrap();
+    assert_eq!(changed.into_iter().collect::<Vec<_>>(), vec![id("a1"), id("b1"), id("b2"), id("c1")]);
+    assert_eq!(pretty(&replica.state_json().unwrap()), pretty(&fixture(include_str!("fixtures/content/changes.state.json"))));
+    // Importing them again changes nothing.
+    assert!(replica.import_changes(changes).unwrap().is_empty());
 }

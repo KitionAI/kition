@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use super::*;
-use entry::STORE_CONFLICT;
 
 const DOC: &str = "0199c2a4-7b3e-7cde-8f00-1234567890ab";
 
@@ -30,11 +29,10 @@ fn put(
     let save = Save {
         write: Write {
             meta,
-            body: Body::Snapshot(snapshot),
-            version: None,
+            snapshot,
+            version: "v",
             blobs,
         },
-        new_lineage: false,
         checkpoint: None,
     };
     write_entry(root, locks, W, doc_id, save).map(|_| ())
@@ -88,7 +86,7 @@ fn validates_document_ids() {
     }
     let (_dir, root) = workspace();
     let locks = GuardedWrites::default();
-    assert!(read_entry(&root, &locks, W, "../escape").is_err());
+    assert!(read_entry(&root, &locks, "../escape").is_err());
     assert!(put(&root, &locks, "../x", &meta("../x", "a.md"), b"s", None).is_err());
     assert!(delete_entry(&root, &locks, W, "a/b").is_err());
     assert!(!root.join(".kition").exists());
@@ -98,22 +96,19 @@ fn validates_document_ids() {
 fn writes_meta_and_snapshot_together() {
     let (_dir, root) = workspace();
     let locks = GuardedWrites::default();
-    assert_eq!(ok(read_entry(&root, &locks, W, DOC)), None);
+    assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
     let first = meta(DOC, "notes/a.md");
     ok(put(&root, &locks, DOC, &first, &[0, 1, 2, 255], None));
-    let entry = ok(read_entry(&root, &locks, W, DOC));
+    let entry = ok(read_entry(&root, &locks, DOC));
     assert_eq!(
         plain(entry.clone()),
         Some((first, vec![0, 1, 2, 255], None))
     );
-    assert!(
-        entry
-            .is_some_and(|entry| entry.complete && entry.changes.is_empty() && entry.head.seq == 1)
-    );
+    assert!(entry.is_some_and(|entry| entry.version == "v"));
 
     let second = meta(DOC, "notes/b.md");
     ok(put(&root, &locks, DOC, &second, b"second", None));
-    let entry = ok(read_entry(&root, &locks, W, DOC));
+    let entry = ok(read_entry(&root, &locks, DOC));
     assert_eq!(
         entry.map(|entry| (entry.meta, entry.snapshot)),
         Some((second, b"second".to_vec()))
@@ -122,7 +117,7 @@ fn writes_meta_and_snapshot_together() {
     let folder = root.join(".kition/docs").join(DOC);
     assert_eq!(
         file_names(&folder),
-        vec![entry::META_FILE, entry::SNAPSHOT_FILE]
+        vec![entry::META_FILE, entry::STATE_FILE]
     );
     assert_eq!(
         file_names(&root.join(".kition/docs")),
@@ -140,7 +135,7 @@ fn keeps_a_kit_replica_with_its_blobs() {
     let kit_meta =
         json!({ "docId": DOC, "kit": "kit.photo", "path": "art/a.psd", "fileStamp": "v1" });
     ok(put(&root, &locks, DOC, &kit_meta, b"snap", Some(b"blobs")));
-    let entry = ok(read_entry(&root, &locks, W, DOC));
+    let entry = ok(read_entry(&root, &locks, DOC));
     assert_eq!(
         plain(entry),
         Some((kit_meta.clone(), b"snap".to_vec(), Some(b"blobs".to_vec())))
@@ -148,27 +143,25 @@ fn keeps_a_kit_replica_with_its_blobs() {
     let folder = root.join(".kition/docs").join(DOC);
     assert_eq!(
         file_names(&folder),
-        vec![blobs::BLOBS_DIR, entry::META_FILE, entry::SNAPSHOT_FILE]
+        vec![blobs::BLOBS_DIR, entry::META_FILE, entry::STATE_FILE]
     );
 
-    // Damaged or missing blobs make an incomplete entry, without blobs.
+    // Damaged or missing blobs make the entry unreadable: a snapshot without its blobs is none.
     let blob = folder.join(blobs::BLOBS_DIR).join(sha256_hex(b"blobs"));
     ok(fs::write(&blob, b"other"));
-    let damaged = ok(read_entry(&root, &locks, W, DOC));
-    assert!(damaged.is_some_and(|entry| !entry.complete && entry.blobs.is_none()));
+    assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
     ok(fs::remove_file(&blob));
-    let missing = ok(read_entry(&root, &locks, W, DOC));
-    assert!(missing.is_some_and(|entry| !entry.complete && entry.blobs.is_none()));
+    assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
 
     // A write without blobs leaves none behind.
     ok(put(&root, &locks, DOC, &kit_meta, b"snap", Some(b"blobs")));
     ok(put(&root, &locks, DOC, &meta(DOC, "a.md"), b"text", None));
     assert_eq!(
         file_names(&folder),
-        vec![entry::META_FILE, entry::SNAPSHOT_FILE]
+        vec![entry::META_FILE, entry::STATE_FILE]
     );
     assert_eq!(
-        ok(read_entry(&root, &locks, W, DOC)).and_then(|entry| entry.blobs),
+        ok(read_entry(&root, &locks, DOC)).and_then(|entry| entry.blobs),
         None
     );
 
@@ -181,6 +174,7 @@ fn keeps_a_kit_replica_with_its_blobs() {
             "doc_id": DOC,
             "meta": kit_meta,
             "snapshot_base64": BASE64.encode([1]),
+            "version": "AQ==",
             "blobs_base64": BASE64.encode([2, 3]),
         })),
     ));
@@ -196,7 +190,7 @@ fn keeps_a_kit_replica_with_its_blobs() {
             &root,
             &locks,
             W,
-            &request(json!({ "doc_id": DOC, "meta": meta(DOC, "a.md"), "snapshot_base64": "", "blobs_base64": "%%%" })),
+            &request(json!({ "doc_id": DOC, "meta": meta(DOC, "a.md"), "snapshot_base64": "", "version": "", "blobs_base64": "%%%" })),
         )
         .is_err()
     );
@@ -208,13 +202,13 @@ fn rejects_a_torn_or_foreign_entry() {
     let locks = GuardedWrites::default();
     ok(put(&root, &locks, DOC, &meta(DOC, "a.md"), b"one", None));
     let folder = root.join(".kition/docs").join(DOC);
-    // A crash between the two renames leaves a snapshot the meta does not describe.
-    ok(fs::write(folder.join(entry::SNAPSHOT_FILE), b"two"));
-    assert_eq!(ok(read_entry(&root, &locks, W, DOC)), None);
+    // A state the meta does not describe.
+    ok(fs::write(folder.join(entry::STATE_FILE), b"two"));
+    assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
     ok(fs::write(folder.join(entry::META_FILE), b"not json"));
-    assert_eq!(ok(read_entry(&root, &locks, W, DOC)), None);
+    assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
     ok(fs::remove_file(folder.join(entry::META_FILE)));
-    assert_eq!(ok(read_entry(&root, &locks, W, DOC)), None);
+    assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
 
     assert_eq!(
         error_text(put(&root, &locks, DOC, &meta("other", "a.md"), b"x", None)),
@@ -231,7 +225,7 @@ fn stores_ids_with_colons_under_portable_names() {
     ok(put(&root, &locks, id, &meta(id, "a.md"), b"s", None));
     assert!(root.join(".kition/docs/urn%3Auuid%3A1/meta.json").is_file());
     assert_eq!(
-        ok(read_entry(&root, &locks, W, id)).map(|entry| entry.snapshot),
+        ok(read_entry(&root, &locks, id)).map(|entry| entry.snapshot),
         Some(b"s".to_vec())
     );
 }
@@ -243,7 +237,7 @@ fn deletes_an_entry() {
     ok(delete_entry(&root, &locks, W, DOC));
     ok(put(&root, &locks, DOC, &meta(DOC, "a.md"), b"s", None));
     ok(delete_entry(&root, &locks, W, DOC));
-    assert_eq!(ok(read_entry(&root, &locks, W, DOC)), None);
+    assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
     assert!(!root.join(".kition/docs").join(DOC).exists());
     ok(delete_entry(&root, &locks, W, DOC));
 }
@@ -351,7 +345,7 @@ fn stays_inside_the_workspace() {
     assert!(put(&root, &locks, DOC, &meta(DOC, "a.md"), b"s", None).is_err());
     assert!(write_index(&root, &locks, W, &BTreeMap::new(), None).is_err());
     assert!(read_index(&root, &locks).is_err());
-    assert!(read_entry(&root, &locks, W, DOC).is_err());
+    assert!(read_entry(&root, &locks, DOC).is_err());
     assert!(delete_entry(&root, &locks, W, DOC).is_err());
     assert!(file_names(&outside).is_empty());
     ok(fs::remove_file(root.join(".kition")));
@@ -360,13 +354,10 @@ fn stays_inside_the_workspace() {
     ok(put(&root, &locks, DOC, &meta(DOC, "a.md"), b"s", None));
     let secret = outside.join("secret");
     ok(fs::write(&secret, b"secret"));
-    let snapshot = root
-        .join(".kition/docs")
-        .join(DOC)
-        .join(entry::SNAPSHOT_FILE);
+    let snapshot = root.join(".kition/docs").join(DOC).join(entry::STATE_FILE);
     ok(fs::remove_file(&snapshot));
     ok(std::os::unix::fs::symlink(&secret, &snapshot));
-    assert!(read_entry(&root, &locks, W, DOC).is_err());
+    assert!(read_entry(&root, &locks, DOC).is_err());
     assert!(put(&root, &locks, DOC, &meta(DOC, "a.md"), b"t", None).is_err());
     assert_eq!(ok(fs::read(&secret)), b"secret");
 }
@@ -399,7 +390,7 @@ fn serialises_concurrent_writes_of_one_document() {
                         None,
                     ));
                     // Interleaved reads never see a meta from one write and a snapshot from another.
-                    let entry = ok(read_entry(&root, &locks, W, DOC))
+                    let entry = ok(read_entry(&root, &locks, DOC))
                         .unwrap_or_else(|| panic!("entry missing during concurrent writes"));
                     let stored_path = entry.meta["path"].as_str().unwrap_or_default().to_owned();
                     assert_eq!(entry.snapshot, stored_path.repeat(64).into_bytes());
@@ -413,7 +404,7 @@ fn serialises_concurrent_writes_of_one_document() {
     let folder = root.join(".kition/docs").join(DOC);
     assert_eq!(
         file_names(&folder),
-        vec![entry::META_FILE, entry::SNAPSHOT_FILE]
+        vec![entry::META_FILE, entry::STATE_FILE]
     );
 }
 
@@ -432,12 +423,21 @@ fn answers_renderer_requests() {
             "doc_id": DOC,
             "meta": meta(DOC, "a.md"),
             "snapshot_base64": BASE64.encode([1, 2, 3]),
+            "version": "",
             "expected_root": root_text,
         })),
     );
-    assert_eq!(
-        ok(written),
-        json!({ "seq": 1, "version": null, "compact": false })
+    // The empty version (a replica without changes) is a version like any other.
+    assert_eq!(ok(written), json!({ "version": "" }));
+    // A write without its version stores nothing.
+    assert!(
+        write_entry_request(
+            &root,
+            &locks,
+            W,
+            &request(json!({ "doc_id": DOC, "meta": meta(DOC, "b.md"), "snapshot_base64": BASE64.encode([9]) })),
+        )
+        .is_err()
     );
     let read = ok(read_entry_request(
         &root,
@@ -447,12 +447,13 @@ fn answers_renderer_requests() {
     ));
     assert_eq!(read["snapshot_base64"], json!(BASE64.encode([1, 2, 3])));
     assert_eq!(read["meta"]["path"], json!("a.md"));
+    assert_eq!(read["version"], json!(""));
     assert!(
         write_entry_request(
             &root,
             &locks,
             W,
-            &request(json!({ "doc_id": DOC, "meta": meta(DOC, "a.md"), "snapshot_base64": "%%%" })),
+            &request(json!({ "doc_id": DOC, "meta": meta(DOC, "a.md"), "snapshot_base64": "%%%", "version": "" })),
         )
         .is_err()
     );
@@ -517,59 +518,41 @@ fn answers_renderer_requests() {
 }
 
 #[test]
-fn appends_changes_and_records_checkpoints_through_requests() {
+fn records_checkpoints_through_requests() {
     let (_dir, root) = workspace();
     let locks = GuardedWrites::default();
     let request = |value: Value| Request::new(Some(value));
     let kit_meta =
         json!({ "docId": DOC, "kit": "kit.photo", "path": "art/a.psd", "fileStamp": "v1" });
     let first = blobs::bundle(&[b"layer"]);
-    let written = ok(write_entry_request(
-        &root,
-        &locks,
-        W,
-        &request(json!({
-            "doc_id": DOC, "meta": kit_meta, "snapshot_base64": BASE64.encode(b"s;"), "version": "aa",
-            "blobs_base64": BASE64.encode(&first), "checkpoint": { "origin": "save", "author": "user:local" },
-        })),
-    ));
-    assert_eq!(written["seq"], json!(1));
-    assert_eq!(written["checkpoint"]["version"], json!("aa"));
-    assert_eq!(written["checkpoint"]["hasBlobs"], json!(true));
-
-    // An append names the seq it follows; a stale one conflicts.
-    let second = blobs::bundle(&[b"layer", b"mask"]);
-    let append = |base: u64, version: &str, blobs: &[u8]| {
+    let write = |state: &[u8], version: &str, blobs: &[u8], checkpoint: Value| {
         write_entry_request(
             &root,
             &locks,
             W,
             &request(json!({
-                "doc_id": DOC, "meta": kit_meta, "changes_base64": BASE64.encode(b"a;"), "base_seq": base, "version": version,
-                "blobs_base64": BASE64.encode(blobs), "checkpoint": { "origin": "agent" },
+                "doc_id": DOC, "meta": kit_meta, "snapshot_base64": BASE64.encode(state), "version": version,
+                "blobs_base64": BASE64.encode(blobs), "checkpoint": checkpoint,
             })),
         )
     };
-    assert_eq!(error_text(append(0, "bb", &second)), STORE_CONFLICT);
-    assert_eq!(ok(append(1, "bb", &second))["seq"], json!(2));
-    assert!(
-        write_entry_request(
-            &root,
-            &locks,
-            W,
-            &request(json!({ "doc_id": DOC, "meta": kit_meta, "changes_base64": "YQ==" }))
-        )
-        .is_err()
-    );
-    assert!(
-        write_entry_request(
-            &root,
-            &locks,
-            W,
-            &request(json!({ "doc_id": DOC, "meta": kit_meta }))
-        )
-        .is_err()
-    );
+    let written = ok(write(
+        b"one",
+        "qg==",
+        &first,
+        json!({ "origin": "save", "author": "user:local" }),
+    ));
+    assert_eq!(written["checkpoint"]["version"], json!("qg=="));
+    assert_eq!(written["checkpoint"]["origin"], json!("save"));
+    let second = blobs::bundle(&[b"layer", b"mask"]);
+    ok(write(b"two", "uw==", &second, json!({ "origin": "agent" })));
+    // A write without a checkpoint keeps the state and records nothing.
+    ok(write(
+        b"three",
+        "zA==",
+        &blobs::bundle(&[b"other"]),
+        Value::Null,
+    ));
 
     let read = ok(read_entry_request(
         &root,
@@ -577,26 +560,14 @@ fn appends_changes_and_records_checkpoints_through_requests() {
         W,
         &request(json!({ "doc_id": DOC })),
     ));
-    assert_eq!(read["snapshot_base64"], json!(BASE64.encode(b"s;")));
-    assert_eq!(read["changes_base64"], json!([BASE64.encode(b"a;")]));
+    assert_eq!(read["snapshot_base64"], json!(BASE64.encode(b"three")));
+    assert_eq!(read["version"], json!("zA=="));
     assert_eq!(
-        (
-            read["seq"].clone(),
-            read["version"].clone(),
-            read["complete"].clone()
-        ),
-        (json!(2), json!("bb"), json!(true))
+        read["blobs_base64"],
+        json!(BASE64.encode(blobs::bundle(&[b"other"])))
     );
-    assert_eq!(read["blobs_base64"], json!(BASE64.encode(&second)));
-    let head = ok(read_entry_request(
-        &root,
-        &locks,
-        W,
-        &request(json!({ "doc_id": DOC, "head_only": true })),
-    ));
-    assert_eq!(head, json!({ "meta": kit_meta, "seq": 2, "version": "bb" }));
 
-    // The history, newest first; each checkpoint keeps the blobs of its time.
+    // The history, newest first; each checkpoint keeps its state and the blobs of its time.
     let history = ok(read_history_request(
         &root,
         &locks,
@@ -615,96 +586,67 @@ fn appends_changes_and_records_checkpoints_through_requests() {
         vec![json!("agent"), json!("save")]
     );
     let oldest = checkpoints[1]["id"].as_str().unwrap_or_default().to_owned();
-    // A compaction drops blobs nothing names, never those of a checkpoint.
-    ok(write_entry_request(
-        &root,
-        &locks,
-        W,
-        &request(json!({
-            "doc_id": DOC, "meta": kit_meta, "snapshot_base64": BASE64.encode(b"s;a;"), "version": "bb",
-            "blobs_base64": BASE64.encode(blobs::bundle(&[b"other"])),
-        })),
-    ));
-    let at = ok(read_checkpoint_request(
+    let at = ok(checkpoints::read_request(
         &root,
         &locks,
         W,
         &request(json!({ "doc_id": DOC, "id": oldest })),
     ));
+    assert_eq!(at["snapshot_base64"], json!(BASE64.encode(b"one")));
     assert_eq!(at["blobs_base64"], json!(BASE64.encode(&first)));
-    assert_eq!(
-        ok(read_checkpoint_request(
-            &root,
-            &locks,
-            W,
-            &request(json!({ "doc_id": DOC, "id": "none" }))
-        )),
-        Value::Null
-    );
 
-    // A checkpoint on its own: at the stored version.
-    let recorded = ok(record_checkpoint_request(
-        &root,
-        &locks,
-        W,
-        &request(
-            json!({ "doc_id": DOC, "checkpoint": { "origin": "restore", "label": "Restored" } }),
-        ),
+    // The folder holds the state, its blobs, the history, and one state per checkpoint.
+    let folder = root.join(".kition/docs").join(DOC);
+    assert_eq!(
+        file_names(&folder),
+        vec![
+            blobs::BLOBS_DIR,
+            history::HISTORY_FILE,
+            entry::META_FILE,
+            entry::STATE_FILE,
+            history::STATES_DIR
+        ]
+    );
+    assert_eq!(file_names(&folder.join(history::STATES_DIR)).len(), 2);
+    // layer, mask, other: what the state and the checkpoints name.
+    assert_eq!(file_names(&folder.join(blobs::BLOBS_DIR)).len(), 3);
+
+    // A checkpoint needs an origin.
+    assert!(write(b"four", "3Q==", b"", json!({})).is_err());
+}
+
+#[test]
+fn replaces_an_entry_of_an_older_layout() {
+    let (_dir, root) = workspace();
+    let locks = GuardedWrites::default();
+    let folder = root.join(".kition/docs").join(DOC);
+    ok(fs::create_dir_all(folder.join("changes")));
+    let old = json!({
+        "format": 2, "meta": meta(DOC, "a.md"),
+        "snapshot": { "sha256": sha256_hex(b"snap"), "size": 4, "seq": 1 },
+        "changes": [{ "sha256": sha256_hex(b"c"), "size": 1, "seq": 2 }],
+        "head": { "seq": 2, "version": "0a" },
+    });
+    ok(fs::write(folder.join(entry::META_FILE), old.to_string()));
+    ok(fs::write(folder.join("snapshot.bin"), b"snap"));
+    ok(fs::write(folder.join("changes/2.bin"), b"c"));
+    ok(fs::write(
+        folder.join(history::HISTORY_FILE),
+        b"{\"format\":1,\"checkpoints\":[{\"id\":\"old\",\"time\":1,\"origin\":\"save\",\"version\":\"0a\",\"seq\":1}]}",
     ));
-    assert_eq!(recorded["checkpoint"]["version"], json!("bb"));
-    assert!(
-        record_checkpoint_request(
-            &root,
-            &locks,
-            W,
-            &request(json!({ "doc_id": DOC, "checkpoint": {} }))
-        )
-        .is_err()
-    );
-
-    // A label at the newest version names that checkpoint.
+    // It reads as no entry and no history, for a reader as for the writer.
+    assert_eq!(ok(read_entry(&root, &locks, DOC)), None);
+    assert!(ok(read_history(&root, &locks, DOC)).is_empty());
+    // The next write replaces the folder whole.
+    ok(put(&root, &locks, DOC, &meta(DOC, "a.md"), b"new", None));
     assert_eq!(
-        recorded["checkpoint"]["id"], checkpoints[0]["id"],
-        "the restore names the agent's checkpoint at the same version"
+        file_names(&folder),
+        vec![entry::META_FILE, entry::STATE_FILE]
     );
-    assert_eq!(recorded["checkpoint"]["label"], json!("Restored"));
-
-    // A replica of a new lineage starts its history over; labelled checkpoints
-    // stay, marked unavailable.
-    ok(write_entry_request(
-        &root,
-        &locks,
-        W,
-        &request(json!({
-            "doc_id": DOC, "meta": kit_meta, "snapshot_base64": BASE64.encode(b"n;"), "lineage": "new",
-        })),
-    ));
-    let kept = ok(read_history(&root, &locks, DOC));
     assert_eq!(
-        kept.iter()
-            .map(|c| (c.label.as_deref(), c.available))
-            .collect::<Vec<_>>(),
-        vec![(Some("Restored"), false)]
+        plain(ok(read_entry(&root, &locks, DOC))).map(|(_, snapshot, _)| snapshot),
+        Some(b"new".to_vec())
     );
-
-    // A board keeps only history: its file holds the replica.
-    let board = "board-1";
-    let recorded = ok(record_checkpoint(
-        &root,
-        &locks,
-        W,
-        board,
-        CheckpointInput {
-            origin: "edit".into(),
-            version: Some("cc".into()),
-            ..CheckpointInput::default()
-        },
-    ));
-    assert_eq!(
-        (recorded.seq, recorded.version.as_deref()),
-        (None, Some("cc"))
-    );
-    assert_eq!(ok(read_entry(&root, &locks, W, board)), None);
 }
 
 #[test]
@@ -716,11 +658,10 @@ fn refuses_every_write_without_the_store_lock() {
     let save = Save {
         write: Write {
             meta: &meta(DOC, "a.md"),
-            body: Body::Snapshot(b"t"),
-            version: None,
+            snapshot: b"t",
+            version: "v",
             blobs: None,
         },
-        new_lineage: false,
         checkpoint: None,
     };
     assert_eq!(
@@ -741,63 +682,11 @@ fn refuses_every_write_without_the_store_lock() {
         )),
         STORE_READ_ONLY
     );
-    assert_eq!(
-        error_text(record_checkpoint(
-            &root,
-            &locks,
-            read_only,
-            DOC,
-            CheckpointInput {
-                origin: "save".into(),
-                ..CheckpointInput::default()
-            }
-        )),
-        STORE_READ_ONLY
-    );
     // Reads still work.
     assert_eq!(
-        plain(ok(read_entry(&root, &locks, read_only, DOC))).map(|(_, snapshot, _)| snapshot),
+        plain(ok(read_entry(&root, &locks, DOC))).map(|(_, snapshot, _)| snapshot),
         Some(b"s".to_vec())
     );
     let lock = StoreLock::open(&root);
     assert_eq!(Access::of(&lock), Access::Writer);
-}
-
-#[test]
-fn migrates_a_format_1_entry_only_as_the_writer() {
-    let (_dir, root) = workspace();
-    let locks = GuardedWrites::default();
-    let folder = root.join(".kition/docs").join(DOC);
-    ok(fs::create_dir_all(&folder));
-    let bundle = blobs::bundle(&[b"one"]);
-    let kit_meta = json!({ "docId": DOC, "kit": "kit.photo", "path": "a.psd", "fileStamp": "v1" });
-    let old = json!({
-        "format": 1, "meta": kit_meta,
-        "snapshot": { "sha256": sha256_hex(b"snap"), "size": 4 },
-        "blobs": { "sha256": sha256_hex(&bundle), "size": bundle.len() },
-    });
-    ok(fs::write(
-        folder.join(entry::META_FILE),
-        ok(serde_json::to_vec(&old).map_err(io::Error::other)),
-    ));
-    ok(fs::write(folder.join(entry::SNAPSHOT_FILE), b"snap"));
-    ok(fs::write(folder.join(entry::LEGACY_BLOBS_FILE), &bundle));
-    let expected = Some((kit_meta, b"snap".to_vec(), Some(bundle)));
-    // A read-only Kition reads the old layout and leaves it.
-    assert_eq!(
-        plain(ok(read_entry(&root, &locks, Access::ReadOnly, DOC))),
-        expected
-    );
-    assert!(folder.join(entry::LEGACY_BLOBS_FILE).is_file());
-    // The writer migrates it as it reads it.
-    assert_eq!(plain(ok(read_entry(&root, &locks, W, DOC))), expected);
-    assert!(!folder.join(entry::LEGACY_BLOBS_FILE).exists());
-    assert_eq!(
-        file_names(&folder),
-        vec![blobs::BLOBS_DIR, entry::META_FILE, entry::SNAPSHOT_FILE]
-    );
-    assert_eq!(
-        plain(ok(read_entry(&root, &locks, Access::ReadOnly, DOC))),
-        expected
-    );
 }

@@ -12,11 +12,10 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-# Loro from KitionPkg/loro, branch `kition`: upstream Loro 1.16 without the MPL-2.0 `im`
-# crate. The rev pins loro-internal too (a path dependency inside that repository).
-loro = { git = "https://github.com/KitionPkg/loro", rev = "b7e6dfea82ac7dc4f5dcce282844911fba6d5c04" }
 serde = { workspace = true }
-serde_json = { workspace = true }
+# `float_roundtrip`: a number the content encoding writes reads back as the same double, so a
+# file read and written again keeps its bytes (data model, "The content encoding").
+serde_json = { workspace = true, features = ["float_roundtrip"] }
 sha2 = "0.10"
 thiserror = { workspace = true }
 uuid = { version = "1", features = ["v4", "v7"] }

@@ -5,8 +5,10 @@ intent: >-
   The document store keeps a kit's checkpoints by the Kit UI protocol's rules: labels of at most 200
   characters and descriptions of at most 2000 (longer ones refused too-long, before anything is
   written); a label at the newest checkpoint's version names that checkpoint and makes it the kit's;
-  labelled checkpoints are never thinned for unlabelled ones and have their own cap; a replica of a
-  new lineage keeps them as unavailable, and reading one is refused history-missing; lists are
+  labelled checkpoints are never thinned for unlabelled ones and have their own cap; each checkpoint
+  keeps the snapshot of the write that recorded it (the same bytes once) and is read whatever was
+  written since; unlabelled ones stay within 512 MB of states, and a state past 16 MB records
+  unlabelled ones only at the person's saves; versions compare as the strings writers give; lists are
   newest first with labelled, before (unknown is not-found) and limit; a kit renames or deletes only
   checkpoints of origin kit (others read-only), and only the store's writer changes any; versions
   reach the kit in base64; and the page passes each refusal on with its reason.

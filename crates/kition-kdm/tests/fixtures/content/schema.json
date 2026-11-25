@@ -1,0 +1,80 @@
+{
+  "kdm": 1,
+  "kit": "kit.content",
+  "schemaVersion": 2,
+  "root": "Board",
+  "types": {
+    "Board": {
+      "fields": {
+        "title": {
+          "kind": "string"
+        },
+        "pages": {
+          "kind": "list",
+          "of": "Page"
+        },
+        "outline": {
+          "kind": "tree",
+          "of": "Page"
+        },
+        "vars": {
+          "kind": "map"
+        },
+        "notes": {
+          "kind": "text"
+        }
+      }
+    },
+    "Page": {
+      "fields": {
+        "name": {
+          "kind": "string"
+        },
+        "body": {
+          "kind": "text",
+          "marks": {
+            "bold": {
+              "expand": "after"
+            },
+            "link": {
+              "expand": "none"
+            }
+          }
+        },
+        "kind": {
+          "kind": "enum",
+          "values": [
+            "sticky",
+            "frame"
+          ],
+          "optional": true
+        },
+        "count": {
+          "kind": "integer",
+          "optional": true
+        },
+        "scale": {
+          "kind": "number",
+          "optional": true
+        },
+        "done": {
+          "kind": "boolean",
+          "optional": true
+        },
+        "box": {
+          "kind": "json",
+          "optional": true
+        },
+        "image": {
+          "kind": "blob",
+          "optional": true
+        },
+        "next": {
+          "kind": "ref",
+          "of": "Page",
+          "optional": true
+        }
+      }
+    }
+  }
+}

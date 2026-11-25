@@ -1,0 +1,5 @@
+{"kdm":1,"kit":"kit.content","docId":"0193a5c4-0000-7000-8000-000000000004","version":{"lineage":"0193a5c4-0000-7000-8000-0000000000fe","seq":7},"schemaVersion":2,"objects":{
+"0193a5c4-0000-7000-8000-0000000000a1":{"$type":"Board","notes":"a😀b","pages":["0193a5c4-0000-7000-8000-0000000000b1","0193a5c4-0000-7000-8000-0000000000b2"],"title":"Start","vars":{"gap":8,"zoom":1.5}},
+"0193a5c4-0000-7000-8000-0000000000b1":{"$type":"Page","body":[{"insert":"Hi "},{"attributes":{"bold":true},"insert":"there"}],"name":"One"},
+"0193a5c4-0000-7000-8000-0000000000b2":{"$type":"Page","count":2,"name":"Two"}
+}}

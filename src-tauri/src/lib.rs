@@ -327,8 +327,6 @@ pub fn run() {
             commands::read_document_index,
             commands::write_document_index,
             commands::read_document_history,
-            commands::record_document_checkpoint,
-            commands::read_document_checkpoint,
             commands::list_kit_checkpoints,
             commands::find_kit_checkpoint,
             commands::update_kit_checkpoint,

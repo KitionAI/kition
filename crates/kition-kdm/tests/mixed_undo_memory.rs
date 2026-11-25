@@ -1,23 +1,18 @@
 // Copied from kition-sdk crates/kition-kdm/tests/mixed_undo_memory.rs by scripts/sync-kit-host.mjs; change it there, not here.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-//! Undo of an engine step older than a large write keeps memory bounded (case
+//! Undo of a step older than a large write keeps memory bounded (case
 //! regressions/issue-kdm-mixed-undo-memory). A table's record created, then a whole column
-//! cleared: the clear is the replica's own register step, the creation the engine's. Undoing the
-//! creation after the clear used the engine's undo, whose checkout indexed every map operation of
-//! the document's history and kept every part of the history it parsed: on a page (4 GiB of
-//! WebAssembly memory) "create a record, clear a column, undo, undo" on 100,000 records ran out of
-//! memory. The engine now indexes only the maps an undo reads, and the replica releases what the
-//! engine's undo or redo read of the history, its index and its parsed blocks, once it is done.
-//!
-//! The engine reports whether it holds its index of the history; what the undo parsed is released
-//! with it. The resident memory of each step is printed: this file holds one test, so no other
+//! cleared, then both undone and the creation redone: on a page (4 GiB of WebAssembly memory)
+//! "create a record, clear a column, undo, undo" on 100,000 records ran out of memory when undo
+//! read the document's history. An undo now writes back what its step's change recorded and reads
+//! no history. The resident memory of each step is printed: this file holds one test, so no other
 //! test allocates while it runs.
 
 #![cfg(unix)]
 
 use std::process::Command;
 
-use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica, testing};
+use kition_kdm::{ActorId, DocId, ObjectId, Origin, Replica};
 use serde_json::json;
 
 mod common;
@@ -73,15 +68,12 @@ fn undo_of_a_creation_older_than_a_large_write_keeps_nothing_of_the_history_it_r
     let wrote = resident();
     assert!(replica.undo().unwrap(), "the clear is undone");
     assert_eq!(replica.map_get(&ids[7], "cells", "k0").unwrap(), json!("cell 7.0"));
-    assert!(!testing::engine_history_cached(&replica), "the replica's own undo reads no history");
     let undone = resident();
     assert!(replica.undo().unwrap(), "the creation is undone");
     assert!(!replica.exists(&made));
-    assert!(!testing::engine_history_cached(&replica), "the engine's undo released the history it read");
     let engine_undone = resident();
     assert!(replica.redo().unwrap(), "the creation is redone");
     assert!(replica.exists(&made));
-    assert!(!testing::engine_history_cached(&replica), "the engine's redo released the history it read");
     // A second write as large as the first, after the history was released.
     clear(&mut replica, &ids, "k1");
     let wrote_again = resident();

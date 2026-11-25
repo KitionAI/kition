@@ -154,20 +154,6 @@ fn a_draft_the_agent_made_merges_as_the_persons_step() {
 }
 
 #[test]
-fn other_replicas_changes_survive_both_scopes_undo() {
-    let (mut replica, page, shape) = replica();
-    let mut other = Replica::load(schema(), &replica.snapshot().unwrap(), ActorId::from_u64(2).unwrap()).unwrap();
-    append(&mut replica, &agent(), &shape, "Agent.");
-    other.transact(&person(), |tx| tx.create("Shape", fields(json!({ "kind": "rect", "x": 0, "y": 0 }))).map(drop)).unwrap();
-    set_title(&mut other, &person(), &page, "Theirs");
-    replica.import_changes(&other.export_changes(&replica.version()).unwrap()).unwrap();
-
-    assert!(replica.undo_in(UndoScope::Agent).unwrap());
-    assert_eq!(label(&replica, &shape), "");
-    assert_eq!(replica.get(&page, "title").unwrap(), json!("Theirs"));
-}
-
-#[test]
 fn next_history_step_exposes_fields_without_changing_state_or_history() {
     let (mut replica, page, shape) = replica();
     assert!(replica.undo_touches_in(UndoScope::Agent).is_empty());

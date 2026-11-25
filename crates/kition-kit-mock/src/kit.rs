@@ -120,7 +120,7 @@ static MODEL: LazyLock<bool> = LazyLock::new(|| std::env::var("KITION_KIT_MOCK_S
 static REPLICA: LazyLock<String> = LazyLock::new(|| std::env::var("KITION_KIT_MOCK_REPLICA").unwrap_or_default());
 
 /// `KITION_KIT_MOCK_FILE_REPLICA=1`: the file keeps the document's replica (as the board, table,
-/// layout, design and scene kits do): the text, [`REPLICA_MARK`], then the replica's snapshot in
+/// layout, design and scene kits do): the text, [`REPLICA_MARK`], then the replica's content in
 /// base64. A document opens from it, keeping its docId and object ids, and a save writes it again.
 /// The kit then serves `document.identity` and `document.fork` (feature `document.identity`) and
 /// `model.export` and `model.import`; without it, it declares neither and answers both "method not
@@ -148,8 +148,8 @@ fn joined_file(text: &str, replica: Option<&Replica>) -> Result<String, RpcError
     match replica {
         None => Ok(text.to_owned()),
         Some(replica) => {
-            let snapshot = replica.snapshot().map_err(|error| RpcError::internal(error.to_string()))?;
-            Ok(format!("{text}{REPLICA_MARK}{}", base64::encode(&snapshot)))
+            let content = replica.content_snapshot().map_err(|error| RpcError::internal(error.to_string()))?;
+            Ok(format!("{text}{REPLICA_MARK}{}", base64::encode(&content)))
         }
     }
 }
@@ -1371,7 +1371,7 @@ impl Kit {
             if document.read_only && target.is_none() {
                 return Err(RpcError::kit_detail(ErrorReason::IoError, "the document is read-only"));
             }
-            let replica = if *FILE_REPLICA { Some(document.model()?.snapshot().map_err(|error| RpcError::internal(error.to_string()))?) } else { None };
+            let replica = if *FILE_REPLICA { Some(document.model()?.content_snapshot().map_err(|error| RpcError::internal(error.to_string()))?) } else { None };
             Ok((document.text.clone(), document.current, document.file.clone(), document.name.clone(), document.version.clone(), replica))
         })?;
         let (handle, name, expected) = match target {

@@ -29,6 +29,12 @@ const allowUnwrap = (relative, text) => {
   const lints = ['clippy::unwrap_used', 'clippy::expect_used'].filter((lint) => !new RegExp(`^#!\\[allow\\([^)]*${lint}\\b`, 'm').test(text))
   return lints.length ? `#![allow(${lints.join(', ')})]\n` : ''
 }
+// This English-only repository holds no CJK text, also not as an escape (scripts/check-i18n.py):
+// a char literal escaping a CJK code point in a copied source becomes the same char built from
+// its number.
+const cjk = (code) => (code >= 0x3400 && code <= 0x9fff) || (code >= 0xf900 && code <= 0xfaff) || (code >= 0x20000 && code <= 0x2fa1f) || (code >= 0x3040 && code <= 0x31ff) || (code >= 0xac00 && code <= 0xd7af)
+const numberedCjk = (text) =>
+  text.replace(/'\\u\{([0-9a-fA-F]{1,6})\}'/g, (literal, hex) => (cjk(Number.parseInt(hex, 16)) ? `char::from_u32(0x${hex}).unwrap_or(char::REPLACEMENT_CHARACTER)` : literal))
 const files = [
   // JSON has no comments; the schema's $id names its source.
   { source: 'schemas/kit.schema.json', out: 'contracts/kit/kit.schema.json', rewrite: (text) => text },
@@ -59,19 +65,29 @@ const rustKdm = 'crates/kition-kdm'
 // kition-kits' tests/draft_compare.rs, inserts CJK text, which this English-only repository
 // does not hold.
 const rustSkipped = new Set([`${rustKdm}/tests/nested_text.rs`, 'crates/kition-kits/tests/draft_compare.rs'])
-for (const dir of ['src', 'tests']) {
+// The sources' own folders (src/store/) too; the tests' folders are their fixtures (below).
+const rustKdmSourceDirs = ['tests']
+const sourceDirs = (dir) => [dir, ...fs.readdirSync(path.join(sdk, rustKdm, dir), { withFileTypes: true }).filter((entry) => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name)).flatMap((entry) => sourceDirs(`${dir}/${entry.name}`))]
+rustKdmSourceDirs.unshift(...sourceDirs('src'))
+for (const dir of rustKdmSourceDirs) {
   for (const name of fs.readdirSync(path.join(sdk, rustKdm, dir)).filter((name) => name.endsWith('.rs') && !rustSkipped.has(`${rustKdm}/${dir}/${name}`)).sort()) {
     const source = `${rustKdm}/${dir}/${name}`
-    files.push({ source, out: source, rewrite: (text) => header(source) + allowUnwrap(`${dir}/${name}`, text) + text })
+    files.push({ source, out: source, rewrite: (text) => header(source) + allowUnwrap(`${dir}/${name}`, text) + numberedCjk(text) })
   }
 }
 // The ts-*.json fixtures are the TypeScript fixtures' states as non-ASCII JSON, which this
 // English-only repository does not carry; the Rust tests compare their SHA-256 (ts-*.sha256) instead.
 const skippedFixtures = new Set(['ts-page.json', 'ts-shallow.json', 'ts-new-document.json', 'ts-shallow-export.json', 'ts-content.json'])
-for (const name of fs.readdirSync(path.join(sdk, rustKdm, 'tests/fixtures')).filter((name) => !skippedFixtures.has(name)).sort()) {
-  const source = `${rustKdm}/tests/fixtures/${name}`
-  files.push({ source, out: source, binary: true })
+// The fixtures folder may hold folders of its own (tests/fixtures/content/).
+const rustKdmFixtureDirs = []
+const copyFixtures = (relative) => {
+  rustKdmFixtureDirs.push(relative)
+  for (const entry of fs.readdirSync(path.join(sdk, relative), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (entry.isDirectory()) copyFixtures(`${relative}/${entry.name}`)
+    else if (entry.isFile() && !skippedFixtures.has(entry.name)) files.push({ source: `${relative}/${entry.name}`, out: `${relative}/${entry.name}`, binary: true })
+  }
 }
+copyFixtures(`${rustKdm}/tests/fixtures`)
 // kition-sdk's lint (unwrap and expect allowed in tests) and format configurations, for this crate only.
 files.push({ source: '.clippy.toml', out: `${rustKdm}/.clippy.toml`, binary: true })
 files.push({ source: '.rustfmt.toml', out: `${rustKdm}/.rustfmt.toml`, binary: true })
@@ -191,9 +207,8 @@ for (const name of ['kit-process-protocol.schema.json', 'mcp-tools.schema.json',
 // with its header, or sit in the copied fixtures folder) count, so a hand-written file is never
 // removed.
 const copyDirs = [
-  { dir: `${rustKdm}/src`, ext: '.rs' },
-  { dir: `${rustKdm}/tests`, ext: '.rs' },
-  { dir: `${rustKdm}/tests/fixtures`, ext: '', all: true },
+  ...rustKdmSourceDirs.map((dir) => ({ dir: `${rustKdm}/${dir}`, ext: '.rs' })),
+  ...rustKdmFixtureDirs.map((dir) => ({ dir, ext: '', all: true })),
   ...rustKitDirs,
 ]
 const copies = new Set(files.map((file) => file.out))

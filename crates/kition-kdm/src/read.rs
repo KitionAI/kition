@@ -1,112 +1,55 @@
 // Copied from kition-sdk crates/kition-kdm/src/read.rs by scripts/sync-kit-host.mjs; change it there, not here.
-//! Reads shared by [`crate::Replica`] and [`crate::Tx`].
+//! Reads shared by [`crate::Replica`] and [`crate::Tx`], over the store.
 
-use loro::{Container, LoroDoc, LoroMap, LoroMovableList, LoroText, LoroTree, LoroValue, ToJson, TreeID, TreeParentId, ValueOrContainer};
+use std::collections::{BTreeMap, HashMap};
+
 use serde_json::{Map, Value};
 
-use crate::value::canonical;
-use crate::{FieldKind, KdmError, ObjectId, Result, Schema};
+use crate::store::text::Text;
+use crate::store::tree::Tree;
+use crate::store::{Field, Store};
+use crate::{FieldDef, FieldKind, KDM_VERSION, KdmError, ObjectId, Result, Schema, TextRun};
 
-pub(crate) const META: &str = "meta";
-pub(crate) const OBJECTS: &str = "objects";
 pub(crate) const TYPE_KEY: &str = "$type";
-pub(crate) const NODE_OBJECT: &str = "object";
-/// The register a document's creation writes its schema version to; a raise rewrites it too.
-pub(crate) const SCHEMA_VERSION: &str = "schemaVersion";
-/// The root map whose keys are the schema versions transactions raised the document to (rule
-/// M20). Concurrent raises all keep their key, so the largest one wins whatever the register says.
-/// A root map, not one inside `meta`: replicas that each created a nested map concurrently would
-/// keep only one of them.
-pub(crate) const SCHEMA_RAISES: &str = "schemaRaises";
-/// The root map whose `root` key records a document's birth: the version its first state is at, as
-/// [`crate::Replica::copy_as_new_document`] makes it (data model, "A copy is a new document"). Only
-/// its value in a shallow replica's state at its root counts ([`crate::Replica::carries_whole_history`]).
-/// A root map, not a key of `meta`, so the canonical state (`meta` included) stays the source's.
-pub(crate) const BIRTH: &str = "birth";
-/// The key of [`BIRTH`] that holds the encoded version.
-pub(crate) const BIRTH_ROOT: &str = "root";
-/// The root map a content seal writes ([`crate::Replica::seal`]): its `version` key holds the
-/// encoded version the seal closes. A root map outside the canonical state, like [`BIRTH`].
-pub(crate) const SEAL: &str = "seal";
-/// The key of [`SEAL`] that holds the encoded version.
-pub(crate) const SEAL_VERSION: &str = "version";
 
-pub(crate) fn check_projected_storage(doc: &LoroDoc, schema: &Schema) -> Result<()> {
+/// Refuses projected objects, and projected membership, in a stored document.
+pub(crate) fn check_projected_storage(store: &Store, schema: &Schema) -> Result<()> {
     if !schema.types.values().any(|def| def.projected) {
         return Ok(());
     }
-    for (ty, ids) in objects_by_type(doc) {
-        let Some(def) = schema.types.get(&ty) else { continue };
-        if def.projected && !ids.is_empty() {
-            return Err(KdmError::InvalidValue { ty, field: "$type".into(), reason: "projected objects are computed by the kit, never stored".into() });
+    for (id, object) in store.objects() {
+        let Some(def) = schema.types.get(&*object.ty) else { continue };
+        if def.projected {
+            return Err(KdmError::InvalidValue {
+                ty: object.ty.to_string(),
+                field: "$type".into(),
+                reason: "projected objects are computed by the kit, never stored".into(),
+            });
         }
         for (field, field_def) in &def.fields {
             if !field_def.of.as_ref().is_some_and(|of| schema.types.get(of).is_some_and(|def| def.projected)) {
                 continue;
             }
-            for id in &ids {
-                let map = object_map(doc, id)?;
-                let value = map.get_deep_value().to_json_value().get(field).cloned().unwrap_or(Value::Null);
-                if !value.is_null() && !value.as_array().is_some_and(Vec::is_empty) && !value.as_object().is_some_and(Map::is_empty) {
-                    return Err(KdmError::InvalidValue {
-                        ty: ty.clone(),
-                        field: field.clone(),
-                        reason: "projected membership is computed by the kit, never stored".into(),
-                    });
-                }
+            if store.field(id, field).is_some() {
+                return Err(KdmError::InvalidValue {
+                    ty: object.ty.to_string(),
+                    field: field.clone(),
+                    reason: "projected membership is computed by the kit, never stored".into(),
+                });
             }
         }
     }
     Ok(())
 }
 
-/// The document's minimum schema version (rule M20): the largest of `meta.schemaVersion` and the
-/// keys of `meta.schemaRaises`. `None` when `meta.schemaVersion` is not a non-negative integer.
-pub(crate) fn min_schema_version(doc: &LoroDoc) -> Option<u64> {
-    let meta = doc.get_map(META);
-    let created = match meta.get(SCHEMA_VERSION) {
-        Some(ValueOrContainer::Value(value)) => value.to_json_value().as_u64()?,
-        _ => return None,
-    };
-    let mut found = created;
-    doc.get_map(SCHEMA_RAISES).for_each(|key, _| {
-        if let Ok(version) = key.parse::<u64>()
-            && version.to_string() == key
-        {
-            found = found.max(version);
-        }
-    });
-    Some(found)
+pub(crate) fn object_type(store: &Store, id: &ObjectId) -> Result<String> {
+    store.object(id).map(|object| object.ty.to_string()).ok_or_else(|| KdmError::NotFound(id.to_string()))
 }
 
-pub(crate) fn object_map(doc: &LoroDoc, id: &ObjectId) -> Result<LoroMap> {
-    match doc.get_map(OBJECTS).get(id.as_str()) {
-        Some(ValueOrContainer::Container(Container::Map(map))) => Ok(map),
-        _ => Err(KdmError::NotFound(id.to_string())),
-    }
-}
-
-pub(crate) fn type_of(map: &LoroMap, id: &ObjectId) -> Result<String> {
-    match map.get(TYPE_KEY) {
-        Some(ValueOrContainer::Value(value)) => value.to_json_value().as_str().map(str::to_owned).ok_or_else(|| KdmError::NotFound(id.to_string())),
-        _ => Err(KdmError::NotFound(id.to_string())),
-    }
-}
-
-pub(crate) fn object_type(doc: &LoroDoc, id: &ObjectId) -> Result<String> {
-    type_of(&object_map(doc, id)?, id)
-}
-
-/// The container stored in `field` of an object, without schema checks.
-pub(crate) fn field_container(doc: &LoroDoc, id: &ObjectId, field: &str) -> Result<Container> {
-    match object_map(doc, id)?.get(field) {
-        Some(ValueOrContainer::Container(found)) => Ok(found),
-        _ => Err(KdmError::NotFound(format!("{id}.{field}"))),
-    }
-}
-
+/// The error for a field that holds another kind than the schema declares (written outside the
+/// KDM).
 pub(crate) fn wrong_container(id: &ObjectId, field: &str) -> KdmError {
-    KdmError::Engine(format!("{id}.{field} holds the wrong container"))
+    KdmError::Engine(format!("{id}.{field} holds the wrong kind of value"))
 }
 
 /// The error for using a field as a kind it is not.
@@ -114,221 +57,155 @@ pub(crate) fn wrong_kind(ty: &str, field: &str, kind: FieldKind) -> KdmError {
     KdmError::InvalidValue { ty: ty.to_owned(), field: field.to_owned(), reason: format!("is not a {kind:?} field").to_lowercase() }
 }
 
-/// A container field of an object, checked against the schema. `None` when the stored object
-/// lacks the field: it was written under an older schema version, and the field reads as empty.
-fn container(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str, kind: FieldKind) -> Result<Option<Container>> {
-    let map = object_map(doc, id)?;
-    let ty = type_of(&map, id)?;
-    if schema.field(&ty, field)?.kind != kind {
-        return Err(wrong_kind(&ty, field, kind));
+/// A field of an object, checked against the schema to be of `kind`. `None` when the object holds
+/// nothing there: the field reads as empty.
+fn container<'a>(store: &'a Store, schema: &Schema, id: &ObjectId, field: &str, kind: FieldKind) -> Result<Option<&'a Field>> {
+    let object = store.object(id).ok_or_else(|| KdmError::NotFound(id.to_string()))?;
+    if schema.field(&object.ty, field)?.kind != kind {
+        return Err(wrong_kind(&object.ty, field, kind));
     }
-    match map.get(field) {
-        Some(ValueOrContainer::Container(found)) => Ok(Some(found)),
-        Some(ValueOrContainer::Value(_)) => Err(wrong_container(id, field)),
-        None => Ok(None),
-    }
+    Ok(object.get(field))
 }
 
-pub(crate) fn text(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -> Result<Option<LoroText>> {
-    match container(doc, schema, id, field, FieldKind::Text)? {
-        Some(Container::Text(found)) => Ok(Some(found)),
+pub(crate) fn text<'a>(store: &'a Store, schema: &Schema, id: &ObjectId, field: &str) -> Result<Option<&'a Text>> {
+    match container(store, schema, id, field, FieldKind::Text)? {
         None => Ok(None),
+        Some(Field::Text(text)) => Ok(Some(text)),
         Some(_) => Err(wrong_container(id, field)),
     }
 }
 
-/// A text field's runs ([`crate::TextRun`]): one unmarked run for a field that declares no marks.
-pub(crate) fn text_runs(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -> Result<Vec<crate::TextRun>> {
-    let Some(found) = text(doc, schema, id, field)? else { return Ok(Vec::new()) };
-    let def = schema.field(&object_type(doc, id)?, field)?;
-    if def.has_marks() {
-        return Ok(crate::marks::runs(&found, def));
-    }
+/// A text field's runs ([`crate::TextRun`]): only the field's declared marks, adjacent runs with
+/// equal marks merged; one unmarked run for a field that declares no marks.
+pub(crate) fn text_runs(store: &Store, schema: &Schema, id: &ObjectId, field: &str) -> Result<Vec<TextRun>> {
+    let Some(found) = text(store, schema, id, field)? else { return Ok(Vec::new()) };
+    let ty = object_type(store, id)?;
+    let def = schema.field(&ty, field)?;
+    Ok(runs_of(found, def))
+}
+
+/// The runs of a text as the field `def` reads them.
+pub(crate) fn runs_of(text: &Text, def: &FieldDef) -> Vec<TextRun> {
     let mut out = Vec::new();
-    crate::marks::push_run(&mut out, found.to_string(), Default::default());
-    Ok(out)
+    if !def.has_marks() {
+        crate::marks::push_run(&mut out, text.string(), BTreeMap::new());
+        return out;
+    }
+    for run in text.runs() {
+        let marks = run.attributes.into_iter().filter(|(key, value)| def.marks.contains_key(key) && !value.is_null()).collect();
+        crate::marks::push_run(&mut out, run.insert, marks);
+    }
+    out
 }
 
-pub(crate) fn list(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -> Result<Option<LoroMovableList>> {
-    match container(doc, schema, id, field, FieldKind::List)? {
-        Some(Container::MovableList(found)) => Ok(Some(found)),
-        None => Ok(None),
+pub(crate) fn list<'a>(store: &'a Store, schema: &Schema, id: &ObjectId, field: &str) -> Result<&'a [ObjectId]> {
+    match container(store, schema, id, field, FieldKind::List)? {
+        None => Ok(&[]),
+        Some(Field::List(items)) => Ok(items),
         Some(_) => Err(wrong_container(id, field)),
     }
 }
 
-pub(crate) fn tree(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -> Result<Option<LoroTree>> {
-    match container(doc, schema, id, field, FieldKind::Tree)? {
-        Some(Container::Tree(found)) => Ok(Some(found)),
+pub(crate) fn tree<'a>(store: &'a Store, schema: &Schema, id: &ObjectId, field: &str) -> Result<Option<&'a Tree>> {
+    match container(store, schema, id, field, FieldKind::Tree)? {
         None => Ok(None),
+        Some(Field::Tree(tree)) => Ok(Some(tree)),
         Some(_) => Err(wrong_container(id, field)),
     }
 }
 
-pub(crate) fn map(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -> Result<Option<LoroMap>> {
-    match container(doc, schema, id, field, FieldKind::Map)? {
-        Some(Container::Map(found)) => Ok(Some(found)),
+pub(crate) fn map<'a>(store: &'a Store, schema: &Schema, id: &ObjectId, field: &str) -> Result<Option<&'a BTreeMap<String, Value>>> {
+    match container(store, schema, id, field, FieldKind::Map)? {
         None => Ok(None),
+        Some(Field::Map(entries)) => Ok(Some(entries)),
         Some(_) => Err(wrong_container(id, field)),
     }
 }
 
-pub(crate) fn register(doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str) -> Result<Value> {
-    let map = object_map(doc, id)?;
-    let ty = type_of(&map, id)?;
-    if schema.field(&ty, field)?.kind.is_container() {
-        return Err(KdmError::InvalidValue { ty, field: field.to_owned(), reason: "is a container; read it with its accessor".into() });
+pub(crate) fn register(store: &Store, schema: &Schema, id: &ObjectId, field: &str) -> Result<Value> {
+    let object = store.object(id).ok_or_else(|| KdmError::NotFound(id.to_string()))?;
+    if schema.field(&object.ty, field)?.kind.is_container() {
+        return Err(KdmError::InvalidValue { ty: object.ty.to_string(), field: field.to_owned(), reason: "is a container; read it with its accessor".into() });
     }
-    Ok(stored_value(map.get(field)))
-}
-
-/// A value read from the engine in canonical form; a missing value, or a container (in a map
-/// field, only written outside the KDM), reads as `null`.
-fn stored_value(found: Option<ValueOrContainer>) -> Value {
-    match found {
-        Some(ValueOrContainer::Value(value)) => canonical(value.to_json_value()),
+    Ok(match object.get(field) {
+        Some(Field::Value(value)) => value.clone(),
         _ => Value::Null,
-    }
-}
-
-/// One key of a map field, as [`stored_value`] reads it.
-pub(crate) fn map_value(map: &LoroMap, key: &str) -> Value {
-    stored_value(map.get(key))
-}
-
-/// A map field's keys and values as [`map_value`] reads them, sorted by key.
-pub(crate) fn map_entries(map: &LoroMap) -> Vec<(String, Value)> {
-    let mut entries = Vec::with_capacity(map.len());
-    map.for_each(|key, value| entries.push((key.to_owned(), stored_value(Some(value)))));
-    entries.sort_by(|a, b| a.0.cmp(&b.0));
-    entries
+    })
 }
 
 /// Ids of the objects of type `ty`, sorted. One pass over every object of the document.
-pub(crate) fn objects_of_type(doc: &LoroDoc, ty: &str) -> Vec<ObjectId> {
-    let mut ids = Vec::new();
-    doc.get_map(OBJECTS).for_each(|key, value| {
-        if let ValueOrContainer::Container(Container::Map(map)) = value {
-            let id = ObjectId::from_string(key.to_string());
-            if type_of(&map, &id).is_ok_and(|found| found == ty) {
-                ids.push(id);
-            }
-        }
-    });
+pub(crate) fn objects_of_type(store: &Store, ty: &str) -> Vec<ObjectId> {
+    let mut ids: Vec<ObjectId> = store.objects().filter(|(_, object)| &*object.ty == ty).map(|(id, _)| id.clone()).collect();
     ids.sort();
     ids
 }
 
-/// Every object's id grouped by its type, each group sorted: [`objects_of_type`] for every type
-/// in one pass over the document.
-pub(crate) fn objects_by_type(doc: &LoroDoc) -> std::collections::HashMap<String, Vec<ObjectId>> {
-    let mut groups: std::collections::HashMap<String, Vec<ObjectId>> = std::collections::HashMap::new();
-    doc.get_map(OBJECTS).for_each(|key, value| {
-        if let ValueOrContainer::Container(Container::Map(map)) = value {
-            let id = ObjectId::from_string(key.to_string());
-            if let Ok(ty) = type_of(&map, &id) {
-                groups.entry(ty).or_default().push(id);
-            }
-        }
-    });
+/// Every object's id grouped by its type, each group sorted.
+pub(crate) fn objects_by_type(store: &Store) -> HashMap<String, Vec<ObjectId>> {
+    let mut groups: HashMap<String, Vec<ObjectId>> = HashMap::new();
+    for (id, object) in store.objects() {
+        groups.entry(object.ty.to_string()).or_default().push(id.clone());
+    }
     for ids in groups.values_mut() {
         ids.sort();
     }
     groups
 }
 
-/// A list's items. Every item of a KDM list is an object id; anything else was written outside
-/// the KDM and is an [`KdmError::Encoding`] error, so indices never disagree with the engine's.
-pub(crate) fn list_items(list: &LoroMovableList) -> Result<Vec<ObjectId>> {
-    list.to_vec()
-        .into_iter()
-        .enumerate()
-        .map(|(index, item)| match item {
-            LoroValue::String(id) => Ok(ObjectId::from_string(id.to_string())),
-            other => Err(KdmError::Encoding(format!("list item {index} is {other:?}, not an object id"))),
-        })
-        .collect()
-}
-
-/// The object a tree node names, or `None` for a node without one. Only a document written
-/// outside the KDM can hold such a node; every tree read skips it with its subtree.
-pub(crate) fn node_object(tree: &LoroTree, node: TreeID) -> Option<ObjectId> {
-    match tree.get_meta(node).ok()?.get(NODE_OBJECT) {
-        Some(ValueOrContainer::Value(value)) => value.to_json_value().as_str().map(ObjectId::from_string),
-        _ => None,
-    }
-}
-
-fn tree_json(tree: &LoroTree, parent: TreeParentId) -> Value {
-    let children = tree.children(parent).unwrap_or_default();
-    Value::Array(
-        children
-            .into_iter()
-            .filter_map(|node| {
-                let object = node_object(tree, node)?;
-                Some(serde_json::json!({
-                    "object": object.to_string(),
-                    "children": tree_json(tree, TreeParentId::Node(node)),
-                }))
-            })
-            .collect(),
-    )
+/// A tree's JSON as reads see it: a node naming no object of the document is left out with its
+/// subtree.
+fn tree_json(store: &Store, tree: &Tree) -> Value {
+    tree.to_json(&|node: &ObjectId| store.contains(node))
 }
 
 /// One object in canonical form: `$type` and every schema field. An object of a type the schema
 /// does not declare (written under a newer schema version) is reported as its `$type` only, and a
-/// container field the stored object lacks (an older one) reads as empty.
-pub(crate) fn object_json(doc: &LoroDoc, schema: &Schema, id: &ObjectId) -> Result<Value> {
-    let ty = object_type(doc, id)?;
+/// field the stored object lacks reads as empty.
+pub(crate) fn object_json(store: &Store, schema: &Schema, id: &ObjectId) -> Result<Value> {
+    let ty = object_type(store, id)?;
     let mut out = Map::new();
     out.insert(TYPE_KEY.to_owned(), Value::String(ty.clone()));
     let Ok(def) = schema.type_def(&ty) else { return Ok(Value::Object(out)) };
     for (name, field) in &def.fields {
-        out.insert(name.clone(), field_json(doc, schema, id, name, field)?);
+        out.insert(name.clone(), field_json(store, schema, id, name, field)?);
     }
-    Ok(canonical(Value::Object(out)))
+    Ok(Value::Object(out))
 }
 
 /// Field `name` (declared as `field`) of object `id`, as [`object_json`] reports it.
-pub(crate) fn field_json(doc: &LoroDoc, schema: &Schema, id: &ObjectId, name: &str, field: &crate::schema::FieldDef) -> Result<Value> {
+pub(crate) fn field_json(store: &Store, schema: &Schema, id: &ObjectId, name: &str, field: &FieldDef) -> Result<Value> {
     Ok(match field.kind {
-        FieldKind::Text if field.has_marks() => {
-            crate::marks::runs_json(&text(doc, schema, id, name)?.map(|text| crate::marks::runs(&text, field)).unwrap_or_default())
-        }
-        FieldKind::Text => Value::String(text(doc, schema, id, name)?.map(|text| text.to_string()).unwrap_or_default()),
-        FieldKind::List => {
-            let items = list(doc, schema, id, name)?.map(|list| list_items(&list)).transpose()?.unwrap_or_default();
-            Value::Array(items.into_iter().map(|item| Value::String(item.to_string())).collect())
-        }
-        FieldKind::Tree => tree(doc, schema, id, name)?.map_or(Value::Array(Vec::new()), |tree| tree_json(&tree, TreeParentId::Root)),
-        FieldKind::Map => map(doc, schema, id, name)?.map_or(Value::Object(Map::new()), |map| map.get_deep_value().to_json_value()),
-        _ => register(doc, schema, id, name)?,
+        FieldKind::Text if field.has_marks() => crate::marks::runs_json(&text(store, schema, id, name)?.map(|text| runs_of(text, field)).unwrap_or_default()),
+        FieldKind::Text => Value::String(text(store, schema, id, name)?.map(Text::string).unwrap_or_default()),
+        FieldKind::List => Value::Array(list(store, schema, id, name)?.iter().map(|item| Value::String(item.to_string())).collect()),
+        FieldKind::Tree => tree(store, schema, id, name)?.map_or(Value::Array(Vec::new()), |tree| tree_json(store, tree)),
+        FieldKind::Map => Value::Object(
+            map(store, schema, id, name)?.map(|entries| entries.iter().map(|(key, value)| (key.clone(), value.clone())).collect()).unwrap_or_default(),
+        ),
+        _ => register(store, schema, id, name)?,
     })
 }
 
-pub(crate) fn object_ids(doc: &LoroDoc) -> Vec<ObjectId> {
-    let mut ids: Vec<ObjectId> = doc.get_map(OBJECTS).keys().map(|key| ObjectId::from_string(key.to_string())).collect();
-    ids.sort();
-    ids
+/// The document's meta in canonical form.
+pub(crate) fn meta_json(store: &Store) -> Value {
+    let mut meta = Map::new();
+    meta.insert("docId".into(), Value::String(store.doc_id.to_string()));
+    meta.insert("kdm".into(), Value::from(KDM_VERSION));
+    meta.insert("kit".into(), Value::String(store.kit.clone()));
+    meta.insert("schemaVersion".into(), Value::from(store.schema_version));
+    Value::Object(meta)
 }
 
-/// The whole document in canonical form; equal on every replica that has the same changes.
-pub(crate) fn state_json(doc: &LoroDoc, schema: &Schema) -> Result<Value> {
+/// The whole document in canonical form: `{meta, objects}`, keys sorted.
+pub(crate) fn state_json(store: &Store, schema: &Schema) -> Result<Value> {
+    let mut ids: Vec<&ObjectId> = store.objects().map(|(id, _)| id).collect();
+    ids.sort();
     let mut objects = Map::new();
-    for id in object_ids(doc) {
-        objects.insert(id.to_string(), object_json(doc, schema, &id)?);
+    for id in ids {
+        objects.insert(id.to_string(), object_json(store, schema, id)?);
     }
-    // The raises are read as the minimum version they make, so `meta.schemaVersion` is the same
-    // on every replica whichever concurrent register write won.
-    let mut meta = match doc.get_map(META).get_deep_value().to_json_value() {
-        Value::Object(meta) => meta,
-        _ => Map::new(),
-    };
-    if let Some(version) = min_schema_version(doc) {
-        meta.insert(SCHEMA_VERSION.to_owned(), Value::from(version));
-    }
-    Ok(canonical(serde_json::json!({
-        "meta": Value::Object(meta),
-        "objects": Value::Object(objects),
-    })))
+    let mut out = Map::new();
+    out.insert("meta".into(), meta_json(store));
+    out.insert("objects".into(), Value::Object(objects));
+    Ok(Value::Object(out))
 }

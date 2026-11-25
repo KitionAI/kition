@@ -189,28 +189,6 @@ fn register_steps_undo_and_redo_as_the_engines_steps_do() {
     }
 }
 
-/// Replicas that write the same and different cells concurrently, undo and redo, and exchange
-/// changes in a random order converge.
-#[test]
-fn concurrent_writes_undo_and_redo_converge() {
-    for seed in 0..40 {
-        let actions = script(seed + 500, 3, 30);
-        let mut net = replicas(3);
-        let mut rng = Rng::new(seed);
-        for chunk in actions.chunks(3) {
-            run(&mut net, chunk, false, false);
-            let from = rng.below(3);
-            let to = (from + 1 + rng.below(2)) % 3;
-            let bytes = net[from].export_changes(&net[to].version()).unwrap();
-            net[to].import_changes(&bytes).unwrap();
-        }
-        sync(&mut net);
-        for (index, replica) in net.iter().enumerate().skip(1) {
-            assert_eq!(objects(replica), objects(&net[0]), "seed {seed}: replicas 0 and {index} differ");
-        }
-    }
-}
-
 /// Two replicas write the same cell and different cells at once; one undoes. The cell the other
 /// wrote later keeps its value, the rest goes back, and both replicas end equal.
 #[test]

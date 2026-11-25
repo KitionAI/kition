@@ -1,22 +1,45 @@
 // Copied from kition-sdk crates/kition-kdm/src/tx.rs by scripts/sync-kit-host.mjs; change it there, not here.
-use std::cell::RefCell;
-use std::collections::btree_map::Entry;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::collections::{BTreeMap, HashMap};
 
-use loro::{Container, ContainerID, ContainerTrait, LoroDoc, LoroMap, ToJson, ValueOrContainer};
 use serde_json::{Map, Value};
 
-use crate::ids::{NodeInner, PendingNode};
-use crate::op::{self, Op};
-use crate::overlay::{FieldKey, ListEdit, ListState, NodeKey, Overlay, TreeState};
+use crate::overlay::{ListEdit, ListState, Overlay, TreeState};
 use crate::read;
-use crate::value::{canonical, to_loro};
+use crate::store::op::{Name, Op};
+use crate::store::{Field, Object, Store};
+use crate::value::canonical;
 use crate::{FieldDef, FieldKind, KdmError, NodeRef, ObjectId, Result, Schema};
 
 /// The form of an object id a host chooses (generated ids are UUID v7, which also match).
 const OBJECT_ID_PATTERN: &str = "[A-Za-z0-9][A-Za-z0-9:_-]{0,127}";
+
+/// The deepest nesting of arrays and objects in a value a transaction writes (a register, a map
+/// entry, a mark value). Changes and content nest at most [`crate::content::MAX_DEPTH`] (127)
+/// levels (data model 7.4, C14), and a change carries a value at most 9 levels in: the change
+/// list, `changes`, a change, `ops`, an operation, a deleted object (`was`), a text field's runs,
+/// a run, its `attributes`, with the mark value on the 10th level. So 127 - 9 = 118.
+const VALUE_DEPTH: usize = crate::content::MAX_DEPTH - 9;
+
+/// The refusal of a value nested deeper than [`VALUE_DEPTH`], checked without recursion (before
+/// anything that walks the value recursively).
+pub(crate) fn nesting_refusal(ty: &str, field: &str, value: &Value) -> Result<()> {
+    let mut open = vec![(value, 1_usize)];
+    while let Some((value, depth)) = open.pop() {
+        match value {
+            Value::Array(items) if depth <= VALUE_DEPTH => open.extend(items.iter().map(|item| (item, depth + 1))),
+            Value::Object(entries) if depth <= VALUE_DEPTH => open.extend(entries.values().map(|item| (item, depth + 1))),
+            Value::Array(_) | Value::Object(_) => {
+                return Err(KdmError::InvalidValue {
+                    ty: ty.to_owned(),
+                    field: field.to_owned(),
+                    reason: format!("nests arrays and objects deeper than {VALUE_DEPTH} levels, more than a change or a file holds"),
+                });
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
 
 /// Whether `id` matches [`OBJECT_ID_PATTERN`].
 fn is_object_id(id: &str) -> bool {
@@ -26,14 +49,6 @@ fn is_object_id(id: &str) -> bool {
         && bytes.all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b':' | b'_' | b'-'))
 }
 
-/// A value in the canonical form the engine stores and reads it in.
-fn stored_form(value: &Value) -> Value {
-    canonical(to_loro(value.clone()).to_json_value())
-}
-
-/// Distinguishes transactions, so a node handle from one is never taken for another's.
-static NEXT_SERIAL: AtomicU64 = AtomicU64::new(1);
-
 /// The operations of one transaction.
 ///
 /// Nothing is written to the document while the transaction runs. Every operation validates
@@ -42,275 +57,38 @@ static NEXT_SERIAL: AtomicU64 = AtomicU64::new(1);
 /// if the whole transaction succeeds, so a failed transaction produces no change at all. An
 /// operation that fails changes nothing, so a transaction may also recover from it and continue.
 pub struct Tx<'a> {
-    doc: &'a LoroDoc,
+    store: &'a Store,
     schema: &'a Schema,
-    serial: u64,
-    ops: Vec<Op<'a>>,
+    ops: Vec<Op>,
     overlay: Overlay<'a>,
-    nodes: Vec<Arc<PendingNode>>,
     /// The largest schema version this transaction raised the document to.
     raised: Option<u32>,
-    /// What the transaction read of the document, read once: each object's type (an object never
-    /// changes type) and each field's container. A large write (every record of a table) reads
-    /// each object once instead of once per operation, and applies its operations to the
-    /// containers it found instead of looking them up again; the engine keeps only a few thousand
-    /// containers decoded, so a second lookup decodes the object again.
-    read: RefCell<Reads<'a>>,
+    /// The schema's type and field names as the operations hold them, made once each.
+    names: HashMap<&'a str, Name>,
 }
 
-#[derive(Default)]
-struct Reads<'a> {
-    types: HashMap<ObjectId, &'a str>,
-    /// Each object's own map, found once in the document's objects.
-    objects: HashMap<ObjectId, LoroMap>,
-    containers: HashMap<FieldKey<'a>, Option<Container>>,
-}
-
-/// One register a transaction writes: a key of `container` (an object's own map for a register
-/// field, a map field's map for one of its keys), with the value written (`None`: deleted).
-pub(crate) struct RegisterWrite {
-    pub(crate) container: ContainerID,
-    pub(crate) key: String,
-    pub(crate) value: Option<loro::LoroValue>,
-}
-
-/// A successful transaction's operations, ready to apply.
-pub(crate) struct Staged<'a> {
-    ops: Vec<Op<'a>>,
-    nodes: Vec<Arc<PendingNode>>,
-    /// The containers the transaction found in the document ([`Tx`]'s reads).
-    containers: HashMap<FieldKey<'a>, Option<Container>>,
-}
-
-impl<'a> Staged<'a> {
-    /// The objects and fields the operations write, one touch per object sorted by id (see
-    /// [`crate::UndoTouch`]). Gathered in a map, so a transaction of many operations costs
-    /// O(n log n), not a merge per operation.
-    pub(crate) fn undo_touches(&self, doc: &LoroDoc, schema: &Schema) -> Vec<crate::UndoTouch> {
-        let mut touches: BTreeMap<String, Option<BTreeSet<String>>> = BTreeMap::new();
-        let mut touch = |id: String, fields: Option<BTreeSet<String>>| match touches.entry(id) {
-            Entry::Vacant(entry) => {
-                entry.insert(fields);
-            }
-            Entry::Occupied(mut entry) => match (entry.get_mut(), fields) {
-                (Some(held), Some(more)) => held.extend(more),
-                (held, _) => *held = None,
-            },
-        };
-        for (before, op) in self.ops.iter().enumerate() {
-            let Some(id) = op.object() else { continue };
-            let field = match op {
-                Op::Create { .. } | Op::Delete { .. } => None,
-                Op::Set { field, .. }
-                | Op::TextInsert { field, .. }
-                | Op::TextDelete { field, .. }
-                | Op::TextMark { field, .. }
-                | Op::TextUnmark { field, .. }
-                | Op::ListInsert { field, .. }
-                | Op::ListMove { field, .. }
-                | Op::ListRemove { field, .. }
-                | Op::MapSet { field, .. }
-                | Op::MapDelete { field, .. }
-                | Op::TreeCreate { field, .. }
-                | Op::TreeMove { field, .. }
-                | Op::TreeDelete { field, .. } => Some(BTreeSet::from([(*field).to_owned()])),
-                Op::RaiseSchema { .. } => continue,
-            };
-            touch(id.to_string(), field);
-            let item = match op {
-                Op::ListInsert { item, .. } | Op::TreeCreate { object: item, .. } => Some(item.clone()),
-                Op::ListMove { field, from: index, .. } | Op::ListRemove { field, index, .. } => self.undo_list_item(doc, schema, id, field, *index, before),
-                Op::TreeMove { field, node: NodeKey::Committed(node), .. } | Op::TreeDelete { field, node: NodeKey::Committed(node), .. } => {
-                    read::tree(doc, schema, id, field).ok().flatten().and_then(|tree| read::node_object(&tree, *node))
-                }
-                _ => None,
-            };
-            if let Some(item) = item {
-                touch(item.to_string(), Some(Default::default()));
-            }
-        }
-        touches.into_iter().map(|(id, fields)| crate::UndoTouch { id, fields }).collect()
-    }
-
-    fn undo_list_item(&self, doc: &LoroDoc, schema: &Schema, id: &ObjectId, field: &str, mut index: usize, before: usize) -> Option<ObjectId> {
-        // Translate the position through the prefix without parsing unrelated corrupt items.
-        for op in self.ops.iter().take(before).rev() {
-            if op.object() != Some(id) {
-                continue;
-            }
-            match op {
-                Op::ListInsert { field: name, index: at, item, .. } if *name == field => {
-                    if index == *at {
-                        return Some(item.clone());
-                    }
-                    if index > *at {
-                        index -= 1;
-                    }
-                }
-                Op::ListRemove { field: name, index: at, .. } if *name == field => {
-                    if index >= *at {
-                        index += 1;
-                    }
-                }
-                Op::ListMove { field: name, from, to, .. } if *name == field => {
-                    if index == *to {
-                        index = *from;
-                    } else if from < to && index >= *from && index < *to {
-                        index += 1;
-                    } else if to < from && index > *to && index <= *from {
-                        index -= 1;
-                    }
-                }
-                _ => {}
-            }
-        }
-        read::list(doc, schema, id, field).ok().flatten().and_then(|list| match list.get(index) {
-            Some(ValueOrContainer::Value(value)) => value.to_json_value().as_str().map(ObjectId::from_string),
-            _ => None,
-        })
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.ops.is_empty()
-    }
-
-    /// The objects the operations change, with the map keys of those whose only operations set
-    /// or delete map keys and each key's value once applied ([`crate::Changes`]).
-    pub(crate) fn changes(&self) -> crate::Changes {
-        let mut changes = crate::Changes::default();
-        for op in &self.ops {
-            match op {
-                Op::MapSet { id, field, key, value } => changes.insert_map_write(id, field, key, Some(stored_form(value))),
-                Op::MapDelete { id, field, key } => changes.insert_map_write(id, field, key, None),
-                op => {
-                    if let Some(id) = op.object() {
-                        changes.insert_object(id.clone());
-                    }
-                }
-            }
-        }
-        changes
-    }
-
-    /// Whether the transaction raises the document's minimum schema version.
-    pub(crate) fn raises_schema(&self) -> bool {
-        self.ops.iter().any(|op| matches!(op, Op::RaiseSchema { .. }))
-    }
-
-    /// The registers the operations write ([`RegisterWrite`]), in order. Writes to an
-    /// object the same operations create are left out, as its creation's own fields are: no undo
-    /// reaches such a register before a later write replaces it (undoing the creation removes
-    /// the whole object), so the replica keeps no note of them. Map fields the transaction read
-    /// are not looked up again.
-    pub(crate) fn register_writes(&self, doc: &LoroDoc) -> Vec<RegisterWrite> {
-        let created: HashSet<&ObjectId> = self.ops.iter().filter_map(|op| if let Op::Create { id, .. } = op { Some(id) } else { None }).collect();
-        self.ops
-            .iter()
-            .filter_map(|op| match op {
-                Op::Set { id, .. } | Op::MapSet { id, .. } | Op::MapDelete { id, .. } if created.contains(id) => None,
-                op => self.register_write(doc, op).map(|(_, write)| write),
-            })
-            .collect()
-    }
-
-    /// The register `op` writes, with the map holding it, when it is a write to a register field
-    /// or to a key of a map field.
-    fn register_write(&self, doc: &LoroDoc, op: &Op<'a>) -> Option<(LoroMap, RegisterWrite)> {
-        let map_field = |id: &ObjectId, field: &'a str| -> Option<LoroMap> {
-            match self.containers.get(&(id.clone(), field)) {
-                Some(Some(Container::Map(map))) => Some(map.clone()),
-                _ => match read::object_map(doc, id).ok()?.get(field) {
-                    Some(ValueOrContainer::Container(Container::Map(map))) => Some(map),
-                    _ => None,
-                },
-            }
-        };
-        let (map, key, value) = match op {
-            Op::Set { id, field, value } => (read::object_map(doc, id).ok()?, (*field).to_owned(), Some(to_loro(value.clone()))),
-            Op::MapSet { id, field, key, value } => (map_field(id, field)?, key.clone(), Some(to_loro(value.clone()))),
-            Op::MapDelete { id, field, key } => (map_field(id, field)?, key.clone(), None),
-            _ => return None,
-        };
-        let container = map.id();
-        Some((map, RegisterWrite { container, key, value }))
-    }
-
-    /// When every operation writes a register field or a key of a map field of an object that
-    /// existed before the transaction, the transaction's undo step as the replica keeps it
-    /// ([`crate::replica::Entry`]): each register it changes with the value it held before, read
-    /// now, before the operations apply. A register written twice is noted once; one the
-    /// transaction leaves at the value it held is not noted, as the engine writes nothing for it.
-    /// Also answers [`Staged::register_writes`]. `None` for any other transaction.
-    pub(crate) fn register_step(&self, doc: &LoroDoc) -> Option<(Vec<RegisterWrite>, Vec<crate::replica::Entry>)> {
-        let mut writes = Vec::with_capacity(self.ops.len());
-        let mut entries: Vec<crate::replica::Entry> = Vec::with_capacity(self.ops.len());
-        let mut noted: HashMap<(ContainerID, String), usize> = HashMap::with_capacity(self.ops.len());
-        for op in &self.ops {
-            let (map, write) = self.register_write(doc, op)?;
-            let (id, field) = match op {
-                Op::Set { id, .. } => (id, None),
-                Op::MapSet { id, field, .. } | Op::MapDelete { id, field, .. } => (id, Some((*field).to_owned())),
-                _ => return None,
-            };
-            let register = (write.container.clone(), write.key.clone());
-            if !noted.contains_key(&register) {
-                let before = match map.get(&write.key) {
-                    Some(ValueOrContainer::Value(value)) => Some(value),
-                    Some(ValueOrContainer::Container(_)) => return None,
-                    None => None,
-                };
-                noted.insert(register.clone(), entries.len());
-                entries.push(crate::replica::Entry { container: register.0, key: register.1, object: id.clone(), field, value: before });
-            }
-            writes.push(write);
-        }
-        // A register the transaction leaves at its value changes nothing.
-        let mut last: HashMap<(&ContainerID, &str), &Option<loro::LoroValue>> = HashMap::with_capacity(entries.len());
-        for write in &writes {
-            last.insert((&write.container, write.key.as_str()), &write.value);
-        }
-        let entries =
-            entries.into_iter().filter(|entry| last.get(&(&entry.container, entry.key.as_str())).is_none_or(|value| **value != entry.value)).collect();
-        Some((writes, entries))
-    }
-
-    /// Applies the operations without committing. On success the transaction's node handles
-    /// resolve.
-    pub(crate) fn apply(self, doc: &LoroDoc, schema: &Schema) -> Result<()> {
-        let ids = op::apply(doc, schema, self.ops, self.nodes.len(), &self.containers)?;
-        for (pending, id) in self.nodes.iter().zip(ids) {
-            if let Some(id) = id {
-                // Set exactly once: this transaction is the only writer.
-                let _ = pending.id.set(id);
-            }
-        }
-        Ok(())
-    }
-}
+/// A tree as a transaction sees it: each parent's children in order, and each node's parent.
+type TreeView = (HashMap<Option<ObjectId>, Vec<ObjectId>>, HashMap<ObjectId, Option<ObjectId>>);
 
 impl<'a> Tx<'a> {
-    pub(crate) fn new(doc: &'a LoroDoc, schema: &'a Schema) -> Self {
-        Self {
-            doc,
-            schema,
-            serial: NEXT_SERIAL.fetch_add(1, Ordering::Relaxed),
-            ops: Vec::new(),
-            overlay: Overlay::default(),
-            nodes: Vec::new(),
-            raised: None,
-            read: RefCell::default(),
-        }
+    pub(crate) fn new(store: &'a Store, schema: &'a Schema) -> Self {
+        Self { store, schema, ops: Vec::new(), overlay: Overlay::default(), raised: None, names: HashMap::new() }
     }
 
-    pub(crate) fn finish(self) -> Staged<'a> {
-        Staged { ops: self.ops, nodes: self.nodes, containers: self.read.into_inner().containers }
+    /// The transaction's operations, to apply.
+    pub(crate) fn finish(self) -> Vec<Op> {
+        self.ops
+    }
+
+    fn name(&mut self, name: &'a str) -> Name {
+        self.names.entry(name).or_insert_with(|| Name::from(name)).clone()
     }
 
     /// Raises the document's minimum schema version to `version` (rule M20): replicas whose
     /// schema is older then refuse to load the document or import its changes
     /// ([`KdmError::NewerSchema`]). A migration raises the version in the transaction that rewrites
     /// the document into the new form. Answers whether the version rose: raising to a version the
-    /// document already has, or a lower one, changes nothing. Concurrent raises keep the largest.
+    /// document already has, or a lower one, changes nothing.
     ///
     /// Only a `system` transaction raises the version, so it is never an undo step
     /// ([`crate::Replica::transact`] refuses others with [`KdmError::InvalidValue`]). `version` is
@@ -327,13 +105,13 @@ impl<'a> Tx<'a> {
             return Ok(false);
         }
         self.raised = Some(version);
-        self.ops.push(Op::RaiseSchema { version });
+        self.ops.push(Op::SchemaVersion { version: u64::from(version), was: 0 });
         Ok(true)
     }
 
     /// The document's minimum schema version (rule M20), including this transaction's raises.
     pub fn min_schema_version(&self) -> u64 {
-        read::min_schema_version(self.doc).unwrap_or(0).max(self.raised.map_or(0, u64::from))
+        self.store.schema_version.max(self.raised.map_or(0, u64::from))
     }
 
     /// Creates an object of type `ty` with its register fields; container fields start empty.
@@ -343,9 +121,9 @@ impl<'a> Tx<'a> {
     }
 
     /// [`Tx::create`] under an id the host chose. The id matches
-    /// `[A-Za-z0-9][A-Za-z0-9:_-]{0,127}` and names no object of the document or of this
-    /// transaction (one it deleted included); otherwise [`KdmError::InvalidValue`]. Replicas that
-    /// create one id concurrently keep one of the objects.
+    /// `[A-Za-z0-9][A-Za-z0-9:_-]{0,127}`, is written in lowercase hyphenated form when it reads
+    /// as a UUID (data model 7.4, C12), and names no object of the document or of this transaction
+    /// (one it deleted included); otherwise [`KdmError::InvalidValue`].
     pub fn create_with_id(&mut self, ty: &str, id: &ObjectId, fields: Map<String, Value>) -> Result<ObjectId> {
         self.create_as(ty, Some(id), fields)
     }
@@ -361,6 +139,7 @@ impl<'a> Tx<'a> {
             });
         }
         for (name, value) in &fields {
+            nesting_refusal(ty, name, value)?;
             schema.check_value(ty, name, value)?;
             if let (Some(field), Some(target)) = (def.fields.get(name), value.as_str()) {
                 self.check_of(ty, name, field, &ObjectId::from_string(target))?;
@@ -375,31 +154,35 @@ impl<'a> Tx<'a> {
             None => ObjectId::new(),
             Some(id) => self.free_id(ty, id)?,
         };
+        let mut object = Object::new(self.name(ty));
+        for (name, value) in fields {
+            // `check_value` accepted only declared fields.
+            let Some((name, _)) = def.fields.get_key_value(&name) else { continue };
+            let name = self.name(name);
+            object.put(name, Field::Value(canonical(value)));
+        }
         self.overlay.created.insert(id.clone(), (ty.as_str(), self.ops.len()));
         self.overlay.created_by_type.entry(ty.as_str()).or_default().push(id.clone());
-        self.ops.push(Op::Create { id: id.clone(), ty, fields });
+        self.ops.push(Op::Create { id: id.clone(), object: Box::new(object), trees: Vec::new() });
         Ok(id)
     }
 
-    /// Sets one register field. Concurrent sets of the same field resolve to one winner;
-    /// sets of different fields of one object both survive.
+    /// Sets one register field.
     pub fn set(&mut self, id: &ObjectId, field: &str, value: Value) -> Result<()> {
         let (ty, name, def) = self.field(id, field)?;
+        nesting_refusal(ty, name, &value)?;
         self.schema.check_value(ty, field, &value)?;
         if let Some(target) = value.as_str() {
             self.check_of(ty, name, def, &ObjectId::from_string(target))?;
         }
         self.overlay.registers.insert((id.clone(), name), self.ops.len());
-        self.ops.push(Op::Set { id: id.clone(), field: name, value });
+        let field = self.name(name);
+        self.ops.push(Op::Set { id: id.clone(), field, value: canonical(value), was: Value::Null });
         Ok(())
     }
 
-    /// Deletes an object. References to it dangle; kits treat that as a validation state. A tree
-    /// keeps the node of a deleted object (the canonical state holds it, as the shared batch
-    /// fixtures and the TypeScript twin do), and every read skips it with its subtree:
-    /// [`Tx::tree`], [`crate::Replica::tree`], a load, and two reads of a file compared
-    /// ([`crate::reread`]), so a change set tells a plain deletion at the node's place
-    ///. An object whose node has children naming live objects is not deleted
+    /// Deletes an object. References to it dangle; kits treat that as a validation state. Its
+    /// nodes leave every tree that holds it; an object whose node has children is not deleted
     /// ([`KdmError::InvalidValue`]): delete or move them first (in one transaction, children
     /// before their parent), as the batch's `delete` says. A list keeps its entry: remove it with
     /// [`Tx::list_remove`].
@@ -409,38 +192,57 @@ impl<'a> Tx<'a> {
         }
         self.refuse_live_children(id)?;
         self.overlay.deleted.insert(id.clone());
-        self.ops.push(Op::Delete { id: id.clone() });
+        // Its nodes leave the trees this transaction holds open, as the store will take them out.
+        for tree in self.overlay.trees.values_mut() {
+            if tree.contains(id) {
+                tree.parents.remove(id);
+                tree.deleted.insert(id.clone());
+            }
+        }
+        self.ops.push(Op::Delete { id: id.clone(), was: None, trees: Vec::new() });
         Ok(())
     }
 
-    /// Refuses to delete `id` when a node naming it, in any tree field that may hold it, has a
-    /// child naming a live object.
+    /// Refuses to delete `id` when a node naming it, in any tree field that holds it, has a live
+    /// child. Looks only at the trees that hold `id`: those of the document (the store's index of
+    /// tree members) and those this transaction staged, so deleting `k` objects costs about `k`
+    /// lookups, not `k` passes over the document.
     fn refuse_live_children(&self, id: &ObjectId) -> Result<()> {
-        let ty = self.type_of(id)?;
-        let schema: &'a Schema = self.schema;
-        for (owner_type, def) in &schema.types {
-            for (field, field_def) in &def.fields {
-                if field_def.kind != FieldKind::Tree || field_def.of.as_deref().is_some_and(|of| of != ty) {
-                    continue;
+        let mut trees: Vec<(ObjectId, &'a str)> = Vec::new();
+        for (owner, field) in self.store.holders(id) {
+            if let Ok((_, name, _)) = self.field(owner, field) {
+                trees.push((owner.clone(), name));
+            }
+        }
+        trees.extend(self.overlay.trees.iter().filter(|(_, state)| state.contains(id)).map(|((owner, name), _)| (owner.clone(), *name)));
+        trees.sort_unstable();
+        trees.dedup();
+        let live = |child: &ObjectId| child != id && self.exists(child);
+        for (owner, name) in trees {
+            if !self.exists(&owner) {
+                continue;
+            }
+            let has_child = match self.overlay.trees.get(&(owner.clone(), name)) {
+                Some(state) => {
+                    let under = |child: &ObjectId| state.parent(child).flatten().as_ref() == Some(id);
+                    state.committed.is_some_and(|tree| tree.children(Some(id)).iter().any(|child| under(child) && live(child)))
+                        || state.parents.iter().any(|(child, parent)| parent.as_ref() == Some(id) && under(child) && live(child))
                 }
-                for owner in self.objects_of_type(owner_type) {
-                    let entries = self.tree(&owner, field)?;
-                    let mine: Vec<&NodeRef> = entries.iter().filter(|entry| entry.object == *id).map(|entry| &entry.node).collect();
-                    if entries.iter().any(|entry| entry.parent.as_ref().is_some_and(|parent| mine.contains(&parent)) && entry.object != *id) {
-                        return Err(KdmError::InvalidValue {
-                            ty: owner_type.clone(),
-                            field: field.clone(),
-                            reason: format!("`{id}` has children in the tree: delete or move them first"),
-                        });
-                    }
-                }
+                None => matches!(self.store.field(&owner, name), Some(Field::Tree(tree)) if tree.children(Some(id)).iter().any(live)),
+            };
+            if has_child {
+                return Err(KdmError::InvalidValue {
+                    ty: self.type_of(&owner)?.to_owned(),
+                    field: name.to_owned(),
+                    reason: format!("`{id}` has children in the tree: delete or move them first"),
+                });
             }
         }
         Ok(())
     }
 
     pub fn exists(&self, id: &ObjectId) -> bool {
-        self.overlay.exists(id, || self.read.borrow().types.contains_key(id) || self.object(id).is_ok())
+        self.overlay.exists(id, || self.store.contains(id))
     }
 
     pub(crate) fn was_deleted(&self, id: &ObjectId) -> bool {
@@ -460,46 +262,47 @@ impl<'a> Tx<'a> {
         }
         match self.pending_register(id, name) {
             Some(value) => Ok(value),
-            None => read::register(self.doc, self.schema, id, field),
+            None => read::register(self.store, self.schema, id, field),
         }
     }
 
     /// Inserts `content` at `index`, counted in Unicode scalar values.
     pub fn text_insert(&mut self, id: &ObjectId, field: &str, index: usize, content: &str) -> Result<()> {
         let name = self.container_field(id, field, FieldKind::Text)?;
-        let len = self.text_length(id, name, true)?;
+        let len = self.text_length(id, name)?;
         if index > len {
             return Err(KdmError::OutOfRange { index, len });
         }
         self.overlay.texts.insert((id.clone(), name), len.saturating_add(content.chars().count()));
-        self.ops.push(Op::TextInsert { id: id.clone(), field: name, index, content: content.to_owned() });
+        let field = self.name(name);
+        self.ops.push(Op::TextInsert { id: id.clone(), field, index, text: content.to_owned(), marks: None });
         Ok(())
     }
 
     /// The length of a text field in Unicode scalar values.
     pub fn text_len(&self, id: &ObjectId, field: &str) -> Result<usize> {
         let name = self.container_field(id, field, FieldKind::Text)?;
-        self.text_length(id, name, false)
+        self.text_length(id, name)
     }
 
     /// Deletes `count` Unicode scalar values starting at `index`.
     pub fn text_delete(&mut self, id: &ObjectId, field: &str, index: usize, count: usize) -> Result<()> {
         let name = self.container_field(id, field, FieldKind::Text)?;
-        let len = self.text_length(id, name, true)?;
+        let len = self.text_length(id, name)?;
         let end = index.checked_add(count).ok_or(KdmError::OutOfRange { index, len })?;
         if end > len {
             return Err(KdmError::OutOfRange { index: end, len });
         }
         self.overlay.texts.insert((id.clone(), name), len - count);
-        self.ops.push(Op::TextDelete { id: id.clone(), field: name, index, count });
+        let field = self.name(name);
+        self.ops.push(Op::TextDelete { id: id.clone(), field, index, count, was: Vec::new() });
         Ok(())
     }
 
     /// Sets mark `key` to `value` over the characters `start..end` (Unicode scalar values) of a
     /// text field (rule M19). The field declares `key` in its schema `marks`; `value` is plain
     /// JSON and not `null` (remove a mark with [`Tx::text_unmark`]). An empty range changes
-    /// nothing. Concurrent marks of one key over overlapping ranges resolve to one value per
-    /// character; marks of different keys all apply.
+    /// nothing.
     pub fn text_mark(&mut self, id: &ObjectId, field: &str, start: usize, end: usize, key: &str, value: Value) -> Result<()> {
         let (name, key) = self.mark_key(id, field, key)?;
         if value.is_null() {
@@ -510,14 +313,16 @@ impl<'a> Tx<'a> {
                 reason: format!("mark `{key}` takes a value; remove a mark with text_unmark"),
             });
         }
+        let (ty, _, _) = self.field(id, field)?;
+        nesting_refusal(ty, name, &value)?;
         if let Some(reason) = crate::schema::unportable(&value) {
-            let (ty, _, _) = self.field(id, field)?;
             return Err(KdmError::InvalidValue { ty: ty.to_owned(), field: name.to_owned(), reason: format!("mark `{key}` {reason}") });
         }
         if !self.mark_range(id, name, start, end)? {
             return Ok(());
         }
-        self.ops.push(Op::TextMark { id: id.clone(), field: name, start, end, key, value });
+        let field = self.name(name);
+        self.ops.push(Op::TextMark { id: id.clone(), field, start, end, key: key.to_owned(), value: canonical(value), was: Vec::new() });
         Ok(())
     }
 
@@ -528,7 +333,8 @@ impl<'a> Tx<'a> {
         if !self.mark_range(id, name, start, end)? {
             return Ok(());
         }
-        self.ops.push(Op::TextUnmark { id: id.clone(), field: name, start, end, key });
+        let field = self.name(name);
+        self.ops.push(Op::TextMark { id: id.clone(), field, start, end, key: key.to_owned(), value: Value::Null, was: Vec::new() });
         Ok(())
     }
 
@@ -541,7 +347,8 @@ impl<'a> Tx<'a> {
         }
         list.len += 1;
         list.edits.push(ListEdit::Insert(index, item.clone()));
-        self.ops.push(Op::ListInsert { id: id.clone(), field: name, index, item: item.clone() });
+        let field = self.name(name);
+        self.ops.push(Op::ListInsert { id: id.clone(), field, index, item: item.clone() });
         Ok(())
     }
 
@@ -552,7 +359,8 @@ impl<'a> Tx<'a> {
             return Err(KdmError::OutOfRange { index: from.max(to), len: list.len });
         }
         list.edits.push(ListEdit::Move(from, to));
-        self.ops.push(Op::ListMove { id: id.clone(), field: name, from, to });
+        let field = self.name(name);
+        self.ops.push(Op::ListMove { id: id.clone(), field, from, to, item: None });
         Ok(())
     }
 
@@ -564,7 +372,8 @@ impl<'a> Tx<'a> {
         }
         list.len -= 1;
         list.edits.push(ListEdit::Remove(index));
-        self.ops.push(Op::ListRemove { id: id.clone(), field: name, index });
+        let field = self.name(name);
+        self.ops.push(Op::ListRemove { id: id.clone(), field, index, item: None });
         Ok(())
     }
 
@@ -572,87 +381,80 @@ impl<'a> Tx<'a> {
     /// never needs it, so call it only when the items themselves are wanted.
     pub fn list_items(&self, id: &ObjectId, field: &str) -> Result<Vec<ObjectId>> {
         let name = self.container_field(id, field, FieldKind::List)?;
-        let mut items = match self.stored(id, name, false)? {
-            None => Vec::new(),
-            Some(Container::MovableList(list)) => read::list_items(&list)?,
-            Some(_) => return Err(read::wrong_container(id, name)),
-        };
+        let mut items = if self.overlay.is_created(id) { Vec::new() } else { read::list(self.store, self.schema, id, name)?.to_vec() };
         if let Some(list) = self.overlay.lists.get(&(id.clone(), name)) {
             list.replay(&mut items)?;
         }
         Ok(items)
     }
 
-    /// Sets `key` of a map field. Concurrent sets of one key resolve to one winner.
-    /// Values hold no integer beyond ±2^53 and no `__proto__` key, at any depth
-    /// ([`KdmError::InvalidValue`]).
+    /// Sets `key` of a map field. Values hold no integer beyond ±2^53 and no `__proto__` key, at
+    /// any depth ([`KdmError::InvalidValue`]).
+    /// Sets key `key` of a map field; a `null` value deletes the key ([`Tx::map_delete`]): a map
+    /// holds no `null` (data model C5).
     pub fn map_set(&mut self, id: &ObjectId, field: &str, key: &str, value: Value) -> Result<()> {
-        let name = self.writable_map(id, field)?;
+        let name = self.container_field(id, field, FieldKind::Map)?;
         let (ty, _, def) = self.field(id, field)?;
+        nesting_refusal(ty, name, &value)?;
         self.schema.check_map_entry(ty, field, key, &value)?;
+        if value.is_null() {
+            return self.map_delete(id, field, key);
+        }
         if let Some(target) = value.as_str() {
             self.check_of(ty, field, def, &ObjectId::from_string(target))?;
         }
         if let Some(reason) = crate::schema::unportable(&value) {
-            let (ty, _, _) = self.field(id, field)?;
             return Err(KdmError::InvalidValue { ty: ty.to_owned(), field: name.to_owned(), reason: reason.into() });
         }
         self.overlay.maps.entry((id.clone(), name)).or_default().insert(key.to_owned(), Some(self.ops.len()));
-        self.ops.push(Op::MapSet { id: id.clone(), field: name, key: key.to_owned(), value });
+        let field = self.name(name);
+        self.ops.push(Op::MapSet { id: id.clone(), field, key: key.to_owned(), value: Some(canonical(value)), was: None });
         Ok(())
     }
 
     pub fn map_delete(&mut self, id: &ObjectId, field: &str, key: &str) -> Result<()> {
-        let name = self.writable_map(id, field)?;
+        let name = self.container_field(id, field, FieldKind::Map)?;
         self.overlay.maps.entry((id.clone(), name)).or_default().insert(key.to_owned(), None);
-        self.ops.push(Op::MapDelete { id: id.clone(), field: name, key: key.to_owned() });
+        let field = self.name(name);
+        self.ops.push(Op::MapSet { id: id.clone(), field, key: key.to_owned(), value: None, was: None });
         Ok(())
     }
 
     /// One key of a map field including this transaction's writes, or `null`, as
-    /// [`crate::Replica::map_get`] reads it. Costs one lookup in the transaction's writes of the
-    /// field and at most one in the document, however large the transaction.
+    /// [`crate::Replica::map_get`] reads it.
     pub fn map_get(&self, id: &ObjectId, field: &str, key: &str) -> Result<Value> {
         let name = self.container_field(id, field, FieldKind::Map)?;
         if let Some(write) = self.overlay.maps.get(&(id.clone(), name)).and_then(|keys| keys.get(key)) {
             return Ok(write.map_or(Value::Null, |index| self.pending_map_value(index)));
         }
-        Ok(match self.stored(id, name, false)? {
-            None => Value::Null,
-            Some(Container::Map(map)) => read::map_value(&map, key),
-            Some(_) => return Err(read::wrong_container(id, name)),
-        })
+        if self.overlay.is_created(id) {
+            return Ok(Value::Null);
+        }
+        Ok(read::map(self.store, self.schema, id, name)?.and_then(|entries| entries.get(key)).cloned().unwrap_or(Value::Null))
     }
 
     /// A map field's keys and values including this transaction's writes, sorted by key (code
-    /// point order, as in the canonical state), each as [`Tx::map_get`] reads it. Reads the whole
-    /// map and sorts the result on every call, O(n log n) in its keys: call it only when every
-    /// entry is wanted.
+    /// point order, as in the canonical state), each as [`Tx::map_get`] reads it.
     pub fn map_entries(&self, id: &ObjectId, field: &str) -> Result<Vec<(String, Value)>> {
         let name = self.container_field(id, field, FieldKind::Map)?;
-        let committed = match self.stored(id, name, false)? {
-            None => Vec::new(),
-            Some(Container::Map(map)) => read::map_entries(&map),
-            Some(_) => return Err(read::wrong_container(id, name)),
-        };
-        let Some(writes) = self.overlay.maps.get(&(id.clone(), name)) else { return Ok(committed) };
-        let mut entries: BTreeMap<String, Value> = committed.into_iter().collect();
-        for (key, write) in writes {
-            match write {
-                Some(index) => entries.insert(key.clone(), self.pending_map_value(*index)),
-                None => entries.remove(key),
-            };
+        let mut entries: BTreeMap<String, Value> =
+            if self.overlay.is_created(id) { BTreeMap::new() } else { read::map(self.store, self.schema, id, name)?.cloned().unwrap_or_default() };
+        if let Some(writes) = self.overlay.maps.get(&(id.clone(), name)) {
+            for (key, write) in writes {
+                match write {
+                    Some(index) => entries.insert(key.clone(), self.pending_map_value(*index)),
+                    None => entries.remove(key),
+                };
+            }
         }
         Ok(entries.into_iter().collect())
     }
 
     /// Ids of the live objects of type `ty`, including those this transaction created and without
-    /// those it deleted, sorted as [`crate::Replica::objects_of_type`] sorts them. One pass over
-    /// every object of the document, O(objects) per call, plus this transaction's creations of `ty`;
-    /// when it created any, the whole result is sorted again, O(n log n) per call.
+    /// those it deleted, sorted as [`crate::Replica::objects_of_type`] sorts them.
     pub fn objects_of_type(&self, ty: &str) -> Vec<ObjectId> {
         let deleted = &self.overlay.deleted;
-        let mut ids = read::objects_of_type(self.doc, ty);
+        let mut ids = read::objects_of_type(self.store, ty);
         if !deleted.is_empty() {
             ids.retain(|id| !deleted.contains(id));
         }
@@ -663,40 +465,53 @@ impl<'a> Tx<'a> {
         ids
     }
 
-    /// Adds a node naming `object` under `parent` (`None`: a root), last among its siblings.
-    /// The returned handle resolves when the transaction commits.
+    /// Adds the node of `object` under `parent` (`None`: a root), last among its siblings. A tree
+    /// holds an object once: a second node for it is refused ([`KdmError::InvalidValue`]). A node
+    /// names a live object: one that does not exist (never made, or deleted) is refused
+    /// ([`KdmError::NotFound`]); create it first, in this transaction or an earlier one.
     pub fn tree_create(&mut self, id: &ObjectId, field: &str, parent: Option<&NodeRef>, object: &ObjectId) -> Result<NodeRef> {
         let name = self.container_field(id, field, FieldKind::Tree)?;
         self.check_item(id, name, object)?;
-        let parent = parent.map(|parent| self.node_key(parent)).transpose()?;
-        let index = self.nodes.len();
+        if !self.exists(object) {
+            return Err(KdmError::NotFound(object.to_string()));
+        }
+        let (ty, _, _) = self.field(id, field)?;
         let tree = self.tree_mut(id, name)?;
-        if parent.is_some_and(|parent| !tree.contains(parent)) {
+        if let Some(parent) = parent
+            && !tree.contains(&parent.0)
+        {
             return Err(KdmError::NotFound(format!("parent node in {id}.{name}")));
         }
-        tree.parents.insert(NodeKey::Pending(index), parent);
-        let pending = Arc::new(PendingNode { tx: self.serial, index, id: OnceLock::new() });
-        self.nodes.push(Arc::clone(&pending));
-        self.ops.push(Op::TreeCreate { id: id.clone(), field: name, parent, object: object.clone(), node: index });
-        Ok(NodeRef(NodeInner::Pending(pending)))
+        if tree.contains(object) {
+            return Err(KdmError::InvalidValue {
+                ty: ty.to_owned(),
+                field: name.to_owned(),
+                reason: format!("holds `{object}` already: a tree holds an object once"),
+            });
+        }
+        let parent = parent.map(|parent| parent.0.clone());
+        tree.parents.insert(object.clone(), parent.clone());
+        tree.deleted.remove(object);
+        let field = self.name(name);
+        self.ops.push(Op::TreeCreate { id: id.clone(), field, node: object.clone(), parent, index: None });
+        Ok(NodeRef(object.clone()))
     }
 
-    /// Moves `node` under `parent`. A move that would make a node its own ancestor (counting this
-    /// transaction's earlier moves) fails with [`KdmError::Cycle`]; concurrent moves that would
-    /// form a cycle are resolved by the engine.
+    /// Moves `node` under `parent`, last among its new siblings. A move that would make a node
+    /// its own ancestor (counting this transaction's earlier moves) fails with [`KdmError::Cycle`].
     pub fn tree_move(&mut self, id: &ObjectId, field: &str, node: &NodeRef, parent: Option<&NodeRef>) -> Result<()> {
         let name = self.container_field(id, field, FieldKind::Tree)?;
-        let node = self.node_key(node)?;
-        let parent = parent.map(|parent| self.node_key(parent)).transpose()?;
         let tree = self.tree_mut(id, name)?;
-        if !tree.contains(node) || parent.is_some_and(|parent| !tree.contains(parent)) {
+        if !tree.contains(&node.0) || parent.is_some_and(|parent| !tree.contains(&parent.0)) {
             return Err(KdmError::NotFound(format!("node in {id}.{name}")));
         }
-        if parent.is_some_and(|parent| tree.would_cycle(node, parent)) {
+        if parent.is_some_and(|parent| tree.would_cycle(&node.0, &parent.0)) {
             return Err(KdmError::Cycle);
         }
-        tree.parents.insert(node, parent);
-        self.ops.push(Op::TreeMove { id: id.clone(), field: name, node, parent });
+        let parent = parent.map(|parent| parent.0.clone());
+        tree.parents.insert(node.0.clone(), parent.clone());
+        let field = self.name(name);
+        self.ops.push(Op::TreeMove { id: id.clone(), field, node: node.0.clone(), parent, index: None, was: None });
         Ok(())
     }
 
@@ -704,148 +519,88 @@ impl<'a> Tx<'a> {
     /// objects that other fields own. Move the children to keep out first.
     pub fn tree_delete(&mut self, id: &ObjectId, field: &str, node: &NodeRef) -> Result<()> {
         let name = self.container_field(id, field, FieldKind::Tree)?;
-        let key = self.node_key(node)?;
-        let tree = self.tree_mut(id, name)?;
-        if !tree.contains(key) {
+        if !self.tree_mut(id, name)?.contains(&node.0) {
             return Err(KdmError::NotFound(format!("node in {id}.{name}")));
         }
-        tree.parents.remove(&key);
-        tree.deleted.insert(key);
-        self.ops.push(Op::TreeDelete { id: id.clone(), field: name, node: key });
+        let (children, _) = self.tree_view(id, name)?;
+        // The subtree, each node after its descendants.
+        let mut order = Vec::new();
+        let mut stack = vec![(node.0.clone(), false)];
+        while let Some((at, expanded)) = stack.pop() {
+            if expanded {
+                order.push(at);
+                continue;
+            }
+            stack.push((at.clone(), true));
+            for child in children.get(&Some(at)).into_iter().flatten() {
+                stack.push((child.clone(), false));
+            }
+        }
+        let field_name = self.name(name);
+        let tree = self.tree_mut(id, name)?;
+        for at in &order {
+            tree.parents.remove(at);
+            tree.deleted.insert(at.clone());
+        }
+        for at in order {
+            self.ops.push(Op::TreeDelete { id: id.clone(), field: field_name.clone(), node: at, was: None });
+        }
         Ok(())
     }
 
-    /// Rule M10b: leaves every object of the tree named by one node. For each object that several
-    /// of the document's nodes name (a redo made a new node for it while another replica's
-    /// concurrent move kept the old one alive), the node kept is the least by engine id (peer,
-    /// then counter) among those with no ancestor naming the same object; every other node naming
-    /// it has its children moved, in order, to the end of the kept node's children, and is then
-    /// deleted. The choice depends on the state alone, so replicas that repair one state
-    /// concurrently make the same moves and deletes. Nodes this transaction created are not
-    /// considered. Answers how many nodes it deleted; 0 writes nothing. Run it in a kit's repair
-    /// (engine contract E14, a `system` transaction) for every tree field.
-    pub fn tree_dedupe(&mut self, id: &ObjectId, field: &str) -> Result<usize> {
-        let name = self.container_field(id, field, FieldKind::Tree)?;
-        let mut deleted = 0;
-        // One node at a time, each chosen on the tree as the earlier ones left it, so a move never
-        // forms a cycle: the kept node has no ancestor naming its object, so it is never under the
-        // node that goes, nor under one of that node's children.
-        while let Some((keep, other)) = self.tree_duplicate(id, name)? {
-            let (kept, node) = (NodeRef::committed(keep), NodeRef::committed(other));
-            let children: Vec<NodeRef> =
-                self.tree(id, name)?.into_iter().filter(|entry| entry.parent.as_ref() == Some(&node)).map(|entry| entry.node).collect();
-            for child in &children {
-                self.tree_move(id, name, child, Some(&kept))?;
-            }
-            // Children that name no object (only a document written outside the KDM has them) go
-            // with the node.
-            let key = NodeKey::Committed(other);
-            let tree = self.tree_mut(id, name)?;
-            tree.parents.remove(&key);
-            tree.deleted.insert(key);
-            self.ops.push(Op::TreeDelete { id: id.clone(), field: name, node: key });
-            deleted += 1;
-        }
-        Ok(deleted)
-    }
-
-    /// The first object in pre-order that several of the document's nodes name (M10b): the node
-    /// to keep and the first other one in pre-order.
-    fn tree_duplicate(&self, id: &ObjectId, name: &str) -> Result<Option<(loro::TreeID, loro::TreeID)>> {
-        let entries = self.tree(id, name)?;
-        let mut by_object: HashMap<&ObjectId, Vec<loro::TreeID>> = HashMap::new();
-        let mut parent_of: HashMap<loro::TreeID, Option<loro::TreeID>> = HashMap::new();
-        let mut first: Option<&ObjectId> = None;
-        for entry in &entries {
-            let Some(node) = entry.node.resolved() else { continue };
-            parent_of.insert(node, entry.parent.as_ref().and_then(NodeRef::resolved));
-            let nodes = by_object.entry(&entry.object).or_default();
-            nodes.push(node);
-            if nodes.len() == 2 && first.is_none() {
-                first = Some(&entry.object);
+    /// The tree as this transaction sees it: the document's nodes plus the nodes it created, each
+    /// node it created or moved last among its new siblings, without the nodes it deleted.
+    fn tree_view(&self, id: &ObjectId, name: &str) -> Result<TreeView> {
+        let mut children: HashMap<Option<ObjectId>, Vec<ObjectId>> = HashMap::new();
+        let mut parent_of: HashMap<ObjectId, Option<ObjectId>> = HashMap::new();
+        if !self.overlay.is_created(id)
+            && let Some(tree) = read::tree(self.store, self.schema, id, name)?
+        {
+            for (node, parent) in tree.preorder() {
+                children.entry(parent.clone()).or_default().push(node.clone());
+                parent_of.insert(node, parent);
             }
         }
-        let Some(nodes) = first.and_then(|object| by_object.get(object)) else { return Ok(None) };
-        let outermost = |node: loro::TreeID| {
-            let mut at = parent_of.get(&node).copied().flatten();
-            while let Some(parent) = at {
-                if nodes.contains(&parent) {
-                    return false;
-                }
-                at = parent_of.get(&parent).copied().flatten();
+        let detach = |children: &mut HashMap<Option<ObjectId>, Vec<ObjectId>>, parent_of: &mut HashMap<ObjectId, Option<ObjectId>>, node: &ObjectId| {
+            if let Some(old) = parent_of.remove(node) {
+                children.entry(old).or_default().retain(|child| child != node);
             }
-            true
         };
-        let Some(keep) = nodes.iter().copied().filter(|node| outermost(*node)).min() else { return Ok(None) };
-        Ok(nodes.iter().copied().find(|node| *node != keep).map(|other| (keep, other)))
+        for op in &self.ops {
+            match op {
+                Op::TreeCreate { id: owner, field, node, parent, .. } if owner == id && &**field == name => {
+                    children.entry(parent.clone()).or_default().push(node.clone());
+                    parent_of.insert(node.clone(), parent.clone());
+                }
+                Op::TreeMove { id: owner, field, node, parent, .. } if owner == id && &**field == name => {
+                    detach(&mut children, &mut parent_of, node);
+                    children.entry(parent.clone()).or_default().push(node.clone());
+                    parent_of.insert(node.clone(), parent.clone());
+                }
+                Op::TreeDelete { id: owner, field, node, .. } if owner == id && &**field == name => detach(&mut children, &mut parent_of, node),
+                Op::Delete { id: deleted, .. } if parent_of.contains_key(deleted) => detach(&mut children, &mut parent_of, deleted),
+                _ => {}
+            }
+        }
+        Ok((children, parent_of))
     }
 
     /// The tree's nodes in pre-order as this transaction sees it: the document's nodes plus the
     /// nodes it created, each node it created or moved last among its new siblings, as they will
-    /// be once it applies. A node that names no object, or a deleted one, is skipped with its
-    /// subtree, as in [`crate::Replica::tree`]. Reads the whole tree: O(nodes + this transaction's operations).
+    /// be once it applies. A node naming an object that does not exist is skipped with its
+    /// subtree, as in [`crate::Replica::tree`]. Reads the whole tree.
     pub fn tree(&self, id: &ObjectId, field: &str) -> Result<Vec<crate::TreeEntry>> {
         let name = self.container_field(id, field, FieldKind::Tree)?;
-        let committed = match self.stored(id, name, false)? {
-            None => None,
-            Some(Container::Tree(tree)) => Some(tree),
-            Some(_) => return Err(read::wrong_container(id, name)),
-        };
-        let mut children: HashMap<Option<NodeKey>, Vec<NodeKey>> = HashMap::new();
-        let mut parent_of: HashMap<NodeKey, Option<NodeKey>> = HashMap::new();
-        let mut objects: HashMap<NodeKey, Option<ObjectId>> = HashMap::new();
-        if let Some(tree) = &committed {
-            let mut stack = vec![(loro::TreeParentId::Root, None)];
-            while let Some((parent, key)) = stack.pop() {
-                for node in tree.children(parent).unwrap_or_default() {
-                    let child = NodeKey::Committed(node);
-                    children.entry(key).or_default().push(child);
-                    parent_of.insert(child, key);
-                    objects.insert(child, read::node_object(tree, node));
-                    stack.push((loro::TreeParentId::Node(node), Some(child)));
-                }
-            }
-        }
-        for op in &self.ops {
-            match op {
-                Op::TreeCreate { id: owner, field: of, parent, object, node } if owner == id && *of == name => {
-                    let child = NodeKey::Pending(*node);
-                    children.entry(*parent).or_default().push(child);
-                    parent_of.insert(child, *parent);
-                    objects.insert(child, Some(object.clone()));
-                }
-                Op::TreeMove { id: owner, field: of, node, parent } if owner == id && *of == name => {
-                    if let Some(old) = parent_of.insert(*node, *parent) {
-                        children.entry(old).or_default().retain(|child| child != node);
-                    }
-                    children.entry(*parent).or_default().push(*node);
-                }
-                Op::TreeDelete { id: owner, field: of, node } if owner == id && *of == name => {
-                    if let Some(old) = parent_of.remove(node) {
-                        children.entry(old).or_default().retain(|child| child != node);
-                    }
-                }
-                _ => {}
-            }
-        }
-        let handle = |key: NodeKey| -> Result<NodeRef> {
-            match key {
-                NodeKey::Committed(node) => Ok(NodeRef::committed(node)),
-                NodeKey::Pending(index) => self
-                    .nodes
-                    .get(index)
-                    .map(|pending| NodeRef(NodeInner::Pending(Arc::clone(pending))))
-                    .ok_or_else(|| KdmError::Engine(format!("tree node {index} was not staged"))),
-            }
-        };
+        let (children, _) = self.tree_view(id, name)?;
         let mut out = Vec::new();
-        let mut stack: Vec<(NodeKey, Option<NodeRef>)> = children.get(&None).into_iter().flatten().rev().map(|key| (*key, None)).collect();
-        while let Some((key, parent)) = stack.pop() {
-            // A node naming no object, or one deleted, is skipped with its subtree.
-            let Some(Some(object)) = objects.get(&key).filter(|object| object.as_ref().is_some_and(|object| self.exists(object))) else { continue };
-            let node = handle(key)?;
-            out.push(crate::TreeEntry { node: node.clone(), object: object.clone(), parent });
-            stack.extend(children.get(&Some(key)).into_iter().flatten().rev().map(|child| (*child, Some(node.clone()))));
+        let mut stack: Vec<(ObjectId, Option<NodeRef>)> = children.get(&None).into_iter().flatten().rev().map(|node| (node.clone(), None)).collect();
+        while let Some((node, parent)) = stack.pop() {
+            if !self.exists(&node) {
+                continue;
+            }
+            let handle = NodeRef(node.clone());
+            stack.extend(children.get(&Some(node.clone())).into_iter().flatten().rev().map(|child| (child.clone(), Some(handle.clone()))));
+            out.push(crate::TreeEntry { node: handle, object: node, parent });
         }
         Ok(out)
     }
@@ -856,7 +611,11 @@ impl<'a> Tx<'a> {
         if !is_object_id(id.as_str()) {
             return Err(invalid(format!("cannot be `{id}`: an object id matches `{OBJECT_ID_PATTERN}`")));
         }
-        if self.overlay.is_created(id) || self.overlay.deleted.contains(id) || self.doc.get_map(read::OBJECTS).get(id.as_str()).is_some() {
+        // One object, one way to write its id (data model 7.4, C12): a file refuses the others.
+        if crate::content::check_id(id.as_str()).is_err() {
+            return Err(invalid(format!("cannot be `{id}`: an object id that is a UUID is written in lowercase hyphenated form")));
+        }
+        if self.overlay.is_created(id) || self.overlay.deleted.contains(id) || self.store.contains(id) {
             return Err(invalid(format!("cannot be `{id}`: that object id is taken")));
         }
         Ok(id.clone())
@@ -870,14 +629,9 @@ impl<'a> Tx<'a> {
         if let Some((ty, _)) = self.overlay.created.get(id) {
             return Ok(ty);
         }
-        if let Some(ty) = self.read.borrow().types.get(id) {
-            return Ok(ty);
-        }
-        let ty = read::type_of(&self.object(id)?, id)?;
+        let object = self.store.object(id).ok_or_else(|| KdmError::NotFound(id.to_string()))?;
         let schema: &'a Schema = self.schema;
-        let ty = schema.types.get_key_value(ty.as_str()).map(|(name, _)| name.as_str()).ok_or(KdmError::UnknownType(ty))?;
-        self.read.borrow_mut().types.insert(id.clone(), ty);
-        Ok(ty)
+        schema.types.get_key_value(&*object.ty).map(|(name, _)| name.as_str()).ok_or_else(|| KdmError::UnknownType(object.ty.to_string()))
     }
 
     /// The object's type, and the schema's name and definition of `field`.
@@ -897,7 +651,7 @@ impl<'a> Tx<'a> {
         } else if let Some((found, _)) = self.overlay.created.get(target) {
             Some((*found).to_owned())
         } else {
-            read::object_type(self.doc, target).ok()
+            read::object_type(self.store, target).ok()
         };
         match found {
             Some(found) if found != *of => Err(KdmError::InvalidValue {
@@ -923,72 +677,36 @@ impl<'a> Tx<'a> {
         Ok(name)
     }
 
-    /// The document's container for a field, or `None` when it starts empty: the object was
-    /// created by this transaction, or (for reads) it predates the field. Writes to a field the
-    /// stored object lacks fail with [`KdmError::NotFound`].
-    /// The object's own map in the document, looked up in the document's objects once per
-    /// transaction.
-    fn object(&self, id: &ObjectId) -> Result<LoroMap> {
-        if let Some(map) = self.read.borrow().objects.get(id) {
-            return Ok(map.clone());
-        }
-        let map = read::object_map(self.doc, id)?;
-        self.read.borrow_mut().objects.insert(id.clone(), map.clone());
-        Ok(map)
-    }
-
-    fn stored(&self, id: &ObjectId, name: &'a str, write: bool) -> Result<Option<Container>> {
-        if self.overlay.is_created(id) {
-            return Ok(None);
-        }
-        let key = (id.clone(), name);
-        let cached = self.read.borrow().containers.get(&key).cloned();
-        let found = match cached {
-            Some(found) => found,
-            None => {
-                let found = match self.object(id)?.get(name) {
-                    Some(ValueOrContainer::Container(found)) => Some(found),
-                    Some(ValueOrContainer::Value(_)) => return Err(read::wrong_container(id, name)),
-                    None => None,
-                };
-                self.read.borrow_mut().containers.insert(key, found.clone());
-                found
-            }
-        };
-        match found {
-            None if write => Err(KdmError::NotFound(format!("{id}.{name}"))),
-            found => Ok(found),
-        }
-    }
-
-    /// The value of the `MapSet` operation at `index`, as the engine will store it.
+    /// The value of the `MapSet` operation at `index`.
     fn pending_map_value(&self, index: usize) -> Value {
         match self.ops.get(index) {
-            Some(Op::MapSet { value, .. }) => stored_form(value),
+            Some(Op::MapSet { value: Some(value), .. }) => value.clone(),
             _ => Value::Null,
         }
     }
 
     fn pending_register(&self, id: &ObjectId, name: &str) -> Option<Value> {
         if let Some(Op::Set { value, .. }) = self.overlay.registers.get(&(id.clone(), name)).and_then(|index| self.ops.get(*index)) {
-            return Some(stored_form(value));
+            return Some(value.clone());
         }
         let (_, index) = self.overlay.created.get(id)?;
         match self.ops.get(*index) {
-            Some(Op::Create { fields, .. }) => Some(fields.get(name).map_or(Value::Null, stored_form)),
+            Some(Op::Create { object, .. }) => Some(match object.get(name) {
+                Some(Field::Value(value)) => value.clone(),
+                _ => Value::Null,
+            }),
             _ => None,
         }
     }
 
-    fn text_length(&self, id: &ObjectId, name: &'a str, write: bool) -> Result<usize> {
+    fn text_length(&self, id: &ObjectId, name: &'a str) -> Result<usize> {
         if let Some(len) = self.overlay.texts.get(&(id.clone(), name)) {
             return Ok(*len);
         }
-        match self.stored(id, name, write)? {
-            None => Ok(0),
-            Some(Container::Text(text)) => Ok(text.len_unicode()),
-            Some(_) => Err(read::wrong_container(id, name)),
+        if self.overlay.is_created(id) {
+            return Ok(0);
         }
+        Ok(read::text(self.store, self.schema, id, name)?.map_or(0, |text| text.len()))
     }
 
     /// The schema's names of a text field and of one of its declared mark keys.
@@ -1006,7 +724,7 @@ impl<'a> Tx<'a> {
     /// Checks a mark's range against the text's length including this transaction's edits;
     /// answers whether the range holds any character.
     fn mark_range(&self, id: &ObjectId, name: &'a str, start: usize, end: usize) -> Result<bool> {
-        let len = self.text_length(id, name, true)?;
+        let len = self.text_length(id, name)?;
         if end > len {
             return Err(KdmError::OutOfRange { index: end, len });
         }
@@ -1019,67 +737,25 @@ impl<'a> Tx<'a> {
     fn list_mut(&mut self, id: &ObjectId, name: &'a str) -> Result<&mut ListState> {
         let key = (id.clone(), name);
         if !self.overlay.lists.contains_key(&key) {
-            let len = match self.stored(id, name, true)? {
-                None => 0,
-                Some(Container::MovableList(list)) => list.len(),
-                Some(_) => return Err(read::wrong_container(id, name)),
-            };
+            let len = if self.overlay.is_created(id) { 0 } else { read::list(self.store, self.schema, id, name)?.len() };
             self.overlay.lists.insert(key.clone(), ListState::new(len));
         }
         self.overlay.lists.get_mut(&key).ok_or_else(|| KdmError::Engine(format!("{id}.{name} was not staged")))
     }
 
-    /// The name of a map field this transaction may write. The first write to a stored map
-    /// prepares it ([`Tx::prepare_write`]).
-    fn writable_map(&self, id: &ObjectId, field: &str) -> Result<&'a str> {
-        let name = self.container_field(id, field, FieldKind::Map)?;
-        match self.stored(id, name, true)? {
-            None => Ok(name),
-            Some(Container::Map(map)) => {
-                if !self.overlay.maps.contains_key(&(id.clone(), name)) {
-                    self.prepare_write(id, &map);
-                }
-                Ok(name)
-            }
-            Some(_) => Err(read::wrong_container(id, name)),
-        }
-    }
-
-    /// Has the engine build the full state of `map`, a map field of `id`, and of the object's
-    /// own map, which applying a write to it needs, now: the transaction has usually just read
-    /// both, and the engine builds a state from the value it decoded for that read. Applying the
-    /// write later, after the transaction's other reads, would decode them again: the engine
-    /// keeps a few thousand decoded values only, and a large write reads more. A read of the
-    /// last editor of a key reads a container's state.
-    fn prepare_write(&self, id: &ObjectId, map: &loro::LoroMap) {
-        map.get_last_editor("");
-        if let Ok(object) = self.object(id) {
-            object.get_last_editor(read::TYPE_KEY);
-        }
-    }
-
-    fn tree_mut(&mut self, id: &ObjectId, name: &'a str) -> Result<&mut TreeState> {
+    fn tree_mut(&mut self, id: &ObjectId, name: &'a str) -> Result<&mut TreeState<'a>> {
         let key = (id.clone(), name);
         if !self.overlay.trees.contains_key(&key) {
-            let committed = match self.stored(id, name, true)? {
-                None => None,
-                Some(Container::Tree(tree)) => Some(tree),
-                Some(_) => return Err(read::wrong_container(id, name)),
-            };
-            self.overlay.trees.insert(key.clone(), TreeState::new(committed));
+            let committed = if self.overlay.is_created(id) { None } else { read::tree(self.store, self.schema, id, name)? };
+            let mut state = TreeState::new(committed);
+            // Nodes of objects this transaction deleted left the tree with them.
+            for deleted in &self.overlay.deleted {
+                if state.contains(deleted) {
+                    state.deleted.insert(deleted.clone());
+                }
+            }
+            self.overlay.trees.insert(key.clone(), state);
         }
         self.overlay.trees.get_mut(&key).ok_or_else(|| KdmError::Engine(format!("{id}.{name} was not staged")))
-    }
-
-    /// A handle as this transaction sees it. A handle created by another transaction that never
-    /// applied (it failed) names no node.
-    fn node_key(&self, node: &NodeRef) -> Result<NodeKey> {
-        if let Some(id) = node.resolved() {
-            return Ok(NodeKey::Committed(id));
-        }
-        match &node.0 {
-            NodeInner::Pending(pending) if pending.tx == self.serial => Ok(NodeKey::Pending(pending.index)),
-            _ => Err(KdmError::NotFound("a tree node from a transaction that did not commit".into())),
-        }
     }
 }

@@ -2,14 +2,14 @@
 //! `checkpoints`, section 7m): listed, found, renamed, deleted, and read.
 //!
 //! A kit's checkpoint is `{ id, time, origin, author?, label?, description?,
-//! version, available }`, its `version` in base64 as the protocol carries it
-//! (`history.json` keeps the writer's hex). A kit records its checkpoints with
-//! the replica write that holds their version (`write_entry_request`'s
-//! `checkpoint`, origin `kit`), and changes only those: the host's own are
-//! listed and read, never changed. Refusals are the `history` errors
-//! (`CHECKPOINT_NOT_FOUND`, `CHECKPOINT_HISTORY_MISSING`,
-//! `CHECKPOINT_TOO_LONG`, `CHECKPOINT_READ_ONLY`) and `STORE_READ_ONLY`; the
-//! page turns them into the protocol's reasons.
+//! version }`, its `version` the one the replica write named (base64, as the
+//! protocol carries it). A kit records its checkpoints with the replica write
+//! that holds their state (`write_entry_request`'s `checkpoint`, origin `kit`),
+//! and changes only those: the host's own are listed and read, never changed.
+//! Reading one answers the snapshot it keeps. Refusals are the `history`
+//! errors (`CHECKPOINT_NOT_FOUND`, `CHECKPOINT_TOO_LONG`,
+//! `CHECKPOINT_READ_ONLY`) and `STORE_READ_ONLY`; the page turns them into the
+//! protocol's reasons.
 
 use std::io;
 use std::path::Path;
@@ -18,22 +18,13 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::{Value, json};
 
-use super::history::{self, CHECKPOINT_HISTORY_MISSING, CHECKPOINT_NOT_FOUND, Checkpoint};
-use super::{Access, blobs, entry_dir, prepare};
+use super::history::{self, CHECKPOINT_NOT_FOUND, Checkpoint};
+use super::{Access, blobs, collect, entry_dir, prepare};
 use crate::request::Request;
 use crate::workspace::guarded::GuardedWrites;
 
 /// The most checkpoints one list answers (Kit UI protocol `CHECKPOINT_LIST_LIMIT`).
 pub const LIST_LIMIT: usize = 200;
-
-/// The replica version as the protocol carries it: the stored hex in base64
-/// (empty when none was recorded or it is not hex).
-fn version_base64(version: Option<&str>) -> String {
-    version
-        .and_then(|hex_text| hex::decode(hex_text).ok())
-        .map(|bytes| BASE64.encode(bytes))
-        .unwrap_or_default()
-}
 
 /// A checkpoint as a kit sees it (`KitCheckpoint`).
 pub fn kit_checkpoint_json(checkpoint: &Checkpoint) -> Value {
@@ -41,8 +32,7 @@ pub fn kit_checkpoint_json(checkpoint: &Checkpoint) -> Value {
         "id": checkpoint.id,
         "time": checkpoint.time,
         "origin": checkpoint.origin,
-        "version": version_base64(checkpoint.version.as_deref()),
-        "available": checkpoint.available,
+        "version": checkpoint.version,
     });
     for (key, field) in [
         ("author", &checkpoint.author),
@@ -123,7 +113,12 @@ pub fn update_request(
     };
     access.check()?;
     let id = request.str("id");
-    let updated = locks.exclusive(&dir, || history::update(root, &dir, &id, edit))?;
+    let doc_id = request.str("doc_id");
+    let updated = locks.exclusive(&dir, || {
+        let updated = history::update(root, &dir, &id, edit)?;
+        collect(root, &dir, &doc_id)?;
+        Ok(updated)
+    })?;
     Ok(json!({ "checkpoint": kit_checkpoint_json(&updated) }))
 }
 
@@ -138,15 +133,19 @@ pub fn delete_request(
     let dir = entry_dir(root, &request.str("doc_id"))?;
     access.check()?;
     let id = request.str("id");
-    locks.exclusive(&dir, || history::delete(root, &dir, &id))?;
+    let doc_id = request.str("doc_id");
+    locks.exclusive(&dir, || {
+        history::delete(root, &dir, &id)?;
+        collect(root, &dir, &doc_id)
+    })?;
     Ok(Value::Null)
 }
 
-/// `{ doc_id, id, expected_root? }` to `{ checkpoint, blobs_base64 }`: the
-/// blobs the replica named at the checkpoint (empty for a replica without
-/// blobs). The content itself the page derives from the stored replica at the
-/// checkpoint's version. A checkpoint the store no longer reaches, or whose
-/// blobs are gone, is `CHECKPOINT_HISTORY_MISSING`.
+/// `{ doc_id, id, expected_root? }` to `{ checkpoint, snapshot_base64,
+/// blobs_base64 }`: the snapshot the checkpoint keeps and the blobs it named
+/// (empty for a replica without blobs). A checkpoint whose state or blobs are
+/// missing or damaged on disk fails with an error of its own, not a protocol
+/// reason: the store lost it.
 pub fn read_request(
     root: &Path,
     locks: &GuardedWrites,
@@ -160,16 +159,15 @@ pub fn read_request(
         let Some(checkpoint) = history::find(root, &dir, &id)? else {
             return Err(io::Error::other(CHECKPOINT_NOT_FOUND));
         };
-        if !checkpoint.available {
-            return Err(io::Error::other(CHECKPOINT_HISTORY_MISSING));
-        }
+        let lost = || io::Error::other(format!("the store lost checkpoint {id}'s state"));
+        let snapshot = history::read_state(root, &dir, &checkpoint)?.ok_or_else(lost)?;
         let bundle = match &checkpoint.blobs {
-            Some(record) => blobs::load(root, &dir, record)?
-                .ok_or_else(|| io::Error::other(CHECKPOINT_HISTORY_MISSING))?,
+            Some(record) => blobs::load(root, &dir, record)?.ok_or_else(lost)?,
             None => Vec::new(),
         };
         Ok(json!({
             "checkpoint": kit_checkpoint_json(&checkpoint),
+            "snapshot_base64": BASE64.encode(snapshot),
             "blobs_base64": BASE64.encode(bundle),
         }))
     })
@@ -203,10 +201,11 @@ mod tests {
         Request::new(Some(value))
     }
 
-    /// Writes a kit replica at `version` (hex) with `blobs`, and the checkpoint asked.
+    /// Writes a kit replica whose snapshot is `state`, at `version`, with `blobs`, and the checkpoint asked.
     fn save(
         root: &Path,
         locks: &GuardedWrites,
+        state: &[u8],
         version: &str,
         blobs: &[u8],
         checkpoint: Value,
@@ -218,7 +217,7 @@ mod tests {
             locks,
             W,
             &request(json!({
-                "doc_id": DOC, "meta": meta, "snapshot_base64": BASE64.encode(version.as_bytes()),
+                "doc_id": DOC, "meta": meta, "snapshot_base64": BASE64.encode(state),
                 "version": version, "blobs_base64": BASE64.encode(blobs), "checkpoint": checkpoint,
             })),
         ))
@@ -229,28 +228,36 @@ mod tests {
         let (_dir, root) = workspace();
         let locks = GuardedWrites::default();
         let first = blobs::bundle(&[b"image"]);
-        save(&root, &locks, "0a0b", &first, json!({ "origin": "save" }));
+        save(
+            &root,
+            &locks,
+            b"first",
+            "Cgs=",
+            &first,
+            json!({ "origin": "save" }),
+        );
         // A labelled checkpoint at the newest version becomes the kit's.
         let written = save(
             &root,
             &locks,
-            "0a0b",
+            b"first",
+            "Cgs=",
             &first,
             json!({ "origin": "kit", "label": "Draft", "description": "For review" }),
         );
-        assert_eq!(written["checkpoint"]["origin"], json!("kit"));
         assert_eq!(
-            written["kit_checkpoint"],
+            written["checkpoint"],
             json!({
                 "id": written["checkpoint"]["id"], "time": written["checkpoint"]["time"], "origin": "kit",
-                "label": "Draft", "description": "For review", "version": BASE64.encode([0x0a, 0x0b]),
-                "available": true,
+                "label": "Draft", "description": "For review", "version": "Cgs=",
             })
         );
+        assert_eq!(written["version"], json!("Cgs="));
         save(
             &root,
             &locks,
-            "0c0d",
+            b"second",
+            "DA0=",
             &blobs::bundle(&[b"other"]),
             json!({ "origin": "agent" }),
         );
@@ -269,18 +276,15 @@ mod tests {
         assert_eq!(checkpoints.len(), 2);
         assert_eq!(checkpoints[0]["origin"], json!("agent"));
         let draft = checkpoints[1].clone();
-        // The version in base64, as the protocol carries it.
-        assert_eq!(draft["version"], json!(BASE64.encode([0x0a, 0x0b])));
+        // The version as the write named it.
+        assert_eq!(draft["version"], json!("Cgs="));
         assert_eq!(
-            (
-                draft["label"].clone(),
-                draft["description"].clone(),
-                draft["available"].clone()
-            ),
-            (json!("Draft"), json!("For review"), json!(true))
+            (draft["label"].clone(), draft["description"].clone()),
+            (json!("Draft"), json!("For review"))
         );
-        assert_eq!(draft.get("seq"), None);
-        assert_eq!(draft.get("blobs"), None);
+        for internal in ["state", "size", "blobs", "available"] {
+            assert_eq!(draft.get(internal), None, "{internal}");
+        }
         let id = draft["id"].as_str().unwrap_or_default().to_owned();
 
         let labelled = ok(list_request(
@@ -319,14 +323,16 @@ mod tests {
             Value::Null
         );
 
-        // Read: the blobs of the checkpoint's time.
+        // Read: the snapshot and the blobs of the checkpoint's time, whatever was written since.
         let read = ok(read_request(
             &root,
             &locks,
             W,
             &request(json!({ "doc_id": DOC, "id": id })),
         ));
+        assert_eq!(read["snapshot_base64"], json!(BASE64.encode(b"first")));
         assert_eq!(read["blobs_base64"], json!(BASE64.encode(&first)));
+        assert_eq!(read["checkpoint"], draft);
         assert_eq!(
             error_text(read_request(
                 &root,
@@ -385,46 +391,14 @@ mod tests {
             STORE_READ_ONLY
         );
 
-        // A replica of a new lineage: the labelled checkpoint stays, unavailable, and is not read.
-        let meta =
-            json!({ "docId": DOC, "kit": "kit.design", "path": "a.kdesign", "fileStamp": "v2" });
-        ok(write_entry_request(
-            &root,
-            &locks,
-            W,
-            &request(json!({
-                "doc_id": DOC, "meta": meta, "snapshot_base64": BASE64.encode(b"n"), "version": "ff",
-                "blobs_base64": BASE64.encode(blobs::bundle(&[b"new"])), "lineage": "new",
-            })),
-        ));
-        let listed = ok(list_request(
-            &root,
-            &locks,
-            W,
-            &request(json!({ "doc_id": DOC })),
-        ));
-        assert_eq!(listed["checkpoints"].as_array().map(Vec::len), Some(1));
-        assert_eq!(listed["checkpoints"][0]["available"], json!(false));
-        assert_eq!(
-            error_text(read_request(
-                &root,
-                &locks,
-                W,
-                &request(json!({ "doc_id": DOC, "id": id }))
-            )),
-            CHECKPOINT_HISTORY_MISSING
-        );
-        assert!(
-            ok(read_entry_request(
-                &root,
-                &locks,
-                W,
-                &request(json!({ "doc_id": DOC }))
-            ))
-            .is_object()
-        );
-
-        // Delete: gone from the list.
+        // Delete: gone from the list, and its state and blobs with it.
+        let folder = root.join(".kition/docs").join(DOC);
+        let count = |sub: &str| {
+            std::fs::read_dir(folder.join(sub))
+                .map(Iterator::count)
+                .unwrap_or(0)
+        };
+        assert_eq!((count("states"), count("blobs")), (2, 2));
         ok(delete_request(
             &root,
             &locks,
@@ -437,9 +411,12 @@ mod tests {
                 &locks,
                 W,
                 &request(json!({ "doc_id": DOC }))
-            ))["checkpoints"],
-            json!([])
+            ))["checkpoints"]
+                .as_array()
+                .map(Vec::len),
+            Some(1)
         );
+        assert_eq!((count("states"), count("blobs")), (1, 1));
         assert_eq!(
             error_text(delete_request(
                 &root,
@@ -449,6 +426,34 @@ mod tests {
             )),
             CHECKPOINT_NOT_FOUND
         );
+    }
+
+    #[test]
+    fn a_lost_state_is_an_error_not_a_reason() {
+        let (_dir, root) = workspace();
+        let locks = GuardedWrites::default();
+        let written = save(
+            &root,
+            &locks,
+            b"s",
+            "AQ==",
+            b"",
+            json!({ "origin": "save" }),
+        );
+        let id = written["checkpoint"]["id"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned();
+        let states = root.join(".kition/docs").join(DOC).join("states");
+        ok(std::fs::remove_dir_all(&states));
+        let text = error_text(read_request(
+            &root,
+            &locks,
+            W,
+            &request(json!({ "doc_id": DOC, "id": id })),
+        ));
+        assert!(text.contains("lost"), "{text}");
+        assert_ne!(text, CHECKPOINT_NOT_FOUND);
     }
 
     #[test]
@@ -462,7 +467,7 @@ mod tests {
             &locks,
             W,
             &request(json!({
-                "doc_id": DOC, "meta": meta, "snapshot_base64": BASE64.encode(b"s"), "version": "01",
+                "doc_id": DOC, "meta": meta, "snapshot_base64": BASE64.encode(b"s"), "version": "AQ==",
                 "checkpoint": { "origin": "kit", "description": "d".repeat(2001) },
             })),
         );
@@ -476,15 +481,5 @@ mod tests {
             )),
             Value::Null
         );
-    }
-
-    #[test]
-    fn writes_versions_in_base64() {
-        assert_eq!(
-            version_base64(Some("00ff10")),
-            BASE64.encode([0x00, 0xff, 0x10])
-        );
-        assert_eq!(version_base64(Some("not hex")), "");
-        assert_eq!(version_base64(None), "");
     }
 }
