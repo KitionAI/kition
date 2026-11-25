@@ -46,14 +46,6 @@ vi.mock('@/features/history/public', () => ({
   DocumentHistoryHost: () => null,
 }))
 
-vi.mock('@/features/collab/public', () => ({
-  CollabDialogs: () => null,
-  requestOpenSharedDocument: vi.fn(),
-  requestSyncedDocuments: vi.fn(),
-  startCollab: () => () => undefined,
-  useCollabAvailable: () => false,
-}))
-
 vi.mock('@/services/desktop', () => ({
   getDesktopInfo: mocks.getDesktopInfo,
   getDesktopBackendStatus: mocks.getDesktopBackendStatus,

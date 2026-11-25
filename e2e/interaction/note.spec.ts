@@ -11,8 +11,7 @@ import { tags } from './support'
  * specs: e2e/note-*.spec.ts, e2e/kit-print.spec.ts.
  *
  * Rows not covered here: H8 (a damaged file): any bytes are Markdown text, so there is no damaged
- * note; H11 (printing) is e2e/kit-print.spec.ts; H13 (co-editing) is e2e/collab-note.spec.ts (`pnpm
- * test:collab:e2e`).
+ * note; H11 (printing) is e2e/kit-print.spec.ts.
  */
 
 const FIRST = 'Goals for the quarter.'

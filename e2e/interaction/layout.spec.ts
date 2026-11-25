@@ -9,11 +9,6 @@ import { tags } from './support'
  *
  * Rows not covered here: H10 (version history): the Layout kit keeps no replica, which Kition's
  * version history needs; H11 (printing): the Layout kit's manifest does not ask to print.
- *
- * H13 (co-editing): the Layout kit's editor does not offer its replica yet. Turned on for a trial,
- * an edit made in each window while one was offline merged into duplicated pages: both windows
- * converged on 8 pages, numbered 1 to 4 twice, where 5 were made. Co-editing stays off until the
- * kit's merge keeps each page once.
  */
 
 type NodeLayoutDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }

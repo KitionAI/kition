@@ -113,6 +113,7 @@ async function storeEntry(docId: string) {
   await desktop.writeDocumentStore(docId, {
     meta: { docId, kit: 'kit.note', path: '', fileStamp: '' },
     snapshot: new Uint8Array([1]),
+    version: '',
   })
 }
 

@@ -9,8 +9,7 @@ import { tags } from './support'
  * own interactions (cells, formulas, rows, sheets, clipboard). The count the matrix follows is the
  * workbook's sheets.
  *
- * Rows not covered here: H11 (printing): the Sheet kit's manifest does not ask to print; H13
- * (co-editing) is e2e/collab-sheet.spec.ts (`pnpm test:collab:e2e`).
+ * Rows not covered here: H11 (printing): the Sheet kit's manifest does not ask to print.
  */
 
 type NodeSheetDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }

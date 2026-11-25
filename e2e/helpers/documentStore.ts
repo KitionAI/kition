@@ -1,23 +1,23 @@
 /**
- * An in-memory document replica store (`.kition/docs/` on the desktop) for mock desktop bridges. It adds the store
+ * An in-memory document replica store (`.kition/docs/` on the desktop: each document's last snapshot and its checkpoints) for mock desktop bridges. It adds the store
  * commands to the page's `window.kitionDesktop`, behaves like the desktop shell (document id and index path checks,
  * the index version guard, the workspace root check), keeps its state across reloads like a disk would, and exposes
  * hooks to inspect the store and to make writes fail.
  */
 import type { Page } from '@playwright/test'
 
-import type { DocumentStoreMeta } from '../../src/services/desktopClient/bridge'
+import type { KitCheckpoint } from '@kition/sdk/protocol'
+import type { KitReplicaMeta } from '../../src/services/desktopClient/bridge'
 
 const STORAGE_KEY = 'kition.e2e.document-store'
 
 /** What the mock store holds, as tests read it. */
 export type DocumentStoreE2EState = {
-  entries: Record<string, { meta: DocumentStoreMeta; snapshotBase64: string }>
+  /** Per entry: the last written snapshot, the version it holds, and its blobs (base64). */
+  entries: Record<string, { meta: KitReplicaMeta; snapshotBase64: string; version: string; blobsBase64?: string }>
   index: { entries: Record<string, string>; version: string | null }
-  /** Per entry: the stored `seq` and version, and the changes appended after its snapshot (base64), as the desktop store keeps them. */
-  heads: Record<string, { seq: number; version: string | null; changes: string[] }>
-  /** Per entry: its version history, oldest first. */
-  histories: Record<string, Array<{ id: string; time: number; origin: string; author?: string; label?: string; version?: string; seq?: number; hasBlobs: boolean }>>
+  /** Per entry: its checkpoints, oldest first, each with the snapshot it keeps. */
+  histories: Record<string, Array<KitCheckpoint & { snapshotBase64: string }>>
   /** `WriteDocumentStore` calls, refused ones included. */
   entryWrites: number
   /** `WriteDocumentIndex` calls, refused ones included. */
@@ -51,7 +51,6 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
     if (!bridge) return
     const empty = {
       entries: {},
-      heads: {},
       histories: {},
       index: { entries: {}, version: null },
       entryWrites: 0,
@@ -70,8 +69,8 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
     const store = { ...empty, ...saved, failWrites: null, failIndexWrites: null } as DocumentStoreE2E
     let versions = 0
     const persist = () => {
-      const { entries, heads, histories, index, entryWrites, indexWrites, deletes } = store
-      window.localStorage.setItem(storageKey, JSON.stringify({ entries, heads, histories, index, entryWrites, indexWrites, deletes }))
+      const { entries, histories, index, entryWrites, indexWrites, deletes } = store
+      window.localStorage.setItem(storageKey, JSON.stringify({ entries, histories, index, entryWrites, indexWrites, deletes }))
     }
     const nextVersion = () => {
       versions += 1
@@ -84,21 +83,19 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
     window.__KITION_DOCUMENT_STORE_E2E__ = store
 
     const docIdPattern = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$/
-    /** Records a checkpoint at the entry's stored version, like the desktop store; the same version twice is one. */
-    const record = (docId: string, input: { origin: string; author?: string; label?: string; version?: string }) => {
+    /** Records a checkpoint keeping the written snapshot, like the desktop store; a write at the newest one's version answers it. */
+    const record = (docId: string, input: { origin: string; author?: string; label?: string }, written: { snapshotBase64: string; version: string }) => {
       const history = store.histories[docId] ?? []
-      const head = store.heads[docId]
-      const version = input.version ?? head?.version ?? undefined
       const last = history[history.length - 1]
-      if (last && version && last.version === version) return last
+      if (last && last.version === written.version) return last
       const checkpoint = {
-        id: crypto.randomUUID(), time: Date.now(), origin: input.origin, hasBlobs: false,
+        id: crypto.randomUUID(), time: Date.now(), origin: input.origin, version: written.version, snapshotBase64: written.snapshotBase64,
         ...(input.author ? { author: input.author } : {}), ...(input.label ? { label: input.label } : {}),
-        ...(version ? { version } : {}), ...(head ? { seq: head.seq } : {}),
       }
       store.histories[docId] = [...history, checkpoint].slice(-200)
       return checkpoint
     }
+    const asKit = ({ snapshotBase64: _snapshot, ...checkpoint }: KitCheckpoint & { snapshotBase64: string }) => checkpoint
     const checkRoot = (request: { expected_root?: string } | null | undefined) => {
       if (request?.expected_root && request.expected_root !== root) throw new Error('DESIGN_WORKSPACE_CHANGED')
     }
@@ -112,19 +109,15 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
       && path.split('/').every((part) => part !== '' && part !== '.' && part !== '..' && part.trim() === part)
 
     Object.assign(bridge, {
-      ReadDocumentStore: async (request: { doc_id: string; expected_root?: string; head_only?: boolean }) => {
+      ReadDocumentStore: async (request: { doc_id: string; expected_root?: string }) => {
         checkRoot(request)
-        const docId = checkDocId(request?.doc_id)
-        const stored = store.entries[docId]
+        const stored = store.entries[checkDocId(request?.doc_id)]
         if (!stored) return null
-        const head = store.heads[docId] ?? { seq: 0, version: null, changes: [] }
-        const meta = JSON.parse(JSON.stringify(stored.meta))
-        if (request.head_only) return { meta, seq: head.seq, version: head.version }
-        return { meta, snapshot_base64: stored.snapshotBase64, changes_base64: [...head.changes], seq: head.seq, version: head.version, complete: true }
+        return { meta: JSON.parse(JSON.stringify(stored.meta)), snapshot_base64: stored.snapshotBase64, version: stored.version, ...(stored.blobsBase64 !== undefined ? { blobs_base64: stored.blobsBase64 } : {}) }
       },
       WriteDocumentStore: async (request: {
-        doc_id: string; meta: DocumentStoreMeta; snapshot_base64?: string; changes_base64?: string; base_seq?: number; version?: string
-        lineage?: string; checkpoint?: { origin: string; author?: string; label?: string; version?: string }; expected_root?: string
+        doc_id: string; meta: KitReplicaMeta; snapshot_base64: string; version: string; blobs_base64?: string
+        checkpoint?: { origin: string; author?: string; label?: string }; expected_root?: string
       }) => {
         store.entryWrites += 1
         persist()
@@ -132,36 +125,18 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
         checkRoot(request)
         const docId = checkDocId(request?.doc_id)
         if (request.meta?.docId !== docId) throw new Error('document store meta names another document')
-        const head = store.heads[docId] ?? { seq: 0, version: null, changes: [] }
-        if (typeof request.changes_base64 === 'string') {
-          if (!store.entries[docId] || head.seq !== request.base_seq) throw new Error('DOCUMENT_STORE_CONFLICT')
-          store.entries[docId] = { ...store.entries[docId], meta: JSON.parse(JSON.stringify(request.meta)) }
-          store.heads[docId] = { seq: head.seq + 1, version: request.version ?? null, changes: [...head.changes, request.changes_base64] }
-        } else {
-          if (typeof request.snapshot_base64 !== 'string') throw new Error('document store snapshot is not base64')
-          store.entries[docId] = { meta: JSON.parse(JSON.stringify(request.meta)), snapshotBase64: request.snapshot_base64 }
-          store.heads[docId] = { seq: head.seq + 1, version: request.version ?? null, changes: [] }
-          if (request.lineage === 'new') delete store.histories[docId]
-        }
-        const written: Record<string, unknown> = { seq: store.heads[docId].seq, version: store.heads[docId].version, compact: store.heads[docId].changes.length >= 64 }
-        if (request.checkpoint) written.checkpoint = record(docId, request.checkpoint)
+        if (typeof request.snapshot_base64 !== 'string') throw new Error('a document store write carries a snapshot')
+        if (typeof request.version !== 'string') throw new Error('a document store write names the version its snapshot holds')
+        const written = { snapshotBase64: request.snapshot_base64, version: request.version }
+        store.entries[docId] = { meta: JSON.parse(JSON.stringify(request.meta)), ...written, ...(typeof request.blobs_base64 === 'string' ? { blobsBase64: request.blobs_base64 } : {}) }
+        const answer: Record<string, unknown> = { version: request.version }
+        if (request.checkpoint) answer.checkpoint = asKit(record(docId, request.checkpoint, written))
         persist()
-        return written
+        return answer
       },
       ReadDocumentHistory: async (request: { doc_id: string; expected_root?: string }) => {
         checkRoot(request)
-        return { checkpoints: [...(store.histories[checkDocId(request?.doc_id)] ?? [])].reverse() }
-      },
-      RecordDocumentCheckpoint: async (request: { doc_id: string; checkpoint: { origin: string; author?: string; label?: string; version?: string }; expected_root?: string }) => {
-        checkRoot(request)
-        const checkpoint = record(checkDocId(request?.doc_id), request.checkpoint)
-        persist()
-        return { checkpoint }
-      },
-      ReadDocumentCheckpoint: async (request: { doc_id: string; id: string; expected_root?: string }) => {
-        checkRoot(request)
-        const found = (store.histories[checkDocId(request?.doc_id)] ?? []).find((checkpoint) => checkpoint.id === request.id)
-        return found ? { checkpoint: found } : null
+        return { checkpoints: [...(store.histories[checkDocId(request?.doc_id)] ?? [])].reverse().map(asKit) }
       },
       DocumentStoreStatus: async () => ({ writable: true, holder: null }),
       DeleteDocumentStore: async (request: { doc_id: string; expected_root?: string }) => {
@@ -171,7 +146,6 @@ export async function installDocumentStoreBridge(page: Page, options: { root: st
         checkRoot(request)
         const docId = checkDocId(request?.doc_id)
         delete store.entries[docId]
-        delete store.heads[docId]
         delete store.histories[docId]
         persist()
         return null
@@ -203,8 +177,8 @@ export async function readDocumentStoreState(page: Page): Promise<DocumentStoreE
   return page.evaluate(() => {
     const store = window.__KITION_DOCUMENT_STORE_E2E__
     if (!store) throw new Error('The document store mock is unavailable')
-    const { entries, heads, histories, index, entryWrites, indexWrites, deletes, failWrites, failIndexWrites } = store
-    return JSON.parse(JSON.stringify({ entries, heads, histories, index, entryWrites, indexWrites, deletes, failWrites, failIndexWrites }))
+    const { entries, histories, index, entryWrites, indexWrites, deletes, failWrites, failIndexWrites } = store
+    return JSON.parse(JSON.stringify({ entries, histories, index, entryWrites, indexWrites, deletes, failWrites, failIndexWrites }))
   })
 }
 

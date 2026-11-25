@@ -30,19 +30,17 @@ type KitionDesktopBridge = {
   WriteWorkspaceDocument?: (request: WorkspaceDocumentWriteRequest) => Promise<WorkspaceDocument>
   CreateWorkspaceDocument?: (request: WorkspaceDocumentCreateRequest) => Promise<WorkspaceDocument>
   ReadDocumentStore?: (request: DocumentStoreRequest) => Promise<DocumentStorePayload | null>
-  WriteDocumentStore?: (request: DocumentStoreWriteRequest) => Promise<DocumentStoreWritten | void | null>
+  WriteDocumentStore?: (request: DocumentStoreWriteRequest) => Promise<DocumentStoreWritten>
   DeleteDocumentStore?: (request: DocumentStoreRequest) => Promise<void | null>
   ReadDocumentIndex?: (request: DocumentIndexRequest) => Promise<DocumentIndexPayload>
   WriteDocumentIndex?: (request: DocumentIndexWriteRequest) => Promise<{ version: string }>
-  ReadDocumentHistory?: (request: DocumentStoreRequest) => Promise<{ checkpoints: DocumentCheckpoint[] }>
-  RecordDocumentCheckpoint?: (request: DocumentStoreRequest & { checkpoint: DocumentCheckpointInput }) => Promise<{ checkpoint: DocumentCheckpoint }>
-  ReadDocumentCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: DocumentCheckpoint; blobs_base64?: string } | null>
+  ReadDocumentHistory?: (request: DocumentStoreRequest) => Promise<{ checkpoints: KitCheckpoint[] }>
   /** A document's checkpoints as kits see them (Kit UI protocol section 7m), newest first. */
   ListKitCheckpoints?: (request: DocumentStoreRequest & KitCheckpointQuery) => Promise<{ checkpoints: KitCheckpoint[]; more: boolean }>
   FindKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<KitCheckpoint | null>
   UpdateKitCheckpoint?: (request: DocumentStoreRequest & { id: string; label?: string; description?: string }) => Promise<{ checkpoint: KitCheckpoint }>
   DeleteKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<void | null>
-  ReadKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: KitCheckpoint; blobs_base64: string }>
+  ReadKitCheckpoint?: (request: DocumentStoreRequest & { id: string }) => Promise<{ checkpoint: KitCheckpoint; snapshot_base64: string; blobs_base64: string }>
   /** A document's view state, kept in the app's own data (Kit UI protocol section 7n). */
   ReadViewState?: (request: DocumentStoreRequest) => Promise<{ state: Record<string, unknown> | null; bytes_base64?: string }>
   WriteViewState?: (request: DocumentStoreRequest & { state: Record<string, unknown> | null; bytes_base64?: string }) => Promise<void | null>
@@ -223,63 +221,31 @@ export type KitReplicaMeta = {
   kit: string
   path: string
   fileStamp: string
-  /** The replica's own KDM document id (hex): a later save that continues it appends only its new changes. */
-  replicaId?: string
 }
 
 export type DocumentStoreRequest = {
   expected_root?: string
   doc_id: string
-  /** Read only the stored meta and head (`seq`, `version`), not the replica's bytes. */
-  head_only?: boolean
 }
 
-/**
- * A stored replica: load `snapshot_base64`, then import `changes_base64` in order. `seq` and `version` name the stored
- * version (a later write appends after `seq`); `complete` is false when a change or blob the store names is missing or
- * damaged, and the entry then holds what came before it, without blobs. Stores before append support answer only
- * `meta` and `snapshot_base64` (and `blobs_base64`).
- */
+/** A stored replica: the last written snapshot (opaque bytes), the version it holds (base64), and its blob bundle. */
 export type DocumentStorePayload = {
   meta: KitReplicaMeta
   snapshot_base64: string
-  changes_base64?: string[]
-  /** A kit replica's blob bundle. */
+  version: string
   blobs_base64?: string
-  seq?: number
-  version?: string | null
-  complete?: boolean
 }
 
-/** What the renderer asks to record in a document's version history. */
+/** What the renderer asks to record with a replica write (Kit UI protocol section 7m). */
 export type DocumentCheckpointInput = {
-  /** `kit`, `save`, `agent`, `script`, `edit`, `open`, `restore`, `before-restore`. */
+  /** `kit`, `save`, `agent`. */
   origin: string
   author?: string
   /** At most 200 characters; a label at the newest checkpoint's version names that checkpoint. */
   label?: string
   /** At most 2000 characters. */
   description?: string
-  /** The replica version (hex); a write's checkpoint defaults to the written version. */
-  version?: string
   time?: number
-}
-
-/** A point in a document's version history on this device, newest first in lists. */
-export type DocumentCheckpoint = {
-  id: string
-  /** Milliseconds since the Unix epoch. */
-  time: number
-  origin: string
-  author?: string
-  label?: string
-  description?: string
-  version?: string
-  seq?: number
-  /** The store kept the blobs the replica named then (a kit replica's). */
-  hasBlobs: boolean
-  /** False once the stored replica no longer reaches `version` (it was replaced by one of another lineage); absent otherwise. */
-  available?: boolean
 }
 
 /** One page of a document's checkpoints: newest first, at most `limit` (200), only labelled ones, only older than `before`. */
@@ -289,30 +255,19 @@ export type KitCheckpointQuery = {
   limit?: number
 }
 
-/**
- * A replica write: a whole `snapshot_base64` (a first write, a compaction, a replica of a new lineage), or the
- * `changes_base64` since the stored `base_seq`, which fails with `DOCUMENT_STORE_CONFLICT` when the store is not there.
- */
-export type DocumentStoreWriteRequest = Omit<DocumentStoreRequest, 'head_only'> & {
+/** A replica write: the snapshot, the version it holds (base64 of the kit's bytes), its blobs, and the checkpoint asked. */
+export type DocumentStoreWriteRequest = DocumentStoreRequest & {
   meta: KitReplicaMeta
-  snapshot_base64?: string
-  changes_base64?: string
-  base_seq?: number
-  version?: string
+  snapshot_base64: string
+  version: string
   blobs_base64?: string
-  /** The replica does not continue the stored one: its version history starts over. */
-  lineage?: 'new'
   checkpoint?: DocumentCheckpointInput
 }
 
-/** `compact`: the next write should carry a snapshot (the change log is due for compaction). */
+/** The stored version, and the checkpoint recorded with the write (or the newest one, at its version), as a kit sees it. */
 export type DocumentStoreWritten = {
-  seq: number
-  version: string | null
-  compact: boolean
-  checkpoint?: DocumentCheckpoint
-  /** The same checkpoint as a kit sees it (Kit UI protocol `host/replicaWrite`). */
-  kit_checkpoint?: KitCheckpoint
+  version: string
+  checkpoint?: KitCheckpoint
 }
 
 /**

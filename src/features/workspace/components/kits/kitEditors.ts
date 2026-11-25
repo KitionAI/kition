@@ -64,13 +64,6 @@ export function kitEditorFor(format: WorkspaceDocumentFormat) {
   return entry ? editor(entry) : undefined
 }
 
-/** The kit `kitId` as co-editing opens a document shared with this person: its engine, and its file extension. */
-export function sharedKitFor(kitId: string) {
-  const entry = kitById(kitId)
-  const create = entry?.creates[0]
-  return entry && create ? { engine: entry.engine, extension: create.extension } : null
-}
-
 /** The package of the kit `kitId` (its editor), as the version history shows a kit document's past versions. */
 export function embeddedKitFor(kitId: string) {
   return kitById(kitId)?.embedded ?? null

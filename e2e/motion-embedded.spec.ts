@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
-import { kitEngine, openInKitFrame, openTreeFile, replicaVersion } from './helpers/embeddedKit'
-import { kitPackageHasReplicaInfo } from './helpers/kitionServer'
+import { kitEngine, kitPackageHasReplicaInfo, openInKitFrame, openTreeFile, replicaVersion } from './helpers/embeddedKit'
 import { dismissFirstRunActivation } from './helpers/onboarding'
 import { canReadBlobBodies } from './helpers/requestBody'
 

@@ -5,7 +5,6 @@
  * docs/kits.md.
  */
 export { createKitFile } from './engine/createKitFile'
-export type { KitModuleManifest } from './engine/kitModule'
 export { KitFrame, type EmbeddedKit } from './kition/KitFrame'
 export { revealInKit } from './kition/kitViews'
 export { KitDraftTabMark } from './kition/KitDraftTabMark'
@@ -14,6 +13,5 @@ export { KITION_KIT_HOST } from './kition/kitionHost'
 export { kitionTheme } from './kition/kitionTheme'
 export { openFilesWithUnsavedEdits, openWithUnsavedEdits, saveOpenEditor } from './kition/kitBridge'
 export { activeKitDocument, followKitConnections, mountedKitDocument, subscribeActiveKitDocument, type MountedKitDocument } from './kition/kitConnections'
-export { writeKitFileFromReplica } from './kition/kitFileFromReplica'
 export { KitRpcError } from '@kition/sdk/host'
-export type { KitConnection, KitLinkRef, KitOpenParams, KitOpenResult } from '@kition/sdk/host'
+export type { KitLinkRef, KitOpenParams, KitOpenResult } from '@kition/sdk/host'

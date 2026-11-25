@@ -10,7 +10,6 @@
  * - H9 (worker crash): the kit's engine Worker lives inside the kit's frame, out of the test's reach.
  * - H10, H11 (history, print) are covered by the note-history and kit-print specs.
  * - H12 (agent): e2e/collab-design.spec.ts reads and edits the open design through the Kit AI bridge.
- * - H13 (co-editing): covered by e2e/collab-design.spec.ts.
  * - H14 (theme and language): kit-editor follows Kition's theme through kitionTheme; not kit-specific.
  */
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'

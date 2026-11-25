@@ -1,5 +1,4 @@
 import type { KitsBridgeChanged, KitsBridgeCommand, KitsBridgeDocument, KitsBridgeDraftInfo, KitsBridgeLiveDocument, KitsBridgeRunStep } from '@/api/kits'
-import { noteAgentEdit } from '@/services/agentPresence'
 import { runtimeBridge, type BridgeChannel } from '@/services/runtimeBridge'
 
 /**
@@ -11,10 +10,8 @@ import { runtimeBridge, type BridgeChannel } from '@/services/runtimeBridge'
  * (`runtimeBridge`), which this channel keeps open while an editor is
  * registered.
  *
- * Every agent edit applied to a live document is noted (`@/services/agentPresence`), so a
- * co-edited document shows the agent in its room's presence. Refusals carry their error `data`
- * (an object-model refusal's `{ code, index, message }`), which the runtime turns into the
- * structured error codes of the agent's tool results.
+ * Refusals carry their error `data` (an object-model refusal's `{ code, index, message }`),
+ * which the runtime turns into the structured error codes of the agent's tool results.
  */
 
 /** What a kit editor offers the bridge for its document. */
@@ -104,7 +101,6 @@ async function handle(method: string, params: Record<string, unknown>) {
           if (!steps.length) throw new Error('`steps` must be a non-empty array')
           if (onDraft.draft && !editor.draft) throw new Error(`${editor.path} is open in an editor that keeps no drafts; edit it live`)
           const { completed, saved } = await editor.run(steps, !onDraft.draft && args.save !== false, onDraft)
-          if (!onDraft.draft && completed.some((step) => step.changed)) noteAgentEdit(editor.path)
           return { completed, saved, document: await editor.inspect(onDraft) }
         }
         case 'describe':
@@ -119,7 +115,6 @@ async function handle(method: string, params: Record<string, unknown>) {
           const answer: Record<string, unknown> = { ...(await model.batch({ origin: args.origin, ops, load }, onDraft)) }
           delete answer.version
           const writes = ops.length > 0
-          if (writes && !onDraft.draft) noteAgentEdit(editor.path)
           const saved = writes && !onDraft.draft && args.save === true && editor.save ? await editor.save() : false
           return { ...answer, saved }
         }

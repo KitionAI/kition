@@ -69,10 +69,10 @@ export class ExtensionService {
   private offer(document: MountedKitDocument) {
     let close: () => void
     try {
-      const port = portFromConnection(document.connection as unknown as ConnectionLike, { readOnly: () => document.readOnly ?? false })
-      close = this.host.openDocument({ id: document.path, kitId: document.kitId, path: document.path, port })
+      const port = portFromConnection(document.connection as unknown as ConnectionLike)
+      close = this.host.openDocument({ id: document.path, kitId: document.kitId, path: document.path, port, readOnly: () => document.readOnly ?? false })
     } catch (error) {
-      // A kit without the replica capability has no object model; extensions skip it.
+      // A kit without the object model (capability `model`) is skipped.
       console.info('[extensions] not offering', document.path, message(error))
       return undefined
     }
@@ -93,8 +93,7 @@ export class ExtensionService {
 
   /**
    * Which offer of the kit document at `path` extensions work on now, or `null` while no editor
-   * offers it. A new value means its editor opened again (a role change reopens it read-only or
-   * editable): panels open on the document reattach to it (`ExtensionPanel`).
+   * offers it. A new value means its editor opened again: panels open on the document reattach to it (`ExtensionPanel`).
    */
   documentOpening(path: string): number | null {
     return this.offered.get(path) ?? null

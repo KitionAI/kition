@@ -8,8 +8,7 @@ import { tags } from './support'
  * interactions. The count the matrix follows is the deck's slides. Kition only shows the Slide
  * kit's pinned package here; the kit's own repository is not changed from this suite.
  *
- * Rows not covered here: H11 (printing): the Slide kit's manifest does not ask to print; H13
- * (co-editing) is e2e/collab-slide.spec.ts (`pnpm test:collab:e2e`).
+ * Rows not covered here: H11 (printing): the Slide kit's manifest does not ask to print.
  */
 
 type NodeSlideDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }

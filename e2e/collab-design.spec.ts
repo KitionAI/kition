@@ -1,16 +1,14 @@
-import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test, type FrameLocator, type Page, type Route } from '@playwright/test'
-import { kitEngine, openInKitFrame, openKitWorkspace, requireKitPackage } from './helpers/embeddedKit'
-import { DEV_PRINCIPALS, kitionServerSkipReason, kitPackageHasReplicaInfo, openSharedLink, openTabMenu, recordWebSockets, replicaCounters, sameReplicas, shareFromTab, signedIn, startKitionServer, syncNetwork, useSyncServer } from './helpers/kitionServer'
+import { kitEngine, kitPackageHasReplicaInfo, openInKitFrame, requireKitPackage } from './helpers/embeddedKit'
 
 /**
- * Design on engine contract 2 (`kit.design`, a design is a KDM replica): two people co-edit a `.kdesign`
- * live and across going offline, and in one window the agent reads and edits the open design
- * through its object model (`model/describe`, `model/batch` over the Kit AI bridge) while each
- * Undo takes back only its own side's steps (KHP E14a). The replica goes to Kition's store
- * (`.kition/docs/`). Cases: kition.kit-collab.design/live-and-offline, kition.agent.kit-object-model/design-open-editor.
+ * Design on engine contract 2 (`kit.design`, a design is a KDM replica): the agent reads and edits
+ * the open design through its object model (`model/describe`, `model/batch` over the Kit AI bridge)
+ * while each Undo takes back only its own side's steps (KHP E14a). The replica goes to Kition's
+ * store (`.kition/docs/`). Case: kition.agent.kit-object-model/design-open-editor (its steps name
+ * this file, which kept the name it had when it also held the co-editing tests).
  */
 
 type NodeDesignDocument = { execute(command: string, params: string): string; inspect(): string; save(): Uint8Array; free(): void }
@@ -43,8 +41,6 @@ async function liveLayers(page: Page, file: string) {
   return ((live?.details as { layers?: number } | undefined)?.layers ?? null) as number | null
 }
 
-const status = (page: Page) => page.locator('.document-tab-list [data-testid="collab-status"]')
-
 /** Draws a rectangle with the toolbar's shape tool from (`x`, `y`), fractions of the canvas. */
 async function drawRectangle(page: Page, kit: FrameLocator, x: number, y: number) {
   await kit.getByTestId('design-caret-shape').click()
@@ -56,20 +52,6 @@ async function drawRectangle(page: Page, kit: FrameLocator, x: number, y: number
   await page.mouse.move(from.x + 20, from.y + 15, { steps: 5 })
   await page.mouse.move(from.x + 40, from.y + 30, { steps: 5 })
   await page.mouse.up()
-}
-
-/** The replica version at `file` once it stops changing. */
-async function settledVersion(page: Page, file: string) {
-  let previous = ''
-  await expect
-    .poll(async () => {
-      const next = JSON.stringify(await replicaCounters(page, file))
-      const stable = next === previous
-      previous = next
-      return stable
-    }, { timeout: 10_000, intervals: [30] })
-    .toBe(true)
-  return previous
 }
 
 /**
@@ -112,92 +94,10 @@ function agentBridge() {
 
 const call = (id: number, file: string, tool: string, args: Record<string, unknown>) => ({ jsonrpc: '2.0', id, method: 'kit/call', params: { path: file, kit: 'kit.design', tool, arguments: args } })
 
-test('co-edits a design between two windows: live, and merging edits made offline', async ({ browser, baseURL }, testInfo) => {
-  requireKitPackage('design', engine.built, missing)
-  requireKitPackage('design', kitPackageHasReplicaInfo('design', 'kition_design_kit'), 'the Design kit package predates engine contract 2')
-  const unavailable = kitionServerSkipReason()
-  test.skip(Boolean(unavailable), unavailable ?? '')
-  test.setTimeout(300_000)
-  const server = await startKitionServer(testInfo.outputPath('kition-server'))
-  const alice = await browser.newContext()
-  const bob = await browser.newContext()
-  const bobNetwork = await syncNetwork(bob)
-  try {
-    // Alice opens her design and shares it.
-    const pageA = await alice.newPage()
-    await useSyncServer(pageA, server.url)
-    const a = await openInKitFrame(pageA, baseURL!, 'Screen.kdesign', await screenFixture(), {}, signedIn(DEV_PRINCIPALS.alice))
-    await expect(a.kit.getByTestId('design-toolbar')).toBeVisible({ timeout: 60_000 })
-    await expect.poll(() => liveLayers(pageA, 'Screen.kdesign'), { timeout: 60_000 }).toBe(2)
-    const link = await shareFromTab(pageA, 'Screen')
-    expect(link).toMatch(/\/s\/\S+$/)
-    await expect(status(pageA)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
-
-    // Bob opens the link: the design is made in his Shared folder and opens as the same replica.
-    const pageB = await bob.newPage()
-    await useSyncServer(pageB, server.url)
-    const b = await openKitWorkspace(pageB, baseURL!, {}, signedIn(DEV_PRINCIPALS.bob))
-    await openSharedLink(pageB, link)
-    const kitB = pageB.frameLocator('[data-testid="kit-frame"][data-active="true"] [data-testid="kit-frame-window"]')
-    await expect(kitB.getByTestId('design-toolbar')).toBeVisible({ timeout: 60_000 })
-    await expect.poll(() => liveLayers(pageB, 'Shared/Screen.kdesign'), { timeout: 60_000 }).toBe(2)
-    expect(existsSync(path.join(b.host.root, 'Shared', 'Screen.kdesign'))).toBe(true)
-    await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 15_000 })
-    await expect(pageA.locator('.document-tab-list [data-testid="collab-peer"]')).toHaveAttribute('data-peer', 'Bob', { timeout: 15_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Screen.kdesign', pageB, 'Shared/Screen.kdesign'), { timeout: 15_000 }).toBe('same')
-
-    // Alice draws a rectangle: within a second Bob's replica has it, and his editor shows it.
-    const drawBaseline = JSON.stringify(await replicaCounters(pageB, 'Shared/Screen.kdesign'))
-    await drawRectangle(pageA, a.kit, 0.4, 0.4)
-    const drawn = Date.now()
-    await expect.poll(() => liveLayers(pageA, 'Screen.kdesign')).toBe(3)
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Screen.kdesign')), { intervals: [10] }).not.toBe(drawBaseline)
-    const aliceVersion = await settledVersion(pageA, 'Screen.kdesign')
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageB, 'Shared/Screen.kdesign')), { timeout: 5_000, intervals: [20] }).toBe(aliceVersion)
-    const drawLive = Date.now() - drawn
-    testInfo.annotations.push({ type: 'live draw to the other window', description: `${drawLive} ms` })
-    expect(drawLive).toBeLessThan(1_000)
-    await expect.poll(() => liveLayers(pageB, 'Shared/Screen.kdesign'), { timeout: 5_000 }).toBe(3)
-
-    // Bob draws one too: Alice's design follows.
-    await drawRectangle(pageB, kitB, 0.6, 0.6)
-    await expect.poll(() => liveLayers(pageB, 'Shared/Screen.kdesign')).toBe(4)
-    const bobVersion = await settledVersion(pageB, 'Shared/Screen.kdesign')
-    await expect.poll(async () => JSON.stringify(await replicaCounters(pageA, 'Screen.kdesign')), { timeout: 5_000, intervals: [20] }).toBe(bobVersion)
-    await expect.poll(() => liveLayers(pageA, 'Screen.kdesign'), { timeout: 5_000 }).toBe(4)
-
-    // Bob goes offline and draws a rectangle; Alice draws one meanwhile.
-    await bobNetwork.setOnline(false)
-    await expect(status(pageB)).not.toHaveAttribute('data-state', 'online', { timeout: 30_000 })
-    await drawRectangle(pageB, kitB, 0.3, 0.7)
-    await expect.poll(() => liveLayers(pageB, 'Shared/Screen.kdesign')).toBe(5)
-    await drawRectangle(pageA, a.kit, 0.7, 0.3)
-    await expect.poll(() => liveLayers(pageA, 'Screen.kdesign')).toBe(5)
-
-    // Back online, both merge on their own: the same replica, with both new rectangles.
-    await bobNetwork.setOnline(true)
-    const back = Date.now()
-    await expect(status(pageB)).toHaveAttribute('data-state', 'online', { timeout: 60_000 })
-    await expect.poll(() => sameReplicas(pageA, 'Screen.kdesign', pageB, 'Shared/Screen.kdesign'), { timeout: 60_000 }).toBe('same')
-    testInfo.annotations.push({ type: 'reconnect to converged', description: `${Date.now() - back} ms` })
-    await expect.poll(() => liveLayers(pageA, 'Screen.kdesign')).toBe(6)
-    await expect.poll(() => liveLayers(pageB, 'Shared/Screen.kdesign')).toBe(6)
-    await pageA.screenshot({ path: testInfo.outputPath('alice.png') })
-    await pageB.screenshot({ path: testInfo.outputPath('bob.png') })
-  } finally {
-    await alice.close()
-    await bob.close()
-    await server.stop()
-  }
-})
-
 test("the agent reads and edits an open design through its object model, and each Undo takes back only its own side's step", async ({ page, baseURL }) => {
   requireKitPackage('design', engine.built, missing)
   requireKitPackage('design', kitPackageHasReplicaInfo('design', 'kition_design_kit'), 'the Design kit package predates engine contract 2')
   test.setTimeout(180_000)
-  // A sync server is configured, but nobody is signed in: co-editing stays off.
-  await useSyncServer(page, 'ws://127.0.0.1:9/v1/sync')
-  const sockets = recordWebSockets(page)
   const agent = agentBridge()
   const file = 'Screen.kdesign'
   const { host, saves, kit } = await openInKitFrame(page, baseURL!, file, await screenFixture(), {}, { routes: agent.routes })
@@ -249,8 +149,7 @@ test("the agent reads and edits an open design through its object model, and eac
     await expect.poll(() => liveLayers(page, file)).toBe(2)
     await expect(layers).not.toContainText('Agent note')
 
-    // Saved, the file is what the editor shows; the replica is in Kition's store, and no sync
-    // connection was made.
+    // Saved, the file is what the editor shows; the replica is in Kition's store.
     await kit.getByTestId('design-save').click()
     await expect.poll(() => saves.map((save) => save.path), { timeout: 30_000 }).toContain(file)
     expect(await layersOf(saves.at(-1)!.bytes)).toBe(2)
@@ -260,11 +159,6 @@ test("the agent reads and edits an open design through its object model, and eac
         return Object.keys((JSON.parse(index) as { entries?: Record<string, string> }).entries ?? {})
       }, { timeout: 30_000 })
       .toContain(file)
-    await openTabMenu(page, 'Screen', 'Copy path/reference')
-    await expect(page.getByRole('menuitem', { name: 'Share for co-editing' })).toHaveCount(0)
-    await page.keyboard.press('Escape')
-    await expect(page.locator('[data-testid="collab-status"]')).toHaveCount(0)
-    expect(sockets.filter((url) => url.includes('/v1/sync'))).toEqual([])
   } finally {
     await host.dispose()
   }

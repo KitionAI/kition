@@ -6,13 +6,12 @@ import { Button } from '@kition/tessera/ui'
 import { DocumentSchemaBanner } from '@/components/DocumentSchemaBanner'
 import { FileNotice } from '@/components/states'
 import { notify } from '@/lib/notify'
-import { useDocumentReadOnly } from '@/services/documentAccess'
 import { documentCommentAccess } from '@/services/documentComments'
 import { useDocumentSchemaNotice } from '@/services/documentSchema'
 import { mountKit, type KitConnection, type KitHostHandlers, type KitLinksPickParams, type KitOpenParams, type KitOpenResult } from '@kition/sdk/host'
 import { KITION_CAPABILITY_SETS } from './capabilitySets'
-import { kitCollabHandlers } from './kitLeases'
-import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile } from './kitionHost'
+import { kitSchemaNotices } from './kitSchemaNotices'
+import { KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile } from './kitionHost'
 import { kitHistoryHandlers } from './kitCheckpoints'
 import { agentInspect, kitEditorState } from './editorState'
 import { registerBridgeEditor, reportBridgeChange } from './kitBridge'
@@ -55,35 +54,6 @@ function documentPath(wanted: string, path: string) {
   const checked = workspacePath(wanted)
   if (checked !== workspacePath(path)) throw new Error(`${wanted} is not this editor's document`)
   return checked
-}
-
-/**
- * The replica of a kit closed to be opened again (a role change), unsaved edits included: its
- * whole history as a change export from nothing, which also opens as a snapshot. `open` says how
- * the next kit opens: from the file as usual (`file`), the carried changes then imported only into
- * an earlier state of this same replica, or from the carried replica alone (`replica`), which
- * opens as saved: its edits show, but the kit does not count them as unsaved.
- */
-type Carried = { changes: ArrayBuffer; blobs: ArrayBuffer; open: 'file' | 'replica' }
-
-/** A document id as the two sides may spell it: lowercase hex, no hyphens. */
-const docIdKey = (docId: string) => docId.replace(/-/g, '').toLowerCase()
-
-/**
- * Whether the kit `opened` holds an earlier state of the carried replica: the same document, and
- * no change the carried one lacks. Only then do the carried changes continue it. A kit that opened
- * another replica (none was saved with the file, or the file won over the saved one and was
- * recorded onto it as new objects) would take them as more objects: slides twice over.
- */
-async function continuesCarried(carried: Carried, opened: KitConnection) {
-  const [{ openEnvelope, uuidFromBytes }, { LORO_REPLICA_VERSIONS: versions }] = await Promise.all([import('@kition/sdk/kdm'), import('@kition/sdk/sync/replicaVersions')])
-  const changes = new Uint8Array(carried.changes)
-  const reached = versions.endOf(changes)
-  const version = new Uint8Array(await opened.replica.version())
-  // Every opened replica holds at least the change that created its document.
-  if (!reached || !version.length || !versions.includes(reached, version)) return false
-  const docId = await opened.replica.info().catch(() => null)
-  return !docId || docIdKey(docId) === docIdKey(uuidFromBytes(openEnvelope(changes).docId))
 }
 
 /** A file name not taken yet: `name.ext`, then `name 2.ext`, … (exports and new files, H5). */
@@ -140,9 +110,9 @@ async function writeForKit(path: string, readOnly: boolean, { path: wanted, byte
 }
 
 /** Who comments in the kit and how (Kit UI protocol `document.comments`), as the kit opens. */
-function kitCommentAccess(path: string, readOnly: boolean) {
-  const { me, name, canComment, othersReadOnly } = documentCommentAccess(path, readOnly)
-  return { me, ...(name ? { name } : {}), canComment, othersReadOnly }
+function kitCommentAccess(readOnly: boolean) {
+  const { me, canComment, othersReadOnly } = documentCommentAccess(readOnly)
+  return { me, canComment, othersReadOnly }
 }
 
 /**
@@ -152,7 +122,7 @@ function kitCommentAccess(path: string, readOnly: boolean) {
  */
 /**
  * A replica a kit shows instead of its document's file (the document at a point of its version history): the kit
- * opens it read-only, saves nothing, and is no editor of the file (no agent, co-editing, or bridge registration).
+ * opens it read-only, saves nothing, and is no editor of the file (no agent or bridge registration).
  */
 export type KitPreview = { snapshot: ArrayBuffer; blobs: ArrayBuffer }
 
@@ -303,19 +273,12 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
   const picker = useWorkspacePicker(path)
   const latest = useRef({ onOpenAgent, onOpenLink, askUrl: openUrl.ask, t })
   latest.current = { onOpenAgent, onOpenLink, askUrl: openUrl.ask, t }
-  // A co-edited document this person may only view opens read-only; the kit is opened again
-  // when that becomes known after it opened (the role arrives with the room, or changes).
-  const documentReadOnly = useDocumentReadOnly(path)
-  const readOnly = documentReadOnly || Boolean(preview)
-  // The read-only state the kit is open with: it follows `readOnly` once the open kit's replica
-  // has been taken (`carried`), so that no edit made before the change is lost when the kit is
-  // opened again. The kit opened next takes it (see `Carried`) before anything relays it.
-  const [openedReadOnly, setOpenedReadOnly] = useState(readOnly)
-  const carried = useRef<Carried | null>(null)
-  // Counts the kits opened again from the carried replica, each in a new page (see `Carried`).
+  // A preview shows a past version: read-only.
+  const readOnly = Boolean(preview)
+  // Counts the kits opened again (after a failed open), each in a new page: a kit page answers one handshake.
   const [reopened, setReopened] = useState(0)
   const src = `/kits/${kit.dir}/${kit.entry ?? 'index.html'}`
-  // A co-edited document a newer kit edited (Kition platform rules M5a and M20): its notice names
+  // A document a newer kit edited (Kition platform rules M5a and M20): its notice names
   // the kit and the version this Kition ships.
   const schemaNotice = useDocumentSchemaNotice(preview ? undefined : path)
   const kitVersion = useKitPackageVersion(kit.dir, Boolean(schemaNotice))
@@ -332,8 +295,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
     let withdraw: (() => void) | null = null
     // The workspace as the kit's file storage (KitFiles 1.0), for a kit whose manifest asks for files.
     let files: Awaited<ReturnType<typeof kitionFilesOption>> = null
-    // Leases, conflict notices, presence, and newer-kit notices (Kit UI protocol sections 7b, 7c, 7e, and 7f).
-    const collab = preview ? null : kitCollabHandlers(path, kit.kitId, openedReadOnly, () => latest.current.t)
+    // Newer-kit notices (Kit UI protocol section 7f).
+    const schema = preview ? null : kitSchemaNotices(path, kit.kitId)
     // A run of this effect that is cleaned up (StrictMode's first run, a closed tab) must not take
     // the kit's one handshake from the run that replaces it.
     const abandon = new AbortController()
@@ -341,15 +304,12 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
       try {
         const { bytes, stamp } = await KITION_KIT_HOST.read(path)
         if (closed) return
-        // Opened again from the carried replica, the kit gets no file bytes, so that the replica
-        // alone is the document (as when a shared document's file is made), and reads the
-        // replica as the one saved with the file as it is now.
-        // A preview opens its replica alone, like a kit opened again from a carried replica.
-        const carry: Carried | null = preview ? { changes: preview.snapshot, blobs: preview.blobs, open: 'replica' } : carried.current
-        const fileStamp = carry?.open === 'replica' ? (stamp ?? (await KITION_KIT_HOST.stamp(path))) : null
-        files = preview ? null : await kitionFilesOption({ kit: kit.kitId, dir: kit.dir, document: path, readOnly: openedReadOnly, pick: picker.pick })
+        // A preview opens its snapshot alone: the kit gets no file bytes, so that the snapshot is the
+        // document, and reads it as the replica saved with the file as it is now.
+        const fileStamp = preview ? (stamp ?? (await KITION_KIT_HOST.stamp(path))) : null
+        files = preview ? null : await kitionFilesOption({ kit: kit.kitId, dir: kit.dir, document: path, readOnly, pick: picker.pick })
         if (closed) return
-        let fromCarried = carry && fileStamp ? { snapshot: carry.changes, blobs: carry.blobs, fileStamp } : null
+        let fromPreview = preview && fileStamp ? { snapshot: preview.snapshot, blobs: preview.blobs, fileStamp } : null
         const lend = KITION_KIT_HOST.lend?.(path) ?? undefined
         const theme = kitionTheme()
         mounted = await mountKit(element, {
@@ -357,7 +317,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           origin: window.location.origin,
           host: { name: 'Kition', version: __APP_VERSION__ },
           ...(files ? { files: files.option } : {}),
-          document: { path, name: path.split('/').pop() ?? path, bytes: fromCarried ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(preview ? {} : openingView(path)), ...(openedReadOnly ? { readOnly: true } : {}), comments: kitCommentAccess(path, openedReadOnly) },
+          document: { path, name: path.split('/').pop() ?? path, bytes: fromPreview ? new ArrayBuffer(0) : bytes, version: stamp, lend: lend ?? undefined, ...(preview ? {} : openingView(path)), ...(readOnly ? { readOnly: true } : {}), comments: kitCommentAccess(readOnly) },
           theme,
           locale: i18n.language,
           shortcuts: HOST_SHORTCUTS,
@@ -365,16 +325,16 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           handlers: {
             read: (params) => readForKit(path, params),
             stamp: (params) => stampForKit(path, params),
-            write: (params) => writeForKit(path, openedReadOnly, params),
+            write: (params) => writeForKit(path, readOnly, params),
             pick: async ({ accept }) => ({ path: await pickWorkspaceFile(path, accept) }),
             // Files the kit links where they are (`links/pick`): not for a preview or a read-only
             // document, whose kit cannot store the link (UI-N4).
-            pickLinks: preview || openedReadOnly ? undefined : (params) => pickLinkedFiles(picker.pick, path, params),
+            pickLinks: preview || readOnly ? undefined : (params) => pickLinkedFiles(picker.pick, path, params),
             // The replica the kit keeps next to its file (a PSD's), in the document store.
             replicaRead: async ({ path: wanted }) => {
               const checked = documentPath(wanted, path)
-              const replica = fromCarried
-              fromCarried = null
+              const replica = fromPreview
+              fromPreview = null
               return replica ?? readKitReplica(checked, kit.kitId)
             },
             ...kitHistoryHandlers({ path, kitId: kit.kitId, preview: Boolean(preview), lastBy: () => lastBy, checkPath: documentPath }),
@@ -388,8 +348,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
             },
             notify: showKitNotice,
             draftChanged: (info) => setKitDraft(path, info),
-            ...kitionRequests(!preview && !openedReadOnly),
-            ...collab?.handlers,
+            ...kitionRequests(!preview && !readOnly),
+            ...schema?.handlers,
             shortcut: relayShortcut,
           },
         })
@@ -397,30 +357,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           mounted.close()
           return
         }
-        // The edits of the kit this one replaces (opened again on a role change), unsaved ones too,
-        // imported only into an earlier state of the same replica. A kit that opened another one
-        // is opened again, in a new page, from the carried replica.
-        if (carry?.open === 'file' && mounted.capabilities.includes('replica')) {
-          const continues = await continuesCarried(carry, mounted).catch(() => false)
-          if (closed) {
-            mounted.close()
-            return
-          }
-          if (!continues) {
-            mounted.close()
-            mounted = null
-            carried.current = { ...carry, open: 'replica' }
-            setReopened((count) => count + 1)
-            return
-          }
-          await mounted.replica.importChanges(carry.changes, carry.blobs)
-          if (closed) {
-            mounted.close()
-            return
-          }
-        }
-        if (carry?.open === 'replica' && !fileStamp) console.warn('[kit] could not open the kit again with its edits: the file has no stamp')
-        carried.current = null
+        if (preview && !fileStamp) console.warn('[kit] could not show the version: the file has no stamp')
         // Each later switch of Kition's theme reaches the open kit (UI-H6) until this run is cleaned up.
         abandon.signal.addEventListener('abort', watchKitionTheme(theme, (next) => mounted?.setTheme(next)), { once: true })
         if (preview) {
@@ -442,19 +379,18 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
           // The agent's drafts (Kit UI protocol section 7d): it may ask for review or take one back.
           draft: mounted.capabilities.includes('draft') ? { ready: () => mounted!.draft.ready(), reopen: () => mounted!.draft.reopen() } : undefined,
           model: bridgeModel(mounted, kit.kitId),
-          save: openedReadOnly ? undefined : async () => (await mounted!.save()).saved,
+          save: readOnly ? undefined : async () => (await mounted!.save()).saved,
           // Diagnostics (KHP A21): only from a kit that lists `check`, so an older one is refused, not "fine".
           check: mounted.capabilities.includes('check') ? (options) => mounted!.check(options) : undefined,
         })
         const withdrawTest = registerKitTestFrame(path, mounted)
-        const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted, readOnly: openedReadOnly })
-        const detachCollab = collab?.attach(mounted) ?? (() => undefined)
+        const withdrawConnection = registerKitConnection({ path, kitId: kit.kitId, connection: mounted, readOnly })
         const stopFileChanges = followKitFileChanges(path, mounted, KITION_KIT_HOST.stamp)
         withdraw = () => {
           stopFileChanges()
           // A draft lives in its kit's page: it goes when the kit closes.
           setKitDraft(path, { state: 'none', revision: null })
-          detachCollab()
+          schema?.detach()
           withdrawEditor()
           withdrawTest()
           withdrawConnection()
@@ -474,28 +410,8 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
       mounted?.close()
       void files?.end()
       setConnection(null)
-      // A clean close folds the changes saved since the stored snapshot into a new one.
-      if (!preview) void compactKitReplica(path)
     }
-  }, [i18n, kit.kitId, kit.dir, path, openedReadOnly, reopened, preview, picker.pick])
-
-  useEffect(() => {
-    if (readOnly === openedReadOnly) return undefined
-    let cancelled = false
-    void (async () => {
-      if (connection?.capabilities.includes('replica')) {
-        const exported = await connection.replica.exportChanges(new ArrayBuffer(0)).catch((error: unknown) => {
-          console.warn('[kit] could not keep the replica before opening the kit again', error)
-          return null
-        })
-        carried.current = exported ? { ...exported, open: 'file' } : null
-      }
-      if (!cancelled) setOpenedReadOnly(readOnly)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [connection, openedReadOnly, readOnly])
+  }, [i18n, kit.kitId, kit.dir, path, readOnly, reopened, preview, picker.pick])
 
   useEffect(() => connection?.setLocale(i18n.language), [connection, i18n.language])
   // Kition asked the open editor to show somewhere else (`document/reveal`).
@@ -511,8 +427,7 @@ export function KitFrame({ kit, path, active, onOpenAgent, onOpenLink, preview }
     <div className="kit-frame relative flex h-full min-h-0 flex-col" data-active={active ? 'true' : undefined} data-ready={connection ? 'true' : undefined} data-testid={preview ? 'kit-frame-preview' : 'kit-frame'}>
       {preview ? null : <DocumentSchemaBanner path={path} kitName={kitName} kitVersion={kitVersion} />}
       <KitDraftControls connection={connection} kitId={kit.kitId} path={path} active={active} />
-      {/* A kit page answers one handshake, so the kit opened again (read-only or not) gets a new page. */}
-      <iframe key={`${openedReadOnly ? 'view' : 'edit'}-${reopened}`} ref={frame} src={src} title={path} className="min-h-0 w-full flex-1 border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
+      <iframe key={reopened} ref={frame} src={src} title={path} className="min-h-0 w-full flex-1 border-0" allow="fullscreen; clipboard-read; clipboard-write" data-testid="kit-frame-window" />
       {failure ? (
         <div className="absolute inset-0 flex items-center justify-center bg-background p-8">
           <KitOpenFailure

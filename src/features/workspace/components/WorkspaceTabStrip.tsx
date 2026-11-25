@@ -3,21 +3,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceTabContextMenu, type WorkspaceTabContextMenuItem } from '@/features/workspace/components/WorkspaceTabContextMenu'
 import { getWorkspaceItemIcon, getWorkspaceItemIconColorClass, type WorkspaceTab } from '@/features/workspace/lib/workspace'
-import { canShareDocument, CollabTabIndicators, isDocumentCollab, requestShareDocument, requestSyncDocument, useCollabAvailable } from '@/features/collab/public'
 import { canShowDocumentHistory, requestDocumentHistory } from '@/features/history/public'
 import { KitDraftTabMark } from '@/features/kits/public'
 import { cn } from '@/lib/cn'
 
-/** The workspace file a tab edits, for co-editing (kit documents). */
-function collabTabPath(tab: WorkspaceTab): string | null {
+/** The workspace file a tab edits (kit documents), for its version history. */
+function documentTabPath(tab: WorkspaceTab): string | null {
   if (tab.type === 'file-viewer') return tab.path
   return null
-}
-
-/** A tab's co-editing indicators, for a tab whose document can be co-edited. */
-function CollabIndicatorsFor({ tab }: { tab: WorkspaceTab }) {
-  const path = collabTabPath(tab)
-  return path ? <CollabTabIndicators path={path} /> : null
 }
 
 export function WorkspaceTabStrip({
@@ -62,7 +55,6 @@ export function WorkspaceTabStrip({
   const measureTabRefs = useRef(new Map<string, HTMLDivElement>())
   const [visibleTabIds, setVisibleTabIds] = useState<string[]>(() => tabs.map((tab) => tab.id))
   const [overflowOpen, setOverflowOpen] = useState(false)
-  const collabAvailable = useCollabAvailable()
 
   useEffect(() => {
     let animationFrame = 0
@@ -206,7 +198,7 @@ export function WorkspaceTabStrip({
     const hasRight = index >= 0 && index < tabs.length - 1
     const hasOthers = tabs.length > 1
     const supportsCopyRef = tab.type === 'file-viewer'
-    const sharePath = collabTabPath(tab)
+    const documentPath = documentTabPath(tab)
     return [
       {
         key: 'close',
@@ -257,17 +249,9 @@ export function WorkspaceTabStrip({
         disabled: !supportsCopyRef || !onCopyTabRef,
         onSelect: () => onCopyTabRef?.(tab),
       },
-      // Co-editing, only where it is set up and the tab's editor can share its document.
-      ...(collabAvailable && sharePath && canShareDocument(sharePath)
-        ? [
-            { key: 'share', label: t('collab.share'), onSelect: () => requestShareDocument(sharePath) },
-            // Syncing to this person's own devices, for a document that does not relay to a room yet.
-            ...(isDocumentCollab(sharePath) ? [] : [{ key: 'sync-devices', label: t('collab.syncToDevices'), onSelect: () => requestSyncDocument(sharePath) }]),
-          ]
-        : []),
       // The document's version history, for a document whose editor keeps a replica.
-      ...(sharePath && canShowDocumentHistory(sharePath)
-        ? [{ key: 'history', label: tHistory('open'), onSelect: () => requestDocumentHistory(sharePath) }]
+      ...(documentPath && canShowDocumentHistory(documentPath)
+        ? [{ key: 'history', label: tHistory('open'), onSelect: () => requestDocumentHistory(documentPath) }]
         : []),
     ]
   }
@@ -301,7 +285,6 @@ export function WorkspaceTabStrip({
       >
         <WorkspaceTabIcon tab={tab} />
         <span>{tab.title}</span>
-        <CollabIndicatorsFor tab={tab} />
         {tab.type === 'file-viewer' ? <KitDraftTabMark path={tab.path} /> : null}
         <AgentChangedMark show={activeTabId !== tab.id && Boolean(isTabChangedByAgent?.(tab))} />
         <button
@@ -433,7 +416,6 @@ export function WorkspaceTabStrip({
           >
             <WorkspaceTabIcon tab={tab} />
             <span>{tab.title}</span>
-            <CollabIndicatorsFor tab={tab} />
             <button type="button" className="document-tab-close" tabIndex={-1}>
               <X className="size-3" />
             </button>

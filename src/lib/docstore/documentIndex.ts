@@ -9,9 +9,7 @@ import {
   isDocumentIndexConflict,
   listWorkspaceDocuments,
   readDocumentIndex,
-  recordDocumentCheckpoint,
   writeDocumentIndex,
-  type DocumentCheckpointInput,
   type DocumentStoreOptions,
   type WorkspaceDocumentTreeItem,
 } from '@/services/desktop'
@@ -207,19 +205,6 @@ export async function bindDocumentId(path: string, mint: () => string, options?:
     return withEntry(path, docId)(entries)
   }, options)
   return docId
-}
-
-/**
- * Records a checkpoint in the version history of the file at `path` under the file's identity: for documents whose
- * file holds their replica (boards), so the history names only the version. Best effort.
- */
-export async function recordFileCheckpoint(path: string, input: DocumentCheckpointInput, options?: Options): Promise<void> {
-  try {
-    const docId = await bindDocumentId(path, () => crypto.randomUUID(), options)
-    await recordDocumentCheckpoint(docId, input, storeOptions(options))
-  } catch (error) {
-    if (!isWorkspaceChanged(error)) warn('could not record a checkpoint', error)
-  }
 }
 
 // --- Identity across tree operations ----------------------------------------

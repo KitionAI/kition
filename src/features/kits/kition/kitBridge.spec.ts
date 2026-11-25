@@ -136,9 +136,8 @@ describe('kitBridge on the shared bridge stream', () => {
     withdrawPlain()
   })
 
-  it("runs the agent's object-model calls on the editor's model, notes its edits, and keeps refusal codes", async () => {
+  it("runs the agent's object-model calls on the editor's model and keeps refusal codes", async () => {
     const { registerBridgeEditor } = await import('./kitBridge')
-    const { agentEditing } = await import('@/services/agentPresence')
     const batches: unknown[] = []
     const refusal = Object.assign(new Error('op 1 failed'), { data: { code: 'not-found', index: 1, message: 'op 1 failed' } })
     const withdraw = registerBridgeEditor({
@@ -187,7 +186,6 @@ describe('kitBridge on the shared bridge stream', () => {
     expect(byId(21)?.result).toEqual({ root: 'Presentation', types: {} })
     // Reading writes nothing and is not an agent edit.
     expect(byId(22)?.result).toEqual({ refs: {}, results: [], loaded: [], saved: false })
-    expect(agentEditing('talks/m.kslide')).toBe(true)
     expect(byId(23)?.result).toEqual({ refs: {}, results: [null], loaded: [], saved: true })
     expect(byId(24)?.error).toEqual({ code: -32000, message: 'op 1 failed', data: { code: 'not-found', index: 1, message: 'op 1 failed' } })
     // No draft batches on a kit that cannot run them, and none reach the document.

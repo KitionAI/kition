@@ -77,11 +77,11 @@ afterEach(async () => {
 })
 
 describe('ExtensionPanel', () => {
-  it('opens again on the editor a role change opens, and waits while none is open', async () => {
+  it('opens again on the editor opened next, and waits while none is open', async () => {
     expect(shown.map((frame) => frame.opening)).toEqual([1])
     expect(status()).toBe('open')
 
-    // The editor closes (a role change): the panel waits for the next one.
+    // The editor closes: the panel waits for the next one.
     await act(async () => setOpening(null))
     await settle()
     expect(shown[0].disposed).toBe(true)

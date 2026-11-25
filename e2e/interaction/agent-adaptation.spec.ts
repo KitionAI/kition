@@ -23,7 +23,7 @@ function result(answer: Answer) {
 // Every registered package is required here, including optional packages when explicitly
 // running the complete matrix. Missing engines fail instead of silently losing coverage.
 for (const [id, entry] of Object.entries(registry).filter(([id]) => !id.startsWith('$'))) {
-  test(`${id}: agent commands, persistence, object model and read-only isolation`, { tag: [`@ai-kit-${id}`, '@p0'] }, async ({ page, baseURL }) => {
+  test(`${id}: agent commands, persistence and object model`, { tag: [`@ai-kit-${id}`, '@p0'] }, async ({ page, baseURL }) => {
     test.setTimeout(60_000)
     const engine = kitEngine<Record<string, EngineClass>>(id, entry.module)
     expect(engine.built, `${id} must be built before testing its agent integration`).toBe(true)
@@ -128,21 +128,6 @@ for (const [id, entry] of Object.entries(registry).filter(([id]) => !id.startsWi
         expect(result(await call('draft_ready'))).toMatchObject({ state: 'ready' })
         expect(result(await call('draft_reopen'))).toMatchObject({ state: 'open' })
       }
-
-      // The same agent channel must respect a role change, including edits requested with save=false.
-      await page.evaluate((file) => window.__KITION_KIT_TEST__!.setReadOnlyDocuments([file]), entry.name)
-      await expect(page.getByTestId('kit-opening')).toBeVisible({ timeout: 15_000 })
-      await expect(page.getByTestId('kit-opening')).toHaveCount(0, { timeout: 30_000 })
-      const beforeDenied = await inspect()
-      const denied = await call('run', { steps: [step], save: false })
-      expect(denied.error).toMatchObject({ message: expect.stringMatching(/read.only/i) })
-      if (hasModel) {
-        const deniedBatch = await call('batch', { ops: [{ op: 'command', id: step.command, params: step.params }], save: false })
-        expect(deniedBatch.error).toMatchObject({ message: expect.stringMatching(/read.only/i) })
-      }
-      expect(await inspect()).toEqual(beforeDenied)
-      expect(saves).toHaveLength(1)
-      expect(await fs.readFile(path.join(host.root, entry.name))).toEqual(bytes)
     } finally {
       await host.dispose()
     }

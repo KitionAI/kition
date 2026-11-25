@@ -5,7 +5,7 @@ import { createHmac } from 'node:crypto'
 import { renameDocument } from '@/lib/docstore/documentIndex'
 import { readDocumentIndex } from '@/services/desktop'
 import { setRuntimeTokenForTests } from '@/services/runtimeAuth'
-import { compactKitReplica, KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
+import { KITION_KIT_HOST, readKitFile, readKitReplica, stampKitFile, writeKitReplica } from './kitionHost'
 
 const bytes = (...values: number[]) => new Uint8Array(values).buffer
 
@@ -74,7 +74,7 @@ describe("the URLs a kit is given in the desktop app (kit frame isolation, phase
 describe('kit replicas in Kition', () => {
   it('keeps a kit replica under the file’s identity, through renames', async () => {
     await expect(readKitReplica('art/a.psd', 'kit.photo')).resolves.toBeNull()
-    await writeKitReplica('art/a.psd', 'kit.photo', { snapshot: bytes(1, 2), blobs: bytes(3), fileStamp: 'v1' })
+    await writeKitReplica('art/a.psd', 'kit.photo', { snapshot: bytes(1, 2), blobs: bytes(3), fileStamp: 'v1', version: bytes(1) })
     const docId = (await readDocumentIndex()).entries['art/a.psd']
     expect(docId).toBeTruthy()
 
@@ -86,7 +86,7 @@ describe('kit replicas in Kition', () => {
     await expect(readKitReplica('art/a.psd', 'kit.layout')).resolves.toBeNull()
 
     // A later save replaces it under the same identity; a rename keeps it.
-    await writeKitReplica('art/a.psd', 'kit.photo', { snapshot: bytes(9), blobs: bytes(), fileStamp: 'v2' })
+    await writeKitReplica('art/a.psd', 'kit.photo', { snapshot: bytes(9), blobs: bytes(), fileStamp: 'v2', version: bytes(2) })
     expect((await readDocumentIndex()).entries['art/a.psd']).toBe(docId)
     await renameDocument('art/a.psd', 'art/b.psd')
     await expect(readKitReplica('art/a.psd', 'kit.photo')).resolves.toBeNull()
@@ -101,92 +101,44 @@ describe('kit replicas in Kition', () => {
     await writeDocumentStore('doc-1', {
       meta: { docId: 'doc-1', kit: 'kit.note', path: 'notes/a.md', fileStamp: 'v1' },
       snapshot: new Uint8Array([1]),
+      version: '',
     })
     await expect(readKitReplica('notes/a.md', 'kit.photo')).resolves.toBeNull()
   })
 })
 
-describe('kit replicas as appended changes', () => {
-  it('appends only what a save adds, opens snapshot and changes as one replica, and compacts on close', async () => {
-    const { createTextReplica, textOf, textSchema } = await import('@/test/textReplica')
-    const { readDocumentStore, readDocumentHistory } = await import('@/services/desktop')
-    const { person, randomActor } = await import('@kition/sdk/kdm')
-    const { replica, rootId } = createTextReplica('one\n', randomActor())
-    const save = async (stamp: string, origin = 'save') =>
-      writeKitReplica('art/a.psd', 'kit.photo', { snapshot: replica.snapshot().slice().buffer, blobs: bytes(7), fileStamp: stamp }, { checkpoint: { origin } })
-    await save('v1')
-    const docId = (await readDocumentIndex()).entries['art/a.psd']
-    replica.transact(person('me'), (tx) => tx.textInsert(rootId, 'body', 4, 'two\n'))
-    await save('v2', 'agent')
-    let entry = await readDocumentStore(docId)
-    expect(entry?.changes).toHaveLength(1)
-    expect((await readDocumentHistory(docId)).map((checkpoint) => checkpoint.origin)).toEqual(['agent', 'save'])
-
-    // The kit gets one snapshot holding both, with the stamp of the last save.
-    const read = await readKitReplica('art/a.psd', 'kit.photo')
-    expect(read?.fileStamp).toBe('v2')
-    const { Replica } = await import('@kition/sdk/kdm')
-    const opened = Replica.load(textSchema, new Uint8Array(read!.snapshot), randomActor())
-    expect(textOf(opened, rootId)).toBe('one\ntwo\n')
-
-    await compactKitReplica('art/a.psd')
-    entry = await readDocumentStore(docId)
-    expect(entry?.changes).toEqual([])
-    expect(await readDocumentHistory(docId)).toHaveLength(2)
-
-    // A replica made anew for the file replaces it and starts the history over.
-    const fresh = createTextReplica('other\n', randomActor()).replica
-    await writeKitReplica('art/a.psd', 'kit.photo', { snapshot: fresh.snapshot().slice().buffer, blobs: bytes(), fileStamp: 'v3' })
-    expect(await readDocumentHistory(docId)).toEqual([])
-  })
-})
-
-describe('the lineage a kit replica write continues (Kit UI protocol UI-R1, UI-R6)', () => {
-  const hex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
-
-  it('stores and records the version the write carries, not one taken from the snapshot', async () => {
-    const { createTextReplica } = await import('@/test/textReplica')
-    const { readDocumentStoreHead } = await import('@/services/desktop')
-    const { person, randomActor } = await import('@kition/sdk/kdm')
-    const { replica, rootId } = createTextReplica('one\n', randomActor())
-    const taken = replica.version().encode().slice().buffer
-    const snapshot = replica.snapshot().slice().buffer
-    // An edit after the kit took the snapshot and its version is in neither.
-    replica.transact(person('me'), (tx) => tx.textInsert(rootId, 'body', 4, 'two\n'))
-    const answer = await writeKitReplica('art/a.psd', 'kit.photo', { snapshot, blobs: bytes(), fileStamp: 'v1', version: taken }, { checkpoint: { origin: 'kit', label: 'Draft' } })
-    const docId = (await readDocumentIndex()).entries['art/a.psd']
-    expect((await readDocumentStoreHead(docId))?.version).toBe(hex(taken))
+describe('kit replica writes (Kit UI protocol UI-R6)', () => {
+  it('stores the snapshot whole, as the bytes the kit wrote, with the version it carries', async () => {
+    const { readDocumentStore } = await import('@/services/desktop')
+    // Not KDM bytes at all: the host never reads them.
+    const snapshot = new TextEncoder().encode('any bytes').buffer as ArrayBuffer
+    const answer = await writeKitReplica('art/a.psd', 'kit.photo', { snapshot, blobs: bytes(7), fileStamp: 'v1', version: bytes(0, 255, 16) }, { checkpoint: { origin: 'save' } })
+    // The browser preview keeps no checkpoints.
     expect(answer).toEqual({})
-    const { readDocumentHistory } = await import('@/services/desktop')
-    expect((await readDocumentHistory(docId))[0]).toMatchObject({ origin: 'kit', label: 'Draft', version: hex(taken) })
-    expect(hex(taken)).not.toBe(hex(replica.version().encode().slice().buffer))
+    const docId = (await readDocumentIndex()).entries['art/a.psd']
+    const entry = await readDocumentStore(docId)
+    expect(new TextDecoder().decode(entry!.snapshot)).toBe('any bytes')
+    expect(entry?.version).toBe(btoa(String.fromCharCode(0, 255, 16)))
+    // The kit gets it back whatever the file's stamp is now (UI-R1).
+    const read = await readKitReplica('art/a.psd', 'kit.photo')
+    expect(read?.fileStamp).toBe('v1')
+    expect(new TextDecoder().decode(read!.snapshot)).toBe('any bytes')
   })
 
-  it('continues the lineage when a merging kit saves after the file changed outside, and starts a new one only for a replica made anew', async () => {
-    const { createTextReplica } = await import('@/test/textReplica')
-    const { readDocumentStore, readDocumentHistory } = await import('@/services/desktop')
-    const { person, randomActor } = await import('@kition/sdk/kdm')
-    const { replica, rootId } = createTextReplica('one\n', randomActor())
-    const save = (stamp: string, checkpoint: { origin: string; label?: string } = { origin: 'save' }, saved = replica) =>
-      writeKitReplica('art/a.psd', 'kit.photo', { snapshot: saved.snapshot().slice().buffer, blobs: bytes(7), fileStamp: stamp, version: saved.version().encode().slice().buffer }, { checkpoint })
-    await save('v1', { origin: 'kit', label: 'Draft' })
-    const docId = (await readDocumentIndex()).entries['art/a.psd']
-
-    // The file changed outside (stamp v2-outside); the kit opened it with its stored replica and merged the change as
-    // one import, so its next save continues the stored history: appended, same document, the history kept.
-    replica.transact(person('import'), (tx) => tx.textInsert(rootId, 'body', 4, 'from outside\n'))
-    await save('v2-outside')
-    expect((await readDocumentIndex()).entries['art/a.psd']).toBe(docId)
-    expect((await readDocumentStore(docId))?.changes).toHaveLength(1)
-    const kept = await readDocumentHistory(docId)
-    expect(kept.map((checkpoint) => checkpoint.label ?? checkpoint.origin)).toEqual(['save', 'Draft'])
-    expect(kept.every((checkpoint) => checkpoint.available !== false)).toBe(true)
-    expect((await readKitReplica('art/a.psd', 'kit.photo'))?.fileStamp).toBe('v2-outside')
-
-    // A kit that opened the changed file plainly made a new replica: its write starts a new lineage.
-    const fresh = createTextReplica('one\nfrom outside\n', randomActor()).replica
-    await save('v3-outside', { origin: 'save' }, fresh)
-    expect((await readDocumentStore(docId))?.changes ?? []).toEqual([])
-    expect((await readDocumentHistory(docId)).map((checkpoint) => checkpoint.origin)).toEqual(['save'])
+  it('answers the checkpoint the store recorded with the write, as a kit sees it', async () => {
+    const checkpoint = { id: 'c1', time: 1, origin: 'kit', label: 'Draft', version: 'AQ==' }
+    const WriteDocumentStore = vi.fn(async () => ({ version: 'AQ==', checkpoint }))
+    window.kitionDesktop = {
+      ReadDocumentIndex: async () => ({ entries: {}, version: null }),
+      WriteDocumentIndex: async () => ({ version: 'i1' }),
+      WriteDocumentStore,
+    } as unknown as typeof window.kitionDesktop
+    try {
+      const answer = await writeKitReplica('art/a.psd', 'kit.photo', { snapshot: bytes(5), blobs: bytes(), fileStamp: 'v1', version: bytes(1) }, { checkpoint: { origin: 'kit', label: 'Draft' } })
+      expect(answer).toEqual({ checkpoint })
+      expect(WriteDocumentStore).toHaveBeenCalledWith(expect.objectContaining({ snapshot_base64: 'BQ==', version: 'AQ==', checkpoint: { origin: 'kit', label: 'Draft' } }))
+    } finally {
+      delete (window as { kitionDesktop?: unknown }).kitionDesktop
+    }
   })
 })

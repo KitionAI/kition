@@ -8,8 +8,7 @@ import { tags } from './support'
  * The PDF kit (`kit.pdf`) in Kition on the desktop host: the host matrix, then the PDF's own
  * interactions (pages, bookmarks, find). The count the matrix follows is the PDF's pages.
  *
- * Rows not covered here: H11 (printing): the PDF kit's manifest does not ask to print; H13
- * (co-editing) is e2e/collab-pdf.spec.ts (`pnpm test:collab:e2e`).
+ * Rows not covered here: H11 (printing): the PDF kit's manifest does not ask to print.
  */
 
 type NodePdfDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }

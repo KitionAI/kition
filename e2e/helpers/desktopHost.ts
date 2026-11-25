@@ -213,7 +213,7 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
     if (!await exists(gitignore)) await fs.writeFile(gitignore, '*\n!.gitignore\n')
   }
   type BlobRecord = { hashes?: string[]; bundle?: string }
-  type StoredCheckpoint = { id: string; time: number; origin: string; author?: string; label?: string; description?: string; version?: string; seq?: number; blobs?: BlobRecord; available?: boolean }
+  type StoredCheckpoint = { id: string; time: number; origin: string; author?: string; label?: string; description?: string; version: string; state: string; size: number; blobs?: BlobRecord }
   /** A kit's blob bundle, `(hex SHA-256, u64 LE length, bytes) * N`, kept as one file per blob. */
   async function storeBlobs(dir: string, bundle: Buffer): Promise<BlobRecord> {
     const blobs: Array<[string, Buffer]> = []
@@ -255,19 +255,19 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
   async function readHistory(dir: string): Promise<StoredCheckpoint[]> {
     const bytes = await readIfPresent(path.join(dir, 'history.json'))
     try {
-      return bytes ? (JSON.parse(bytes.toString('utf8')).checkpoints ?? []) : []
+      const stored = bytes ? JSON.parse(bytes.toString('utf8')) : null
+      return stored?.format === 2 ? (stored.checkpoints ?? []) : []
     } catch {
       return []
     }
   }
-  const publicCheckpoint = ({ blobs, ...checkpoint }: StoredCheckpoint) => ({ ...checkpoint, hasBlobs: Boolean(blobs) })
-  async function recordCheckpoint(dir: string, input: Record<string, unknown>, manifest: { head: { seq: number; version: string | null }; blobs?: BlobRecord } | null) {
+  /** Records a checkpoint keeping `snapshot` (as `states/<sha256>`), at the version the write named, compared as given. */
+  async function recordCheckpoint(dir: string, input: Record<string, unknown>, state: { snapshot: Buffer; version: string; blobs?: BlobRecord }) {
     const history = await readHistory(dir)
-    const version = typeof input.version === 'string' ? input.version : (manifest?.head.version ?? undefined)
     const last = history[history.length - 1]
     const label = typeof input.label === 'string' && input.label ? input.label : undefined
     const description = typeof input.description === 'string' && input.description ? input.description : undefined
-    if (last && version && last.version === version && last.available !== false) {
+    if (last && last.version === state.version) {
       if (!label) return last
       // A label at the newest checkpoint's version names that one, and it takes the requester's origin.
       Object.assign(last, { label, origin: String(input.origin) })
@@ -276,10 +276,13 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       await writeHistory(dir, history)
       return last
     }
+    const hash = sha256(state.snapshot)
+    await fs.mkdir(path.join(dir, 'states'), { recursive: true })
+    await fs.writeFile(path.join(dir, 'states', hash), state.snapshot)
     const checkpoint: StoredCheckpoint = {
       id: randomUUID(), time: typeof input.time === 'number' ? input.time : Date.now(), origin: String(input.origin),
       ...(typeof input.author === 'string' ? { author: input.author } : {}), ...(label ? { label } : {}), ...(description ? { description } : {}),
-      ...(version ? { version } : {}), ...(manifest ? { seq: manifest.head.seq } : {}), ...(manifest?.blobs ? { blobs: manifest.blobs } : {}),
+      version: state.version, state: hash, size: state.snapshot.length, ...(state.blobs ? { blobs: state.blobs } : {}),
     }
     history.push(checkpoint)
     await writeHistory(dir, history)
@@ -287,11 +290,10 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
   }
   async function writeHistory(dir: string, history: StoredCheckpoint[]) {
     await fs.mkdir(dir, { recursive: true })
-    await fs.writeFile(path.join(dir, 'history.json'), `${JSON.stringify({ format: 1, checkpoints: history.slice(-200) }, null, 2)}\n`)
+    await fs.writeFile(path.join(dir, 'history.json'), `${JSON.stringify({ format: 2, checkpoints: history.slice(-200) }, null, 2)}\n`)
   }
-  /** A checkpoint as a kit sees it (docstore/checkpoints.rs): the version in base64. */
-  const kitCheckpoint = ({ blobs: _blobs, seq: _seq, version, available, ...checkpoint }: StoredCheckpoint) =>
-    ({ ...checkpoint, version: version ? Buffer.from(version, 'hex').toString('base64') : '', available: available !== false })
+  /** A checkpoint as a kit sees it (docstore/checkpoints.rs): without the store's own fields. */
+  const kitCheckpoint = ({ blobs: _blobs, state: _state, size: _size, ...checkpoint }: StoredCheckpoint) => checkpoint
   /** The kit's own checkpoint `id` of `dir`, as update and delete need it. */
   async function ownCheckpoint(dir: string, id: unknown) {
     const history = await readHistory(dir)
@@ -397,33 +399,20 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       await fs.writeFile(absolute, String(request?.content ?? ''))
       return documentResponse(relative, absolute)
     },
-    // The store's format 2 (src-tauri/src/workspace/docstore): `snapshot.bin`, `changes/<seq>.bin` appended after it,
-    // blobs as `blobs/<sha256>`, `history.json`, and a manifest in `meta.json` naming them. Format 1 entries are read.
+    // The store's format 3 (src-tauri/src/workspace/docstore): the last written snapshot as `state.bin`, blobs as
+    // `blobs/<sha256>`, `history.json` with each checkpoint's snapshot in `states/<sha256>`, and a manifest in
+    // `meta.json` naming them. A folder of another layout reads as none and is replaced by the next write.
     read_document_store: async ({ request }) => {
       checkRoot(request || {})
       const dir = entryDir(request?.doc_id)
-      const [metaBytes, snapshot] = await Promise.all(['meta.json', 'snapshot.bin'].map((name) => readIfPresent(path.join(dir, name))))
+      const [metaBytes, snapshot] = await Promise.all(['meta.json', 'state.bin'].map((name) => readIfPresent(path.join(dir, name))))
       if (!metaBytes || !snapshot) return null
       try {
         const stored = JSON.parse(metaBytes.toString('utf8'))
-        if (stored?.snapshot?.sha256 !== sha256(snapshot) || stored?.meta?.docId !== request?.doc_id) return null
-        if (request?.head_only) return { meta: stored.meta, seq: stored.head?.seq ?? 0, version: stored.head?.version ?? null }
-        if (stored.format === 1) {
-          const legacy = await readIfPresent(path.join(dir, 'blobs.bin'))
-          if (stored.blobs && (!legacy || stored.blobs.sha256 !== sha256(legacy))) return null
-          return { meta: stored.meta, snapshot_base64: snapshot.toString('base64'), changes_base64: [], seq: 0, version: null, complete: true, ...(legacy && stored.blobs ? { blobs_base64: legacy.toString('base64') } : {}) }
-        }
-        const changes: string[] = []
-        for (const record of stored.changes ?? []) {
-          const change = await readIfPresent(path.join(dir, 'changes', `${record.seq}.bin`))
-          if (!change || sha256(change) !== record.sha256) return { meta: stored.meta, snapshot_base64: snapshot.toString('base64'), changes_base64: changes, seq: stored.snapshot.seq + changes.length, version: null, complete: false }
-          changes.push(change.toString('base64'))
-        }
+        if (stored?.format !== 3 || stored?.state?.sha256 !== sha256(snapshot) || stored?.meta?.docId !== request?.doc_id) return null
         const blobs = stored.blobs ? await readBlobs(dir, stored.blobs) : undefined
-        return {
-          meta: stored.meta, snapshot_base64: snapshot.toString('base64'), changes_base64: changes, seq: stored.head.seq, version: stored.head.version ?? null,
-          complete: blobs !== null, ...(blobs ? { blobs_base64: blobs.toString('base64') } : {}),
-        }
+        if (blobs === null) return null
+        return { meta: stored.meta, snapshot_base64: snapshot.toString('base64'), version: stored.version, ...(blobs ? { blobs_base64: blobs.toString('base64') } : {}) }
       } catch {
         return null
       }
@@ -433,60 +422,26 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       const dir = entryDir(request?.doc_id)
       const meta = request?.meta as { docId?: unknown } | undefined
       if (!meta || meta.docId !== request?.doc_id) throw new Error('document store meta names another document')
+      if (typeof request?.version !== 'string') throw new Error('a document store write names the version its snapshot holds')
+      if (typeof request?.snapshot_base64 !== 'string') throw new Error('a document store write carries a snapshot')
       const metaFile = path.join(dir, 'meta.json')
-      const current = await readIfPresent(metaFile).then((bytes) => (bytes ? JSON.parse(bytes.toString('utf8')) : null)).catch(() => null)
-      const manifest = current?.format === 2 ? current : null
-      const version = typeof request?.version === 'string' ? request.version : null
-      const blobs = typeof request?.blobs_base64 === 'string' ? await storeBlobs(dir, Buffer.from(request.blobs_base64, 'base64')) : null
+      const current = await readIfPresent(metaFile).then((bytes) => (bytes ? JSON.parse(bytes.toString('utf8')) : null)).catch(() => 'damaged')
+      if (current && current.format !== 3) await fs.rm(dir, { recursive: true, force: true })
       await ensureStore()
       await fs.mkdir(dir, { recursive: true })
-      let next: Record<string, unknown> & { head: { seq: number; version: string | null }; changes: Array<{ seq: number }> }
-      if (typeof request?.changes_base64 === 'string') {
-        if (!manifest || manifest.head.seq !== request.base_seq) throw new Error('DOCUMENT_STORE_CONFLICT')
-        const change = Buffer.from(request.changes_base64, 'base64')
-        const seq = manifest.head.seq + 1
-        await fs.mkdir(path.join(dir, 'changes'), { recursive: true })
-        await fs.writeFile(path.join(dir, 'changes', `${seq}.bin`), change)
-        next = { ...manifest, meta, changes: [...manifest.changes, { seq, sha256: sha256(change), size: change.length }], head: { seq, version }, ...(blobs ? { blobs } : {}) }
-      } else {
-        const snapshot = Buffer.from(String(request?.snapshot_base64 ?? ''), 'base64')
-        const seq = (manifest?.head.seq ?? 0) + 1
-        await fs.writeFile(path.join(dir, 'snapshot.bin'), snapshot)
-        await fs.rm(path.join(dir, 'changes'), { recursive: true, force: true })
-        await fs.rm(path.join(dir, 'blobs.bin'), { force: true })
-        next = { format: 2, meta, snapshot: { sha256: sha256(snapshot), size: snapshot.length, seq }, changes: [], head: { seq, version }, ...(blobs ? { blobs } : {}) }
-        if (request?.lineage === 'new') await fs.rm(path.join(dir, 'history.json'), { force: true })
-      }
+      const blobs = typeof request.blobs_base64 === 'string' ? await storeBlobs(dir, Buffer.from(request.blobs_base64, 'base64')) : undefined
+      const snapshot = Buffer.from(request.snapshot_base64, 'base64')
+      await fs.writeFile(path.join(dir, 'state.bin'), snapshot)
+      const next = { format: 3, meta, state: { sha256: sha256(snapshot), size: snapshot.length }, version: request.version, ...(blobs ? { blobs } : {}) }
       await fs.writeFile(metaFile, `${JSON.stringify(next, null, 2)}\n`)
-      const written: Record<string, unknown> = { seq: next.head.seq, version: next.head.version, compact: next.changes.length >= 64 }
-      if (request?.checkpoint) {
-        const recorded = await recordCheckpoint(dir, request.checkpoint as Record<string, unknown>, next)
-        written.checkpoint = publicCheckpoint(recorded)
-        written.kit_checkpoint = kitCheckpoint(recorded)
-      }
+      const written: Record<string, unknown> = { version: request.version }
+      if (request.checkpoint) written.checkpoint = kitCheckpoint(await recordCheckpoint(dir, request.checkpoint as Record<string, unknown>, { snapshot, version: request.version, blobs }))
       return written
     },
     read_document_history: async ({ request }) => {
       checkRoot(request || {})
       const history = await readHistory(entryDir(request?.doc_id))
-      return { checkpoints: history.map(publicCheckpoint).reverse() }
-    },
-    record_document_checkpoint: async ({ request }) => {
-      checkRoot(request || {})
-      const dir = entryDir(request?.doc_id)
-      const checkpoint = request?.checkpoint as Record<string, unknown> | undefined
-      if (!checkpoint || typeof checkpoint.origin !== 'string') throw new Error('a checkpoint needs an origin')
-      const manifest = await readIfPresent(path.join(dir, 'meta.json')).then((bytes) => (bytes ? JSON.parse(bytes.toString('utf8')) : null)).catch(() => null)
-      await ensureStore()
-      return { checkpoint: publicCheckpoint(await recordCheckpoint(dir, checkpoint, manifest?.format === 2 ? manifest : null)) }
-    },
-    read_document_checkpoint: async ({ request }) => {
-      checkRoot(request || {})
-      const dir = entryDir(request?.doc_id)
-      const found = (await readHistory(dir)).find((checkpoint) => checkpoint.id === request?.id)
-      if (!found) return null
-      const blobs = found.blobs ? await readBlobs(dir, found.blobs) : null
-      return { checkpoint: publicCheckpoint(found), ...(blobs ? { blobs_base64: blobs.toString('base64') } : {}) }
+      return { checkpoints: history.map(kitCheckpoint).reverse() }
     },
     // Kits' checkpoints and view state (src-tauri/src/workspace/docstore/checkpoints.rs, viewstate.rs).
     list_kit_checkpoints: async ({ request }) => {
@@ -531,9 +486,10 @@ export async function installDesktopHost(page: Page, options: DesktopHostOptions
       const dir = entryDir(request?.doc_id)
       const found = (await readHistory(dir)).find((checkpoint) => checkpoint.id === request?.id)
       if (!found) throw new Error('DOCUMENT_CHECKPOINT_NOT_FOUND')
+      const snapshot = await readIfPresent(path.join(dir, 'states', found.state))
       const blobs = found.blobs ? await readBlobs(dir, found.blobs) : Buffer.alloc(0)
-      if (found.available === false || !blobs) throw new Error('DOCUMENT_CHECKPOINT_HISTORY_MISSING')
-      return { checkpoint: kitCheckpoint(found), blobs_base64: blobs.toString('base64') }
+      if (!snapshot || sha256(snapshot) !== found.state || !blobs) throw new Error(`the store lost checkpoint ${found.id}'s state`)
+      return { checkpoint: kitCheckpoint(found), snapshot_base64: snapshot.toString('base64'), blobs_base64: blobs.toString('base64') }
     },
     read_view_state: async ({ request }) => {
       const bytes = await readIfPresent(viewStateFile(request?.doc_id))

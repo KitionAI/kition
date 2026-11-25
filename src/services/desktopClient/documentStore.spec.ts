@@ -22,7 +22,7 @@ function meta(docId: string = DOC, path = 'notes/a.md'): KitReplicaMeta {
 }
 
 function entry(bytes: number[], path?: string): DocumentStoreEntry {
-  return { meta: meta(DOC, path), snapshot: new Uint8Array(bytes) }
+  return { meta: meta(DOC, path), snapshot: new Uint8Array(bytes), version: 'AQ==' }
 }
 
 afterEach(() => {
@@ -44,25 +44,28 @@ describe('document ids', () => {
 describe('document store over the desktop bridge', () => {
   it('passes snapshots as base64 and decodes them back', async () => {
     const bridge = {
-      ReadDocumentStore: vi.fn().mockResolvedValue({ meta: meta(), snapshot_base64: 'AAEC/w==' }),
-      WriteDocumentStore: vi.fn().mockResolvedValue(null),
+      ReadDocumentStore: vi.fn().mockResolvedValue({ meta: meta(), snapshot_base64: 'AAEC/w==', version: 'AQ==' }),
+      WriteDocumentStore: vi.fn().mockResolvedValue({ version: 'AQ==' }),
       DeleteDocumentStore: vi.fn().mockResolvedValue(null),
       ReadDocumentIndex: vi.fn().mockResolvedValue({ entries: { 'a.md': DOC }, version: 'v1' }),
       WriteDocumentIndex: vi.fn().mockResolvedValue({ version: 'v2' }),
     }
     window.kitionDesktop = bridge
 
-    await writeDocumentStore(DOC, entry([0, 1, 2, 255]), { expectedRoot: '/w' })
+    await expect(writeDocumentStore(DOC, entry([0, 1, 2, 255]), { expectedRoot: '/w', checkpoint: { origin: 'save' } })).resolves.toEqual({ version: 'AQ==' })
     expect(bridge.WriteDocumentStore).toHaveBeenCalledWith({
       doc_id: DOC,
       meta: meta(),
       snapshot_base64: 'AAEC/w==',
+      version: 'AQ==',
+      checkpoint: { origin: 'save' },
       expected_root: '/w',
     })
     const read = await readDocumentStore(DOC)
     expect(bridge.ReadDocumentStore).toHaveBeenCalledWith({ doc_id: DOC })
     expect(read?.meta).toEqual(meta())
     expect(Array.from(read?.snapshot || [])).toEqual([0, 1, 2, 255])
+    expect(read?.version).toBe('AQ==')
 
     await deleteDocumentStore(DOC, { expectedRoot: '/w' })
     expect(bridge.DeleteDocumentStore).toHaveBeenCalledWith({ doc_id: DOC, expected_root: '/w' })
@@ -90,7 +93,7 @@ describe('document store over the desktop bridge', () => {
 
     await expect(readDocumentStore('../escape')).rejects.toThrow('invalid document id')
     await expect(deleteDocumentStore('a/b')).rejects.toThrow('invalid document id')
-    await expect(writeDocumentStore(DOC, { meta: meta('other'), snapshot: new Uint8Array() })).rejects.toThrow('another document')
+    await expect(writeDocumentStore(DOC, { meta: meta('other'), snapshot: new Uint8Array(), version: '' })).rejects.toThrow('another document')
     await expect(writeDocumentIndex({ '../a.md': DOC }, null)).rejects.toThrow('invalid document path')
     await expect(writeDocumentIndex({ 'a//b.md': DOC }, null)).rejects.toThrow('invalid document path')
     await expect(writeDocumentIndex({ 'a.md': 'bad id' }, null)).rejects.toThrow('invalid document id')
@@ -114,21 +117,21 @@ describe('kit replicas in the document store', () => {
 
   it('carries blobs over the desktop bridge', async () => {
     const bridge = {
-      ReadDocumentStore: vi.fn().mockResolvedValue({ meta: kitMeta, snapshot_base64: 'AQ==', blobs_base64: 'AgM=' }),
-      WriteDocumentStore: vi.fn().mockResolvedValue(null),
+      ReadDocumentStore: vi.fn().mockResolvedValue({ meta: kitMeta, snapshot_base64: 'AQ==', version: '', blobs_base64: 'AgM=' }),
+      WriteDocumentStore: vi.fn().mockResolvedValue({ version: '' }),
     }
     window.kitionDesktop = bridge
-    await writeDocumentStore(DOC, { meta: kitMeta, snapshot: new Uint8Array([1]), blobs: new Uint8Array([2, 3]) })
-    expect(bridge.WriteDocumentStore).toHaveBeenCalledWith({ doc_id: DOC, meta: kitMeta, snapshot_base64: 'AQ==', blobs_base64: 'AgM=' })
+    await writeDocumentStore(DOC, { meta: kitMeta, snapshot: new Uint8Array([1]), version: '', blobs: new Uint8Array([2, 3]) })
+    expect(bridge.WriteDocumentStore).toHaveBeenCalledWith({ doc_id: DOC, meta: kitMeta, snapshot_base64: 'AQ==', version: '', blobs_base64: 'AgM=' })
     const read = await readDocumentStore(DOC)
     expect(read?.meta.fileStamp).toBe('v1')
     expect(Array.from(read?.blobs || [])).toEqual([2, 3])
-    bridge.ReadDocumentStore.mockResolvedValueOnce({ meta: kitMeta, snapshot_base64: 'AQ==', blobs_base64: '%%' })
+    bridge.ReadDocumentStore.mockResolvedValueOnce({ meta: kitMeta, snapshot_base64: 'AQ==', version: '', blobs_base64: '%%' })
     await expect(readDocumentStore(DOC)).rejects.toThrow('blobs is not base64')
   })
 
   it('keeps blobs in local storage, and none for an entry written without', async () => {
-    await writeDocumentStore(DOC, { meta: kitMeta, snapshot: new Uint8Array([1]), blobs: new Uint8Array([2, 3]) })
+    await writeDocumentStore(DOC, { meta: kitMeta, snapshot: new Uint8Array([1]), version: 'AQ==', blobs: new Uint8Array([2, 3]) })
     expect(Array.from((await readDocumentStore(DOC))?.blobs || [])).toEqual([2, 3])
     await writeDocumentStore(DOC, entry([4]))
     expect((await readDocumentStore(DOC))?.blobs).toBeUndefined()
@@ -143,6 +146,7 @@ describe('document store in the browser preview', () => {
     const read = await readDocumentStore(DOC)
     expect(read?.meta.path).toBe('notes/b.md')
     expect(Array.from(read?.snapshot || [])).toEqual([4, 5])
+    expect(read?.version).toBe('AQ==')
 
     await deleteDocumentStore(DOC)
     await expect(readDocumentStore(DOC)).resolves.toBeNull()
@@ -152,7 +156,10 @@ describe('document store in the browser preview', () => {
   it('reads a damaged entry as missing', async () => {
     window.localStorage.setItem(`kition.workspace.document-store.entry.v1:${DOC}`, '{"meta":{},"snapshot_base64":"AA=="}')
     await expect(readDocumentStore(DOC)).resolves.toBeNull()
-    window.localStorage.setItem(`kition.workspace.document-store.entry.v1:${DOC}`, JSON.stringify({ meta: meta(), snapshot_base64: '!!' }))
+    window.localStorage.setItem(`kition.workspace.document-store.entry.v1:${DOC}`, JSON.stringify({ meta: meta(), snapshot_base64: '!!', version: '' }))
+    await expect(readDocumentStore(DOC)).resolves.toBeNull()
+    // An entry of the older layout (a snapshot without the version it holds) reads as none.
+    window.localStorage.setItem(`kition.workspace.document-store.entry.v1:${DOC}`, JSON.stringify({ meta: meta(), snapshot_base64: 'AA==', changes_base64: [], seq: 1 }))
     await expect(readDocumentStore(DOC)).resolves.toBeNull()
     window.localStorage.setItem(`kition.workspace.document-store.entry.v1:${DOC}`, 'not json')
     await expect(readDocumentStore(DOC)).resolves.toBeNull()

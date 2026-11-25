@@ -25,7 +25,7 @@ function attach(document: MountedKitDocument, listener: Listener) {
 }
 
 /**
- * Offers a mounted kit editor to whatever follows the open documents (collaboration); answers its
+ * Offers a mounted kit editor to whatever follows the open documents (extensions); answers its
  * withdrawal, which runs every follower's cleanup for it.
  */
 export function registerKitConnection(document: MountedKitDocument) {

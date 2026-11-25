@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const store = vi.hoisted(() => ({
   readDocumentIndex: vi.fn(),
-  readDocumentStore: vi.fn(),
   findKitCheckpoint: vi.fn(),
   listKitCheckpoints: vi.fn(),
   updateKitCheckpoint: vi.fn(),
@@ -23,7 +22,7 @@ import { KitRpcError } from '@kition/sdk/protocol'
 import { KITION_CHECKPOINTS, KITION_VIEW_STATE, kitHistoryHandlers, kitStoreError, replicaWriteCheckpoint } from './kitCheckpoints'
 
 const DOC = '0199c2a4-7b3e-7cde-8f00-1234567890ab'
-const checkpoint = { id: 'c1', time: 1, origin: 'kit', label: 'Draft', version: 'AQI=', available: true }
+const checkpoint = { id: 'c1', time: 1, origin: 'kit', label: 'Draft', version: 'AQI=' }
 
 function reason(error: unknown) {
   return error instanceof KitRpcError ? (error.data as { reason?: string } | undefined)?.reason : undefined
@@ -41,7 +40,6 @@ describe('kit checkpoints over the document store', () => {
   it("passes the store's refusals on as the protocol's reasons", () => {
     const cases = [
       ['DOCUMENT_CHECKPOINT_NOT_FOUND', 'not-found'],
-      ['DOCUMENT_CHECKPOINT_HISTORY_MISSING', 'history-missing'],
       ['DOCUMENT_CHECKPOINT_TOO_LONG', 'too-long'],
       ['DOCUMENT_CHECKPOINT_READ_ONLY', 'read-only'],
       ['DOCUMENT_STORE_READ_ONLY', 'read-only'],
@@ -75,14 +73,16 @@ describe('kit checkpoints over the document store', () => {
     expect(store.listKitCheckpoints).not.toHaveBeenCalled()
   })
 
-  it('reads the blobs of a checkpoint, and refuses a state the stored replica does not reach', async () => {
+  it('reads the snapshot a checkpoint keeps and its blobs, whatever was written since (UI-C4)', async () => {
     store.readDocumentIndex.mockResolvedValue({ entries: { 'a.kdesign': DOC }, version: 'v' })
-    store.readKitCheckpoint.mockResolvedValue({ checkpoint, blobs: new Uint8Array([7]) })
+    store.readKitCheckpoint.mockResolvedValue({ checkpoint, snapshot: new Uint8Array([1, 2]), blobs: new Uint8Array([7]) })
     const read = await KITION_CHECKPOINTS.read({ path: 'a.kdesign', id: 'c1' })
+    expect(read.checkpoint).toEqual(checkpoint)
+    expect(new Uint8Array(read.snapshot)).toEqual(new Uint8Array([1, 2]))
     expect(new Uint8Array(read.blobs)).toEqual(new Uint8Array([7]))
-    expect(read).not.toHaveProperty('snapshot')
-    store.readDocumentStore.mockResolvedValue(null)
-    expect(reason(await KITION_CHECKPOINTS.read({ path: 'a.kdesign', id: 'c1', state: true }).catch((error: unknown) => error))).toBe('history-missing')
+    expect(store.readKitCheckpoint).toHaveBeenCalledWith(DOC, 'c1')
+    store.readKitCheckpoint.mockRejectedValueOnce(new Error('DOCUMENT_CHECKPOINT_NOT_FOUND'))
+    expect(reason(await KITION_CHECKPOINTS.read({ path: 'a.kdesign', id: 'c2' }).catch((error: unknown) => error))).toBe('not-found')
   })
 
   it('records the kit checkpoint a replica write asks for, the host save otherwise', () => {

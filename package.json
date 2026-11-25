@@ -87,16 +87,14 @@
     "test:motion:e2e": "bash scripts/inspect-motion.sh",
     "test:motion": "pnpm test:motion:e2e && pnpm test:motion:regression && pnpm test:motion:promo",
     "test:api-token:e2e": "bash scripts/inspect-api-token.sh",
-    "test:collab:e2e": "playwright test --config tooling/playwright.config.ts e2e/collab-photo.spec.ts e2e/collab-film.spec.ts e2e/collab-slide.spec.ts e2e/collab-doc.spec.ts e2e/collab-sheet.spec.ts e2e/collab-vector.spec.ts e2e/collab-motion.spec.ts e2e/collab-cad.spec.ts e2e/collab-scene.spec.ts e2e/collab-design.spec.ts e2e/collab-pdf.spec.ts e2e/collab-note.spec.ts --workers=1",
     "check:kit-host": "node scripts/sync-kit-host.mjs --check",
     "check:workflows": "node scripts/check-workflows.mjs",
     "eval": "node ../kition-sdk/tools/eval-cases.mjs --repo .",
     "check:tessera": "node scripts/pin-tessera.mjs --check"
   },
   "dependencies": {
-    "@kition/sdk": "npm:@kitionstage/sdk@0.5.2-stage.18",
-    "@kition/tessera": "npm:@kitionstage/tessera@0.1.1-stage.2",
-    "loro-crdt": "1.16.4"
+    "@kition/sdk": "npm:@kitionstage/sdk@0.5.2-stage.23",
+    "@kition/tessera": "npm:@kitionstage/tessera@0.1.1-stage.2"
   },
   "devDependencies": {
     "@fontsource-variable/inter": "5.3.0",
@@ -138,7 +136,6 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "6.0.3",
     "vite": "^8.3.5",
-    "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.1.12",
     "yaml": "2.9.1"
   },

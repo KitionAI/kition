@@ -6,10 +6,10 @@ import { useDocumentSchemaNotice } from '@/services/documentSchema'
 import { checkForUpdates, downloadUpdate, installUpdate, type UpdateState } from '@/services/desktopUpdates'
 
 /**
- * The notice above a co-edited document a newer kit edited (Kition platform rules M5a and M20,
- * `@/services/documentSchema`): it says so, says whether the document stays read-only meanwhile,
- * names the kit version this Kition ships against the schema the document needs, and offers the
- * update (kits ship inside Kition, so updating Kition updates the kit).
+ * The notice above a document a newer kit edited (Kition platform rule M5a,
+ * `@/services/documentSchema`): it says so, says what cannot be edited meanwhile, names the kit
+ * version this Kition ships against the schema the document needs, and offers the update (kits
+ * ship inside Kition, so updating Kition updates the kit).
  */
 export function DocumentSchemaBanner({ path, kitName, kitVersion }: { path: string; kitName: string; kitVersion?: string | null }) {
   const { t } = useTranslation('workspace')
@@ -50,14 +50,14 @@ export function DocumentSchemaBanner({ path, kitName, kitVersion }: { path: stri
             ? t('documentSchema.updateFailed', { message: update.message })
             : null
   return (
-    <div className="document-revision-toolbar document-schema-banner" data-testid="document-schema-banner" data-blocked={notice.blocked ? 'true' : 'false'} role="region" aria-label={t('documentSchema.label')}>
+    <div className="document-revision-toolbar document-schema-banner" data-testid="document-schema-banner" role="region" aria-label={t('documentSchema.label')}>
       <div className="document-revision-toolbar__summary">
         <span className="document-revision-toolbar__icon" aria-hidden="true">
           <TriangleAlert />
         </span>
         <span className="min-w-0">
           <strong>{t('documentSchema.title', { kit: kitName })}</strong>
-          <span>{notice.blocked ? t('documentSchema.blockedHint') : t('documentSchema.newerHint')}</span>
+          <span>{t('documentSchema.newerHint')}</span>
           {known ? <span data-testid="document-schema-versions">{kitVersion ? t('documentSchema.versions', { kit: kitName, version: kitVersion, reads: notice.reads, needs: notice.needs }) : t('documentSchema.versionsNoKit', { reads: notice.reads, needs: notice.needs })}</span> : null}
           {outcome ? <span data-testid="document-schema-update-outcome">{outcome}</span> : null}
         </span>

@@ -10,7 +10,7 @@ import { dismissFirstRunActivation } from './helpers/onboarding'
 
 /**
  * Kition serves a kit's checkpoints and view state (Kit UI protocol sections 7m and 7n) through the desktop shell's
- * document store and app data. No pinned kit package calls these capabilities yet, so the test speaks for the kit at
+ * document store and app data; each checkpoint keeps the snapshot of the write that recorded it. The test speaks for the kit at
  * the host-call level: over the host channel the open Vector editor was handed, as a kit editor does. The shell is the
  * Playwright stand-in (`helpers/desktopHost.ts`); the store's own rules are tested in `src-tauri` (cases
  * kition.kits.checkpoints/store-rules and view-state-outside-workspace).
@@ -84,11 +84,16 @@ test('a kit records, lists, renames, reads and deletes its checkpoints, and keep
     // A replica write asks for a labelled checkpoint and is answered with it, the kit's own.
     const written = await fromKit(page, 'host/replicaWrite', { path: 'Logo.kvector', fileStamp: 'e2e', checkpoint: { label: 'Draft', description: 'For review' } }, { snapshot: [1, 2, 3], blobs: [], version: [5, 6] })
     expect(written.error).toBeUndefined()
-    const checkpoint = written.result?.checkpoint as { id: string; origin: string; label: string; description: string; available: boolean }
-    expect(checkpoint).toMatchObject({ origin: 'kit', label: 'Draft', description: 'For review', available: true })
+    const checkpoint = written.result?.checkpoint as { id: string; origin: string; label: string; description: string }
+    expect(checkpoint).toMatchObject({ origin: 'kit', label: 'Draft', description: 'For review' })
+    expect(checkpoint).not.toHaveProperty('available')
     // At exactly the version the write carries (UI-R6), in base64.
     expect(written.result?.checkpoint).toMatchObject({ version: Buffer.from([5, 6]).toString('base64') })
     expect(host.calls.some((call) => call.command === 'write_document_store' && (call.args.request as { checkpoint?: { origin?: string } })?.checkpoint?.origin === 'kit')).toBe(true)
+    // A write without the version its snapshot holds is refused, and stores nothing (UI-R6).
+    expect((await fromKit(page, 'host/replicaWrite', { path: 'Logo.kvector', fileStamp: 'e2e' }, { snapshot: [9], blobs: [] })).error).toMatchObject({ code: -32602 })
+    // A later write replaces the stored snapshot; the checkpoint keeps its own.
+    expect((await fromKit(page, 'host/replicaWrite', { path: 'Logo.kvector', fileStamp: 'e2e-2' }, { snapshot: [4, 4, 4, 4], blobs: [], version: [7] })).error).toBeUndefined()
 
     // Listed (labelled ones, newest first), renamed, read, deleted.
     const listed = await fromKit(page, 'host/checkpointList', { path: 'Logo.kvector', labelled: true })
@@ -98,12 +103,14 @@ test('a kit records, lists, renames, reads and deletes its checkpoints, and keep
     expect(renamed.result?.checkpoint).not.toHaveProperty('description')
     const read = await fromKit(page, 'host/checkpointRead', { path: 'Logo.kvector', id: checkpoint.id })
     expect(read.error).toBeUndefined()
-    expect(read.result).toMatchObject({ checkpoint: { id: checkpoint.id }, blobs: { byteLength: 0 } })
+    expect(read.result).toMatchObject({ checkpoint: { id: checkpoint.id }, snapshot: { byteLength: 3 }, blobs: { byteLength: 0 } })
     expect((await fromKit(page, 'host/checkpointUpdate', { path: 'Logo.kvector', id: 'none', label: 'x' })).error).toMatchObject({ code: -32000, data: { reason: 'not-found' } })
     expect((await fromKit(page, 'host/checkpointList', { path: 'Logo.kvector', before: 'none' })).error).toMatchObject({ code: -32000, data: { reason: 'not-found' } })
     expect((await fromKit(page, 'host/checkpointUpdate', { path: 'Logo.kvector', id: checkpoint.id, label: 'x'.repeat(201) })).error).toMatchObject({ data: { reason: 'too-long' } })
     expect((await fromKit(page, 'host/checkpointDelete', { path: 'Logo.kvector', id: checkpoint.id })).error).toBeUndefined()
-    expect((await fromKit(page, 'host/checkpointList', { path: 'Logo.kvector' })).result).toMatchObject({ checkpoints: [], more: false })
+    // The host's own checkpoint of the later write stays.
+    const left = await fromKit(page, 'host/checkpointList', { path: 'Logo.kvector' })
+    expect(left.result).toMatchObject({ checkpoints: [{ origin: 'save', version: Buffer.from([7]).toString('base64') }], more: false })
     // Only this editor's document.
     expect((await fromKit(page, 'host/checkpointList', { path: 'Other.kvector' })).error).toBeTruthy()
 

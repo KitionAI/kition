@@ -15,8 +15,8 @@ const hearNothing = () => () => undefined
  * A contributed panel beside a kit document's editor (docs/product-ui-style.md: a white side
  * panel with a hairline border): its title and extension, a close button, and the extension's
  * page in a sandboxed frame that talks to the extension's worker. When the kit's editor opens
- * again (a role change reopens it read-only or editable), the worker's session on the old editor
- * has ended: the panel opens again on the new one by itself.
+ * again, the worker's session on the old editor has ended: the panel opens again on the new one
+ * by itself.
  */
 export default function ExtensionPanel({ path, open }: { path: string; open: OpenPanel }) {
   const { t } = useTranslation('common')

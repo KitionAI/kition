@@ -104,11 +104,6 @@ Not served: `session/load`, session modes, the client's file system and terminal
 and audio in prompts, and the client's MCP servers. The model file is Kition's `RuntimeModel`
 JSON, since the person's model settings live in Kition's window; keep it outside any repository.
 
-When the agent edits a co-edited document through the bridge, the person's presence state carries
-`agent: { name: "Agent", origin: "agent" }` until the agent has been quiet for 30 seconds
-(`src/services/agentPresence.ts`, `features/collab/collabRelays.ts`), and every viewer's tab shows
-the agent as a peer of its own (`PresenceAvatars`).
-
 Rejected on 2026-10-10 after a real-app trial: embedding the kit's native
 editor in an overlay window above the tab (`surface: embedded`, plan B). It
 felt like a second program, showed two canvases and extra scroll bars, and
@@ -411,12 +406,12 @@ items with `primary`.
   replaces; releases; and a grant log per session. Paths stay in the
   runtime, confined like `/kit-files/`. `KitFrame` serving the kit's
   `files/*` requests from them is the next step.
-- A document this person may only view (a view-only share link, a `viewer`
-  role) opens with `document.readOnly`. kit-editor's engine worker then refuses
-  every edit (reason `read-only`) by its exported `READ_ONLY_RULES`, and the
-  editor shows View only instead of Undo, Redo, and Save; a kit's own panels
-  read it with `useReadOnly()`. When the role changes, `KitFrame` opens the
-  kit again in a new iframe, since a kit page answers one handshake.
+- A past version the version history shows opens with `document.readOnly`.
+  kit-editor's engine worker then refuses every edit (reason `read-only`) by
+  its exported `READ_ONLY_RULES`, and the editor shows View only instead of
+  Undo, Redo, and Save; a kit's own panels read it with `useReadOnly()`.
+  Kition Desktop is single-user: no document is shared, so none opens
+  read-only for a role.
 - Kition's code names no kit (`scripts/check-kit-neutral.mjs`, run by
   `pnpm lint`). The kit catalog (`src/lib/kitCatalog.ts`) reads the `kit.json`
   of every shipped kit's package (`kits/kits.lock.json` names them) before the
@@ -543,7 +538,7 @@ incomplete CSS/rendering fidelity.
 Build locally with `scripts/build-kit-ui.sh html`; `make kit-dev` includes its
 headless executable for the `html_*` agent tools. `e2e/html-embedded.spec.ts`
 covers creation, editing, host saves, reopening, `.HTM`, resource isolation,
-large source files, disk conflicts, read-only sessions, timers, preview clicks,
+large source files, disk conflicts, timers, preview clicks,
 Canvas images/text, selected options, and event cancellation in Chromium and WebKit.
 The SDK registry marks HTML optional until its first package is published and
 pinned. It uses engine contract 1; no KDM collaboration or agent drafts are
@@ -591,7 +586,7 @@ tools run on the headless `kition-design` (`view.describe`, `document.check`, an
 the object model's `model.*`). Design is on engine contract 2: a design is a
 KDM replica of schema `kit.design` v2 (kition-design `docs/kdm.md`; v2 adds the
 libraries a design uses, `Library` objects in `Design.libraries`), carried inside
-the `.kdesign` file under `kdm/`, so people co-edit a shared design and the
+the `.kdesign` file under `kdm/`, and the
 editor lists the `replica` capability (its replica also goes to Kition's
 store, below). Its object model (namespace `Design`, registered in
 `@kition/sdk/script/kits/design`) serves `design_query` and `design_batch`, in the open
@@ -601,8 +596,8 @@ operations reach the engine as a collaborator's changes (kition-sdk
 `session::model::Exchange`), so the agent's undo takes back its commands but
 not those. `e2e/design-embedded.spec.ts` (in `make kit-e2e`) covers opening,
 editing, saving, and creating a design through Kition, and
-`e2e/collab-design.spec.ts` (in `pnpm test:collab:e2e`) co-editing, the
-agent's object model in the open editor, and undo by scope. A design uses team
+`e2e/collab-design.spec.ts` (in the CI sweep; the name is from when it also held
+co-editing tests) the agent's object model in the open editor, and undo by scope. A design uses team
 libraries from other `.kdesign` files: "Add library file…" asks Kition for a
 file to link (`links/pick`), the design names it relative to its folder
 (`../libraries/Design System.kdesign`), and the editor reads it and watches
@@ -642,7 +637,7 @@ features that go through the kit:
   tabs are workspace features and do not depend on the kit.
 
 `e2e/note-embedded.spec.ts`, `e2e/note-history.spec.ts`,
-`e2e/collab-note.spec.ts`, and `e2e/note-table-widget.spec.ts` (the table
+and `e2e/note-table-widget.spec.ts` (the table
 gate, `pnpm test:table:e2e`: the grid, the append buttons on the edge rails,
 the column menu, cell editing, and undo, each checked in the saved file) cover
 what Kition adds around the kit; they place the caret the way a person can on
@@ -657,14 +652,17 @@ Kition's store, `.kition/docs/` under the workspace root, through the Kit UI
 protocol's `replicaRead` and `replicaWrite`. The store
 (`src-tauri/src/workspace/docstore/`, whose module comments are the
 reference) maps workspace paths to document ids (`index.json`), so a replica
-follows its file through a rename in the tree. It keeps each replica as a
-snapshot plus append-only changes and a manifest that names every file with
-its hash, so a crash reads as a stored version. Its `history.json` is the
-version history on this device, which `src/features/history/` shows and
-restores. Only the Kition holding `store.lock` writes; another Kition reads
-the store and says why it does not write. The store is local and stays out of
-Git (its own `.gitignore`): losing it loses history, never text, since the
-workspace file is the document. The Note kit's model of a `.md` file
+follows its file through a rename in the tree. For each document it keeps the
+last written snapshot whole (`state.bin`, opaque bytes it never reads, with
+the version the write named) and a manifest that names it by its hash, so a
+crash reads as one of the written versions; a folder of another layout reads
+as none and the next write replaces it. Its `history.json` is the version
+history on this device, each checkpoint with its own snapshot
+(`states/<sha256>`, the same bytes once), which `src/features/history/` shows
+and restores through the kit (`replica/restore`). Only the Kition holding
+`store.lock` writes; another Kition reads the store and says why it does not
+write. The store is local and stays out of Git (its own `.gitignore`): losing
+it loses history, never text, since the workspace file is the document. The Note kit's model of a `.md` file
 (schema `kit.note`, line endings, comments, identity, and merging a file
 changed on disk) is in kition-note's `docs/design.md`, section 2.
 
@@ -674,12 +672,14 @@ The same history serves kits' checkpoints (Kit UI protocol section 7m,
 `read_kit_checkpoint`). A checkpoint has an optional label (at most 200
 characters) and description (at most 2000). A kit records one with its
 replica write (origin `kit`); a label at the newest checkpoint's version names
-that checkpoint and makes it the kit's. A kit renames or deletes only checkpoints
-of origin `kit`. Labelled checkpoints are never thinned for unlabelled ones
-(at most 200 of those, autosaves first) and have their own cap of 1000; a
-replica of a new lineage drops the unlabelled ones and keeps the labelled ones
-as `available: false`. `history.json` keeps versions in hex; kits get them in
-base64. `KitFrame` passes both to `mountKit` on the desktop shell
+that checkpoint and makes it the kit's (versions compare as the bytes the
+writes named). A kit renames or deletes only checkpoints of origin `kit`.
+Labelled checkpoints are never thinned for unlabelled ones (at most 200 of
+those and 512 MB of their states, oldest first, autosaves before others) and
+have their own cap of 1000; a document whose state is larger than 16 MB
+records unlabelled checkpoints only at the person's saves. `history.json`
+keeps versions in base64, as kits get them; `host/checkpointRead` answers the
+checkpoint's own snapshot. `KitFrame` passes both to `mountKit` on the desktop shell
 (`src/features/kits/kition/kitCheckpoints.ts`, which confines every call to the
 editor's own document); a preview and the browser preview are offered neither.
 
@@ -704,8 +704,7 @@ A kit package is also the kit's SDK deliverable: the same `<kit>-ui` folder is
 what another application embeds. A web page embeds it with kition-sdk's
 `@kition/embed` (`KitionEmbed.mount`, capability set `KitEmbed 1.0`; see
 kition-sdk's `docs/platform/reference/embed.md`): the page serves the extracted package from an
-origin of its own, keeps documents in its own storage, and may co-edit them
-through a sync server. Kition consumes the package the way any other host
+origin of its own and keeps documents in its own storage. Kition consumes the package the way any other host
 would, through `@kition/sdk/host`, so it never builds kits in its release.
 
 Kit versions are distributed as npm packages, so they download from npm's

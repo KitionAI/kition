@@ -9,8 +9,7 @@ import { tags } from './support'
  * interactions (typing, formatting, tables, find). The count the matrix follows is the document's
  * pages; a person adds one with a page break (Cmd+Enter).
  *
- * Rows not covered here: H11 (printing): the Doc kit's manifest does not ask to print; H13
- * (co-editing) is e2e/collab-doc.spec.ts (`pnpm test:collab:e2e`).
+ * Rows not covered here: H11 (printing): the Doc kit's manifest does not ask to print.
  */
 
 type NodeDocDocument = { save(): Uint8Array; execute(command: string, params: string): string; inspect(): string; free(): void }

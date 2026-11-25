@@ -87,30 +87,6 @@ features:
       - kition.kits.html-preview/hostile-page
       - regressions/issue-release-html-source-ready
     since: "2026-10-31"
-  - id: kition.kit-collab.sheet
-    title: Workbook collaboration preserves formulas and merges offline cell edits
-    dimension: [collab, data-safety]
-    priority: P1
-    status: has
-    paths:
-      - e2e/collab-sheet.spec.ts
-    cases:
-      - regressions/issue-release-sheet-ribbon
-      - regressions/issue-release-sheet-latency
-    since: "2026-10-31"
-  - id: kition.kit-collab.slide
-    title: Shared slide viewers see remote edits while their documents remain read-only
-    dimension: [collab, security]
-    priority: P1
-    status: has
-    paths:
-      - e2e/collab-slide.spec.ts
-      - e2e/kit-role-change.spec.ts
-      - src/features/kits/kition/KitFrame.tsx
-    cases:
-      - regressions/issue-release-slide-view-mode
-      - regressions/issue-release-slide-title-reader
-    since: "2026-10-31"
   - id: kition.platform.development-server
     title: The development server watches sources without traversing build artifacts
     dimension: [performance, robustness]
@@ -239,14 +215,12 @@ features:
       - src/features/kits/kition/kitFailures.ts
       - src/features/kits/kition/KitFrame.tsx
       - src/features/kits/kition/kitionHost.ts
-      - src/features/collab/collabErrors.ts
       - e2e/error-states.spec.ts
-    gap: Chromium only; the co-editing dialog errors are unit-tested (no sync server in the mock sweep); the "not available in this build" view appears only in development builds without a kit's package and is not covered.
+    gap: Chromium only; the "not available in this build" view appears only in development builds without a kit's package and is not covered.
     cases:
       - kition.shell.error-states/all-states
       - regressions/issue-open-failure-cause
       - regressions/issue-save-error-plain
-      - regressions/issue-collab-error-plain
       - regressions/issue-html-large-file
     since: "2026-11-06"
   - id: kition.kit-protocol.theme
@@ -281,18 +255,6 @@ features:
       - regressions/issue-bridge-model-schema
       - regressions/issue-agent-layout-schema
       - regressions/issue-design-schema-version
-    since: "2026-10-28"
-  - id: kition.kit-collab.design
-    title: People co-edit a design live and across going offline (engine contract 2), and its replica is kept in Kition's store
-    dimension: [collab]
-    priority: P1
-    status: has
-    paths:
-      - e2e/collab-design.spec.ts
-      - src/features/kits/kition/KitFrame.tsx
-      - src/features/collab/collabRelays.ts
-    cases:
-      - kition.kit-collab.design/live-and-offline
     since: "2026-10-28"
   - id: kition.extensions.kit-scripts
     title: A workspace script edits the open kit document through the object model of the kit's registered schema (`@kition/sdk/script/kits`)

@@ -57,8 +57,6 @@ describe('createTauriBridge', () => {
       ReadDocumentIndex: 'read_document_index',
       WriteDocumentIndex: 'write_document_index',
       ReadDocumentHistory: 'read_document_history',
-      RecordDocumentCheckpoint: 'record_document_checkpoint',
-      ReadDocumentCheckpoint: 'read_document_checkpoint',
       ListKitCheckpoints: 'list_kit_checkpoints',
       FindKitCheckpoint: 'find_kit_checkpoint',
       UpdateKitCheckpoint: 'update_kit_checkpoint',

@@ -3,7 +3,8 @@
  * `view-state`), over Kition's document store: the handlers `mountKit` takes as `checkpoints` and `viewState`, keyed by
  * the document's path. The store names a document by its id in the document index, so both follow the file's renames
  * and moves. Checkpoints live in the workspace's `.kition/docs/<docId>/history.json`; view state in the app's own data,
- * per person and device, never in the workspace. The store's refusals reach the kit as the protocol's reasons.
+ * per person and device, never in the workspace. Each checkpoint keeps its own snapshot. The store's refusals reach the
+ * kit as the protocol's reasons.
  */
 import type { KitHostHandlers } from '@kition/sdk/host'
 import { KitRpcError, type KitCheckpoint } from '@kition/sdk/protocol'
@@ -13,7 +14,6 @@ import {
   findKitCheckpoint,
   listKitCheckpoints,
   readDocumentIndex,
-  readDocumentStore,
   readKitCheckpoint,
   readViewState,
   servesKitCheckpoints,
@@ -27,7 +27,6 @@ import { writeKitReplica } from './kitionHost'
 /** The store's errors and the protocol reasons they are (`error.data.reason` of a `-32000` refusal). */
 const REASONS: ReadonlyArray<readonly [string, string]> = [
   ['DOCUMENT_CHECKPOINT_NOT_FOUND', 'not-found'],
-  ['DOCUMENT_CHECKPOINT_HISTORY_MISSING', 'history-missing'],
   ['DOCUMENT_CHECKPOINT_TOO_LONG', 'too-long'],
   ['DOCUMENT_CHECKPOINT_READ_ONLY', 'read-only'],
   // Another Kition writes this workspace's store.
@@ -68,15 +67,6 @@ async function knownDocId(path: string, id: string): Promise<string> {
 function buffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.slice().buffer as ArrayBuffer
 }
-
-function base64Bytes(text: string): Uint8Array {
-  const binary = atob(text)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
-  return bytes
-}
-
-const loadReplicaBytes = () => import('@/lib/replicaHistory/replicaBytes')
 
 /**
  * What a replica write records: the kit's own checkpoint (origin `kit`, with its label and description) when it asked
@@ -120,23 +110,11 @@ export const KITION_CHECKPOINTS = {
     refused(async () => {
       await deleteKitCheckpoint(await knownDocId(path, id), id)
     }),
-  /**
-   * The blobs the version needs; with `state`, also the replica's snapshot at that version, from the stored replica
-   * (`history-missing` when it does not reach it).
-   */
-  read: ({ path, id, state }: { path: string; id: string; state?: boolean }) =>
+  /** The snapshot the checkpoint keeps and the blobs it needs (UI-C4), whatever was written since. */
+  read: ({ path, id }: { path: string; id: string }) =>
     refused(async () => {
-      const docId = await knownDocId(path, id)
-      const { checkpoint, blobs } = await readKitCheckpoint(docId, id)
-      if (!state) return { checkpoint, blobs: buffer(blobs) }
-      const entry = await readDocumentStore(docId)
-      const bytes = await loadReplicaBytes()
-      const full = entry ? [entry.snapshot, ...(entry.changes ?? [])] : []
-      const version = base64Bytes(checkpoint.version)
-      if (!entry || entry.complete === false || !bytes.holdsVersion(full, version)) {
-        throw refusal('history-missing', `the stored replica no longer reaches checkpoint ${id}'s version`)
-      }
-      return { checkpoint, blobs: buffer(blobs), snapshot: buffer(bytes.stateAt(full, version)) }
+      const { checkpoint, snapshot, blobs } = await readKitCheckpoint(await knownDocId(path, id), id)
+      return { checkpoint, snapshot: buffer(snapshot), blobs: buffer(blobs) }
     }),
 }
 

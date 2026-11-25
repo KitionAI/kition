@@ -120,8 +120,7 @@ The [promotional-film workflow](motion-promo-workflow.md) provides a reusable re
 and production acceptance criteria for both Claude and Codex.
 
 Not yet covered by the frozen corpus: text/font fidelity, scripts, imported media, audio, encoder
-fidelity, lighting/shadows and advanced 3D, motion blur, the complete effects registry, and multi-user collaboration.
-Existing collaboration tests remain available in `e2e/collab-motion.spec.ts`. Add further synthetic
+fidelity, lighting/shadows and advanced 3D, motion blur, and the complete effects registry. Add further synthetic
 cases and independently reviewed expectations as these areas become acceptance requirements.
 
 ## Deliberate reference maintenance

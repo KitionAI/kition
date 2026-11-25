@@ -21,10 +21,8 @@ import {
   openWorkspaceWindow,
 } from '@/services/desktop'
 import { restorePortalAccountSession } from '@/services/portalAccount'
-import { CollabDialogs, requestOpenSharedDocument, requestSyncedDocuments, startCollab, useCollabAvailable } from '@/features/collab/public'
-import { embeddedKitFor, sharedKitFor } from '@/features/workspace/components/kits/kitEditors'
+import { embeddedKitFor } from '@/features/workspace/components/kits/kitEditors'
 import { DocumentHistoryHost } from '@/features/history/public'
-import { requestShowWorkspaceFile } from '@/features/workspace/lib/workspaceFileRequests'
 import { maybeSeedOnboardingPack } from '@/features/onboarding/maybeSeedOnboardingPack'
 import { reconcileOnboardingWelcome } from '@/features/onboarding/reconcileOnboardingWelcome'
 import { isWorkspaceSeeded } from '@/features/onboarding/seedMarker'
@@ -110,10 +108,6 @@ export function AppShell() {
     }
     void restorePortalAccountSession().catch(() => {})
   }, [])
-
-  // Co-editing follows the open kit documents; it stays off without a sync server and a signed-in Kition account.
-  useEffect(() => startCollab(), [])
-  const collabAvailable = useCollabAvailable()
 
   const vaultRegistry = useWorkspaceVaults()
   const {
@@ -660,10 +654,9 @@ export function AppShell() {
       ) : null}
       {commandOpen ? (
         <Suspense fallback={null}>
-          <CommandPalette onClose={() => setCommandOpen(false)} onOpenSettings={() => openSettings('general')} onOpenShared={collabAvailable ? requestOpenSharedDocument : undefined} onOpenSynced={collabAvailable ? requestSyncedDocuments : undefined} />
+          <CommandPalette onClose={() => setCommandOpen(false)} onOpenSettings={() => openSettings('general')} />
         </Suspense>
       ) : null}
-      <CollabDialogs kitFor={sharedKitFor} onOpened={(path) => requestShowWorkspaceFile(path, true)} />
       <DocumentHistoryHost kitFor={embeddedKitFor} />
       <ExtensionDialogs />
       <ConsoleCreditsExhaustedBanner />

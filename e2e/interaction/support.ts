@@ -16,7 +16,7 @@ import path from 'node:path'
 import { expect, test, type FrameLocator, type Locator, type Page } from '@playwright/test'
 
 /** The host-matrix rows every kit goes through (the interaction test plan); H16 is the dark scheme. */
-export type HostRow = 'H1' | 'H2' | 'H3' | 'H4' | 'H5' | 'H6' | 'H7' | 'H8' | 'H9' | 'H10' | 'H11' | 'H12' | 'H13' | 'H14' | 'H15' | 'H16'
+export type HostRow = 'H1' | 'H2' | 'H3' | 'H4' | 'H5' | 'H6' | 'H7' | 'H8' | 'H9' | 'H10' | 'H11' | 'H12' | 'H14' | 'H15' | 'H16'
 
 /** The tags of a test: its kit, its host-matrix rows, and `@p0` when a failure loses data or blocks editing. */
 export function tags(kit: string, rows: HostRow[], p0 = false) {

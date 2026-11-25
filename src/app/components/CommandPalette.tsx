@@ -9,15 +9,9 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabi
 export function CommandPalette({
   onClose,
   onOpenSettings,
-  onOpenShared,
-  onOpenSynced,
 }: {
   onClose: () => void
   onOpenSettings: () => void
-  /** Opens a document someone shared for co-editing; absent when co-editing is off. */
-  onOpenShared?: () => void
-  /** Shows this person's synced documents not in this workspace yet; absent when co-editing is off. */
-  onOpenSynced?: () => void
 }) {
   const { t } = useTranslation('common')
   const actions = useMemo(
@@ -32,26 +26,8 @@ export function CommandPalette({
         action: 'settings',
         hint: t('commandPalette.openSettingsHint'),
       },
-      ...(onOpenShared
-        ? [
-            {
-              title: t('commandPalette.openShared'),
-              action: 'open-shared',
-              hint: t('commandPalette.openSharedHint'),
-            },
-          ]
-        : []),
-      ...(onOpenSynced
-        ? [
-            {
-              title: t('commandPalette.syncedDocuments'),
-              action: 'synced-documents',
-              hint: t('commandPalette.syncedDocumentsHint'),
-            },
-          ]
-        : []),
     ],
-    [onOpenShared, onOpenSynced, t],
+    [t],
   )
   // Commands of extensions for the kit document shown now, and Run script.
   const extensionItems = useExtensionPaletteItems({ runScript: t('commandPalette.runScript'), runScriptHint: t('commandPalette.runScriptHint') })
@@ -77,12 +53,6 @@ export function CommandPalette({
   function open(action: string) {
     if (action === 'settings') {
       onOpenSettings()
-    }
-    if (action === 'open-shared') {
-      onOpenShared?.()
-    }
-    if (action === 'synced-documents') {
-      onOpenSynced?.()
     }
     onClose()
   }

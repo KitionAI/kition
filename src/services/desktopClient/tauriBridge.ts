@@ -83,8 +83,6 @@ export function createTauriBridge(
     ReadDocumentIndex: request('read_document_index'),
     WriteDocumentIndex: request('write_document_index'),
     ReadDocumentHistory: request('read_document_history'),
-    RecordDocumentCheckpoint: request('record_document_checkpoint'),
-    ReadDocumentCheckpoint: request('read_document_checkpoint'),
     ListKitCheckpoints: request('list_kit_checkpoints'),
     FindKitCheckpoint: request('find_kit_checkpoint'),
     UpdateKitCheckpoint: request('update_kit_checkpoint'),

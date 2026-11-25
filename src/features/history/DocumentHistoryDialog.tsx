@@ -6,11 +6,9 @@ import { Button, Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader
 import { KitFrame, type EmbeddedKit } from '@/features/kits/public'
 import { notify } from '@/lib/notify'
 import { historyDocumentFor, type HistoryDocument } from './historyDocuments'
-import { loadDeviceHistory, loadServerHistory, previewOf, restoreEntry, type DeviceEntry, type HistoryEntry, type HistoryPreview, type ServerEntry } from './historyModel'
+import { loadHistory, previewOf, restoreEntry, type HistoryEntry, type HistoryPreview } from './historyModel'
 
-type Lists = { device: DeviceEntry[]; server: ServerEntry[] | null }
-
-const ORIGINS = new Set(['save', 'agent', 'script', 'edit', 'open', 'restore', 'before-restore'])
+const ORIGINS = new Set(['save', 'agent', 'script', 'edit', 'open'])
 
 function useTimeFormat() {
   const { i18n } = useTranslation('history')
@@ -20,30 +18,20 @@ function useTimeFormat() {
 function HistoryItem({ entry, selected, onSelect }: { entry: HistoryEntry; selected: boolean; onSelect: () => void }) {
   const { t } = useTranslation('history')
   const time = useTimeFormat()
-  const disabled = entry.source === 'device' && !entry.available
-  let title: string
-  let detail: string
-  if (entry.source === 'device') {
-    title = t(`origin.${ORIGINS.has(entry.origin) ? entry.origin : 'other'}`)
-    const author = entry.author?.startsWith('agent') ? t('agent') : entry.author ? t('you') : ''
-    detail = disabled ? t('unavailable') : [author, entry.label].filter(Boolean).join(' · ')
-  } else {
-    title = entry.kind === 'snapshot' ? t('serverSnapshot') : t('serverChanges', { count: entry.changes })
-    detail = entry.principalId ?? ''
-  }
+  const title = t(`origin.${ORIGINS.has(entry.origin) ? entry.origin : 'other'}`)
+  const author = entry.author?.startsWith('agent') ? t('agent') : entry.author ? t('you') : ''
+  const detail = [author, entry.label].filter(Boolean).join(' · ')
   return (
     <li>
       <button
         type="button"
         onClick={onSelect}
-        disabled={disabled}
         aria-current={selected ? 'true' : undefined}
         data-testid="history-entry"
-        data-origin={entry.source === 'device' ? entry.origin : 'server'}
+        data-origin={entry.origin}
         className={cn(
           'flex w-full flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left transition-colors',
           selected ? 'bg-brand/10 text-foreground' : 'hover:bg-accent',
-          disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
         )}
       >
         <span className="text-[13px] font-medium text-foreground">{time.format(entry.time)}</span>
@@ -59,7 +47,7 @@ function HistorySection({ label, entries, selected, onSelect }: { label: string;
   return (
     <section className="space-y-1">
       <h3 className="px-3 pt-2 text-[12px] font-semibold text-muted-foreground">{label}</h3>
-      <ul className="space-y-0.5" data-testid={`history-${entries[0].source}`}>
+      <ul className="space-y-0.5" data-testid="history-device">
         {entries.map((entry) => (
           <HistoryItem key={entry.id} entry={entry} selected={selected === entry.id} onSelect={() => onSelect(entry)} />
         ))}
@@ -76,15 +64,14 @@ function PreviewPane({ document, preview, kit }: { document: HistoryDocument; pr
 }
 
 /**
- * The version history of the document open at `path`: this device's checkpoints, and the server's for a co-edited
- * document; a chosen version is shown read-only (the document's kit draws it), and restored as one new
- * change.
+ * The version history of the document open at `path`: this device's checkpoints; a chosen version is shown read-only
+ * (the document's kit draws it from the checkpoint's snapshot), and restored by the kit as one new change.
  */
 export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string; onClose: () => void; kitFor: (kitId: string) => EmbeddedKit | null }) {
   const { t } = useTranslation('history')
   const time = useTimeFormat()
   const document = useMemo(() => historyDocumentFor(path), [path])
-  const [lists, setLists] = useState<Lists | null>(null)
+  const [entries, setEntries] = useState<HistoryEntry[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [selected, setSelected] = useState<HistoryEntry | null>(null)
   const [preview, setPreview] = useState<{ id: string; preview: HistoryPreview | null; failed: boolean } | null>(null)
@@ -93,8 +80,8 @@ export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string;
   useEffect(() => {
     if (!document) return undefined
     let live = true
-    void Promise.all([loadDeviceHistory(document), loadServerHistory(document).catch(() => null)]).then(
-      ([device, server]) => live && setLists({ device, server }),
+    void loadHistory(document).then(
+      (device) => live && setEntries(device),
       (error: unknown) => {
         console.warn('[history] could not read the history', error)
         if (live) setFailed(true)
@@ -125,15 +112,8 @@ export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string;
     if (!document || !selected || restoring) return
     setRestoring(true)
     try {
-      const result = await restoreEntry(document, selected, t('restoreLabel', { time: time.format(selected.time) }))
-      if (!result.changed) {
-        notify.info(t('nothingToRestore'))
-      } else {
-        const undo = result.undo
-        notify.success(t('restored'), undo
-          ? { action: { label: t('undo'), onClick: () => void undo().then(() => notify.success(t('undone')), (error: unknown) => notify.error(t('restoreFailed'), { description: String(error) })) } }
-          : { description: t('restoredUndoable') })
-      }
+      await restoreEntry(document, selected, t('restoreLabel', { time: time.format(selected.time) }))
+      notify.success(t('restored'), { description: t('restoredUndoable') })
       onClose()
     } catch (error) {
       notify.error(t('restoreFailed'), { description: error instanceof Error ? error.message : String(error) })
@@ -143,7 +123,7 @@ export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string;
   }
 
   const name = path.split('/').pop() ?? path
-  const empty = lists && !lists.device.length && !lists.server?.length
+  const empty = entries && !entries.length
   const kit = document ? kitFor(document.kitId) : null
 
   return (
@@ -157,7 +137,7 @@ export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string;
           <nav className="w-[280px] shrink-0 overflow-y-auto border-r p-2" aria-label={t('title')}>
             {!document || failed ? (
               <p className="px-3 py-2 text-[13px] text-muted-foreground">{t('readFailed')}</p>
-            ) : !lists ? (
+            ) : !entries ? (
               <p className="flex items-center gap-2 px-3 py-2 text-[13px] text-muted-foreground">
                 <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
                 {t('reading')}
@@ -166,8 +146,7 @@ export function DocumentHistoryDialog({ path, onClose, kitFor }: { path: string;
               <p className="px-3 py-2 text-[13px] text-muted-foreground" data-testid="history-empty">{t('empty')}</p>
             ) : (
               <div className="space-y-2">
-                <HistorySection label={t('device')} entries={lists.device} selected={selected?.id ?? null} onSelect={setSelected} />
-                <HistorySection label={t('server')} entries={lists.server ?? []} selected={selected?.id ?? null} onSelect={setSelected} />
+                <HistorySection label={t('device')} entries={entries} selected={selected?.id ?? null} onSelect={setSelected} />
               </div>
             )}
           </nav>

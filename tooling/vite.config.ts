@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import wasm from 'vite-plugin-wasm'
 import { execSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -110,30 +109,19 @@ export default defineConfig(({ mode }) => ({
   ...(process.env.KITION_VITE_CACHE_DIR ? { cacheDir: process.env.KITION_VITE_CACHE_DIR } : {}),
   publicDir: resolve(repositoryDir, 'public'),
   base: '/',
-  // vite-plugin-wasm loads WebAssembly that a module imports as an ES module, as loro-crdt's
-  // bundler entry does (see the alias below).
-  plugins: [react(), wasm(), extensionPages()],
+  plugins: [react(), extensionPages()],
   resolve: {
     alias: [
       { find: '@', replacement: resolve(repositoryDir, 'src') },
-      // loro-crdt's default browser entry downloads and compiles its WebAssembly synchronously on
-      // the page's thread. Its bundler entry imports the WebAssembly instead, which
-      // vite-plugin-wasm fetches and instantiates asynchronously, in development and in builds
-      // alike. Vitest keeps the Node entry (tooling/vitest.config.ts has no such alias). The alias
-      // also applies to @kition/sdk's imports of loro-crdt (its /kdm and /sync/replicaVersions),
-      // which pnpm resolves to the same loro-crdt, so the page loads one Loro. Kition imports no
-      // @kition/sdk module that starts the editor's worker (/editor, /engine), so it needs no
-      // `worker: { format: 'es' }`.
-      { find: /^loro-crdt$/, replacement: 'loro-crdt/bundler' },
     ],
   },
   optimizeDeps: {
     // The app's page only: the dependency scan reads every HTML file under the root otherwise.
     entries: ['index.html'],
     // Vite's cold-start scanner cannot discover dependencies reached only through dynamic
-    // imports from index.html (idb for the extension store; loro-crdt, which the e2e smoke test
-    // loads through @kition/sdk/kdm). Pre-bundle them to prevent a full-page reload during renderer E2E.
-    include: ['idb', 'loro-crdt'],
+    // imports from index.html (idb for the extension store). Pre-bundle it to prevent a full-page
+    // reload during renderer E2E.
+    include: ['idb'],
   },
   css: {
     postcss: resolve(repositoryDir, 'tooling'),

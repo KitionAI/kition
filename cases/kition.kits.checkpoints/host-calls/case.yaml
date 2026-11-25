@@ -4,11 +4,11 @@ feature: kition.kits.checkpoints
 intent: >-
   A kit open in Kition's KitFrame on the desktop shell is offered checkpoints and view state: a
   replica write that asks for a labelled checkpoint is answered with the kit's own checkpoint, which
-  the kit lists, renames, reads and deletes (unknown ids not-found, labels past 200 characters
+  the kit lists, renames, reads (with the snapshot it keeps, after later writes) and deletes (a write
+  without its version refused -32602, unknown ids not-found, labels past 200 characters
   too-long); its view state is kept in the app's data, never the workspace, read back whole,
   refused too-large past 256 KB of JSON, and deleted with null; calls for another document are
-  refused. No pinned kit package calls these capabilities yet, so the test sends the host calls
-  over the open editor's host channel, as a kit does.
+  refused. The test sends the host calls over the open editor's host channel, as a kit does.
 layer: gate
 dimension: function
 source:

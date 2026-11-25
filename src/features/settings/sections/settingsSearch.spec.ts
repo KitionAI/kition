@@ -8,7 +8,6 @@ const bundles: Record<string, Record<string, unknown>> = {
     language: { label: 'Language' },
     display: { zoom: 'Zoom level' },
     network: { proxy: 'HTTP proxy' },
-    collab: { server: { label: 'Sync server' } },
     extensions: { install: 'Install from the workspace' },
     runtime: { logs: 'Runtime logs' },
     developer: { analytics: 'Analytics inspector' },
@@ -27,14 +26,13 @@ describe('settings search', () => {
     expect(index.get('general')).toContain('dark mode')
     expect(index.get('general')).toContain('language')
     expect(index.get('models')).toContain('openai')
-    expect(index.get('collab')).toContain('sync server')
   })
 
   it('shows every section without a query and keeps About separate from the main list', () => {
     const visible = filterSettingsSections('', index, 'Advanced')
     expect(visible.main.map((section) => section.key)).toEqual(['general', 'account', 'models', 'display'])
     expect(visible.about?.key).toBe('about')
-    expect(visible.advanced.map((section) => section.key)).toEqual(['network', 'collab', 'extensions', 'runtime', 'developer'])
+    expect(visible.advanced.map((section) => section.key)).toEqual(['network', 'extensions', 'runtime', 'developer'])
   })
 
   it('filters by pane text and reveals every advanced section when the group label matches', () => {
@@ -44,7 +42,7 @@ describe('settings search', () => {
     expect(proxy.advanced.map((section) => section.key)).toEqual(['network'])
 
     const group = filterSettingsSections('qqgroup', index, 'Qqgroup')
-    expect(group.advanced.map((section) => section.key)).toEqual(['network', 'collab', 'extensions', 'runtime', 'developer'])
+    expect(group.advanced.map((section) => section.key)).toEqual(['network', 'extensions', 'runtime', 'developer'])
     expect(group.main).toEqual([])
   })
 })

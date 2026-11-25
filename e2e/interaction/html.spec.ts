@@ -10,8 +10,7 @@ import { tags } from './support'
  *
  * Rows not covered here: H10 (version history): the HTML kit keeps no replica, which Kition's
  * version history needs; H8 (a damaged file): any bytes are HTML source, so there is no damaged
- * HTML file; H11 (printing): the HTML kit's manifest does not ask to print; H13 (co-editing):
- * Kition has no co-editing spec for the HTML kit yet.
+ * HTML file; H11 (printing): the HTML kit's manifest does not ask to print.
  */
 
 const engine = kitEngine('html', 'kition_html_kit')

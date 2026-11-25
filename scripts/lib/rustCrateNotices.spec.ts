@@ -137,8 +137,7 @@ describe('docs/legal/THIRD_PARTY_NOTICES.txt', () => {
     expect(notices).toMatch(/^tauri \d+\.\d+\.\d+\nLicense: Apache-2\.0 OR MIT/m)
     expect(notices).toMatch(/^serde \d+\.\d+\.\d+\nLicense: MIT OR Apache-2\.0/m)
     expect(notices).not.toMatch(/^License: .*\bA?GPL-/m)
-    expect(notices).toMatch(/^loro 1\.16\.2\nLicense: MIT\nRepository: https:\/\/github\.com\/KitionPkg\/loro\n/m)
-    expect(notices).toMatch(/^loro-internal 1\.16\.2\nLicense: MIT\nRepository: https:\/\/github\.com\/KitionPkg\/loro\n/m)
-    expect(notices).not.toContain('Repository: https://github.com/loro-dev/loro')
+    // The document model is a plain object store since 2026-11-24: the desktop app links no CRDT.
+    expect(notices).not.toMatch(/^loro[-_ ]/m)
   })
 })

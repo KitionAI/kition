@@ -115,7 +115,7 @@ test('a hostile page in the preview reaches neither Kition nor the runtime (secu
   }
 })
 
-test('preserves unsaved source when disk changes and respects a read-only role', async ({ page, baseURL }) => {
+test('preserves unsaved source when disk changes', async ({ page, baseURL }) => {
   test.setTimeout(120_000)
   const { host, saves, kit } = await openInKitFrame(page, baseURL!, 'Conflict.html', Buffer.from(original), {}, { persist: true })
   try {
@@ -134,9 +134,6 @@ test('preserves unsaved source when disk changes and respects a read-only role',
     await expect(kit.getByTestId('html-conflict')).toHaveCount(0)
     await kit.getByTestId('html-save').click()
     await expect.poll(() => saves.at(-1)?.bytes.toString()).toBe(edited)
-    await page.evaluate(() => window.__KITION_KIT_TEST__!.setReadOnlyDocuments(['Conflict.html']))
-    await expect(source).toHaveAttribute('readonly', '', { timeout: 60_000 })
-    await expect(kit.getByTestId('html-save')).toHaveCount(0)
   } finally {
     await host.dispose()
   }

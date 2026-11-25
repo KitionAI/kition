@@ -9,7 +9,6 @@
  */
 import { expect, test, type FrameLocator, type Page } from '@playwright/test'
 import { openInKitFrame } from '../helpers/embeddedKit'
-import { coEditing } from './coediting'
 import { hostMatrix, nodeEngine } from './helpers-b'
 import { tags } from './support'
 
@@ -48,17 +47,6 @@ hostMatrix({
   edit: (page, kit) => drawRectangle(page, kit),
   // H16: the board is an endless canvas with no page: it follows the scheme.
   dark: { surface: 'dark', area: (kit) => kit.getByTestId('board-canvas') },
-})
-
-coEditing({
-  kit: 'board',
-  module: 'kition_board_kit',
-  file: 'Plan.kboard',
-  title: 'Plan',
-  fixture: () => plan(1),
-  count: 1,
-  shows,
-  edit: (page, kit, slot) => drawRectangle(page, kit, 0.15 + slot * 0.18),
 })
 
 test.describe('board details', () => {

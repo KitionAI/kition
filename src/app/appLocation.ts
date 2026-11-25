@@ -19,7 +19,6 @@ const settingsSectionKeys: SettingsSectionKey[] = [
   'models',
   'display',
   'network',
-  'collab',
   'extensions',
   'runtime',
   'developer',

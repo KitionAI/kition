@@ -62,7 +62,7 @@ test('opens a video project in the Film kit’s own editor, edits it there, and 
   }
 })
 
-/** The replica version of the kit editor showing `path`, as author counters (Kition's development test hook). */
+/** The replica version of the kit editor showing `path`, as hex (Kition's development test hook). */
 function replicaVersion(page: Page, path: string) {
   return embeddedReplicaVersion(page, path)
 }

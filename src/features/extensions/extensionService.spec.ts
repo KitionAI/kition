@@ -5,8 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MountedKitDocument } from '@/features/kits/public'
 import { RpcPeer, SANDBOX_TAG, type ExtensionNotice, type SandboxFactory } from '@kition/sdk/extensions'
 import { WORKER_RUNTIME } from '@kition/sdk/extensions/runtime'
-import { parseSchema, person, Replica, Version } from '@kition/sdk/kdm'
+import { parseSchema, type BatchRequest } from '@kition/sdk/kdm'
 import { registerKit } from '@kition/sdk/script'
+import { FakeKitModel } from '@/test/fakeKitModel'
 
 const files = new Map<string, string>()
 const mounted: { listener: ((document: MountedKitDocument) => (() => void) | void) | null; active: MountedKitDocument | null } = { listener: null, active: null }
@@ -70,30 +71,26 @@ const runtimeSandbox: SandboxFactory = async () => {
   }
 }
 
-/** A kit editor's connection over a replica of the test schema (a page with a title). */
+/** A kit editor's connection whose kit answers the object model (`model/describe`, `model/batch`) of the test schema: a page with a title. */
 function fakeKitDocument(path: string, readOnly = false): MountedKitDocument & { title: () => unknown } {
-  const replica = Replica.create(schema, '01920000-0000-7000-8000-0000000000cc', 7n)
-  replica.transact(person('user:a'), (tx) => {
-    tx.create('Page', { title: 'quarterly review' }, { id: 'page' })
-  })
+  const kit = new FakeKitModel(schema, 'page', { title: 'quarterly review' })
   const toBuffer = (bytes: Uint8Array) => bytes.slice().buffer as ArrayBuffer
   const connection = {
     kit: { id: 'kit.test' },
-    capabilities: ['replica'],
+    capabilities: ['replica', 'model'],
     ai: {
       commands: async () => [],
       run: async () => ({ completed: [] }),
     },
     replica: {
-      exportChanges: async (since: ArrayBuffer) => ({ changes: toBuffer(replica.exportChanges(since.byteLength ? Version.decode(new Uint8Array(since)) : Version.empty())), blobs: new ArrayBuffer(0) }),
-      importChanges: async (changes: ArrayBuffer) => {
-        replica.importChanges(new Uint8Array(changes))
-        return { damage: null }
-      },
-      onChanged: () => () => undefined,
+      onChanged: (listener: (version: ArrayBuffer) => void) => kit.onChanged((version) => listener(toBuffer(version))),
+    },
+    model: {
+      describe: async () => kit.describe(),
+      batch: async (params: Record<string, unknown>) => ({ ...(await kit.batch(params as BatchRequest)), version: toBuffer(kit.version()) }),
     },
   }
-  return { path, kitId: 'kit.test', connection: connection as never, readOnly, title: () => replica.get('page', 'title') }
+  return { path, kitId: 'kit.test', connection: connection as never, readOnly, title: () => kit.get('page', 'title') }
 }
 
 const manifest = (permissions: string[]) => ({
@@ -280,7 +277,7 @@ describe('ExtensionService', () => {
     await service.host.openPanel('Slide.test', 'com.example.titles', 'titles.panel', firstChannel.port2)
     await expect(firstPanel.request('panel/request', null)).resolves.toBe('quarterly review')
 
-    // A role change: the editor closes and opens again, read-only. The old session has ended.
+    // The editor closes and opens again. The old session has ended.
     first()
     expect(service.documentOpening('Slide.test')).toBeNull()
     await expect(firstPanel.request('panel/request', null, 1_000)).rejects.toThrow()

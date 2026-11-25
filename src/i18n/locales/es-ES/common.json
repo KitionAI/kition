@@ -39,14 +39,10 @@
     "openSettings": "Abrir ajustes",
     "openSettingsHint": "Configuración de runtime y proveedor",
     "close": "Cerrar",
-    "openShared": "Abrir documento compartido",
-    "openSharedHint": "Abre un documento que alguien compartió contigo para coeditar",
     "extensions": "Extensiones",
     "runScript": "Ejecutar script…",
     "runScriptHint": "Ejecuta un script .mjs del espacio de trabajo en este documento",
-    "shortcuts": "⌘K abre la paleta; dentro de un editor de kit, pulsa ⌘.",
-    "syncedDocuments": "Tus documentos sincronizados",
-    "syncedDocumentsHint": "Abre aquí un documento de tus otros dispositivos"
+    "shortcuts": "⌘K abre la paleta; dentro de un editor de kit, pulsa ⌘."
   },
   "viewport": {
     "tooNarrow": "La ventana es demasiado estrecha. Es posible que el editor no se pueda usar por completo en este tamaño. Amplía la ventana a al menos 480px."
