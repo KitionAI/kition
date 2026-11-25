@@ -1,3 +1,5 @@
 public/templates/youtube-tiktok-thumbnail-generator/**/*.webp filter=lfs diff=lfs merge=lfs -text
 public/templates/batch-product-designer/**/*.webp filter=lfs diff=lfs merge=lfs -text
 public/templates/receipt-ocr-database/**/*.webp filter=lfs diff=lfs merge=lfs -text
+# The KDM copy's fixtures are exact bytes (content.json is LF only): never converted on checkout.
+crates/kition-kdm/tests/fixtures/** -text

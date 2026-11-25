@@ -63,8 +63,10 @@ const rustKdm = 'crates/kition-kdm'
 // Tests that kition-sdk runs and this repository does not carry: nested_text.rs reads one of
 // kition-sdk's regression cases (cases/regressions/issue-29-nested-text) and, like
 // kition-kits' tests/draft_compare.rs, inserts CJK text, which this English-only repository
-// does not hold.
-const rustSkipped = new Set([`${rustKdm}/tests/nested_text.rs`, 'crates/kition-kits/tests/draft_compare.rs'])
+// does not hold. cross_language.rs compares a change export with its fixture as pretty-printed JSON,
+// whose key order follows serde_json's map: sorted in kition-sdk, insertion order here
+// (`preserve_order`), so equal changes print differently; kition-sdk runs it.
+const rustSkipped = new Set([`${rustKdm}/tests/nested_text.rs`, `${rustKdm}/tests/cross_language.rs`, 'crates/kition-kits/tests/draft_compare.rs'])
 // The sources' own folders (src/store/) too; the tests' folders are their fixtures (below).
 const rustKdmSourceDirs = ['tests']
 const sourceDirs = (dir) => [dir, ...fs.readdirSync(path.join(sdk, rustKdm, dir), { withFileTypes: true }).filter((entry) => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name)).flatMap((entry) => sourceDirs(`${dir}/${entry.name}`))]
