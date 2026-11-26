@@ -134,7 +134,7 @@ async fn answer(shared: Arc<Shared>, peer: Arc<Peer>, request: Request) {
             peer.send(json!({ "jsonrpc": "2.0", "id": request.id, "result": {} })).await;
             std::process::exit(0);
         }
-        "document.open" => {
+        "file.open" => {
             let host = shared.host.lock().await.clone().unwrap();
             let file = params["file"].as_str().unwrap().to_owned();
             let bytes = host.call("files.read", json!({ "handle": file })).await;
@@ -146,11 +146,11 @@ async fn answer(shared: Arc<Shared>, peer: Arc<Peer>, request: Request) {
             }
             data.document()
         }
-        "document.list" => {
+        "file.list" => {
             let data = shared.data.lock().await;
             json!({ "documents": if data.file.is_some() { vec![data.document()] } else { Vec::new() } })
         }
-        "document.save" => {
+        "file.save" => {
             let host = shared.host.lock().await.clone().unwrap();
             let mut data = shared.data.lock().await;
             let written = host

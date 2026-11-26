@@ -18,11 +18,11 @@ const engine = kitEngine<{ PdfDocument: { create(name: string, width: number, he
 async function guide(blank = 0) {
   const sdk = await engine.load()
   const doc = sdk.PdfDocument.create('Guide.pdf', 612, 792)
-  doc.execute('page_add_text', JSON.stringify({ page: 1, text: 'Field guide', at: [72, 90], size: 24, width: 468 }))
-  doc.execute('page_insert_blank', JSON.stringify({ at: 2 }))
-  doc.execute('page_add_text', JSON.stringify({ page: 2, text: 'Green comes from oxygen.', at: [72, 90], size: 12, width: 468 }))
-  doc.execute('bookmark_add', JSON.stringify({ page: 2, title: 'Colors' }))
-  for (let index = 0; index < blank; index += 1) doc.execute('page_insert_blank', JSON.stringify({ at: 3 + index }))
+  doc.execute('page.addText', JSON.stringify({ page: 1, text: 'Field guide', at: [72, 90], size: 24, width: 468 }))
+  doc.execute('page.insertBlank', JSON.stringify({ at: 2 }))
+  doc.execute('page.addText', JSON.stringify({ page: 2, text: 'Green comes from oxygen.', at: [72, 90], size: 12, width: 468 }))
+  doc.execute('bookmark.add', JSON.stringify({ page: 2, title: 'Colors' }))
+  for (let index = 0; index < blank; index += 1) doc.execute('page.insertBlank', JSON.stringify({ at: 3 + index }))
   const bytes = Buffer.from(doc.save())
   doc.free()
   return bytes
@@ -60,7 +60,7 @@ hostMatrix({
   edit: (kit) => kit.getByTestId('pdf-insert-page').click(),
   focus: (kit) => kit.getByTestId('pdf-canvas-region').click({ position: { x: 300, y: 200 } }),
   create: { group: 'Documents', name: 'Untitled PDF.pdf', count: 1 },
-  agent: { command: 'page_insert_blank', params: { at: 1 } },
+  agent: { command: 'page.insertBlank', params: { at: 1 } },
   damaged: Buffer.from('this is not a PDF file at all'),
   // H16: the PDF's pages stay white; the backdrop around them follows the scheme.
   dark: { surface: 'sheet', sheet: 'white', area: (kit) => kit.getByTestId('pdf-canvas-region') },

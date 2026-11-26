@@ -12,8 +12,8 @@ const engine = kitEngine<{ CadDocument: { create(name: string, width: number, he
 async function planFixture() {
   const sdk = await engine.load()
   const doc = sdk.CadDocument.create('Plan.dxf', 420, 297)
-  doc.execute('layer.new', JSON.stringify({ name: 'Walls', current: true }))
-  doc.execute('pline', JSON.stringify({ vertices: [[40, 40], [300, 40], [300, 220], [40, 220]], closed: true }))
+  doc.execute('layer.add', JSON.stringify({ name: 'Walls', current: true }))
+  doc.execute('polyline.add', JSON.stringify({ vertices: [[40, 40], [300, 40], [300, 220], [40, 220]], closed: true }))
   const bytes = doc.save()
   doc.free()
   return Buffer.from(bytes)

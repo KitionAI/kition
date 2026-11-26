@@ -145,7 +145,7 @@ impl Fixture {
     }
 
     /// The person acting in the kit (on the host's connection, as an editor would): `slide.go`,
-    /// `selection.set`.
+    /// `select.set`.
     async fn person(&self, command: &str, params: Value) {
         let view = self.native.open(Caller::Agent, &self.path).await.unwrap_or_else(|err| panic!("{err}"));
         let params: Map<String, Value> = params.as_object().cloned().unwrap_or_default();
@@ -185,7 +185,7 @@ fn says(error: &Value, words: &[&str]) {
 async fn state_a_run_with_a_target_leaves_the_current_part_and_selection_as_they_were() {
     let Some(f) = Fixture::new("keeps", SLIDES).await else { return };
     f.person("slide.go", json!({ "index": 1 })).await;
-    f.person("selection.set", json!({ "ids": ["s1", "s3"] })).await;
+    f.person("select.set", json!({ "ids": ["s1", "s3"] })).await;
     let before = f.editor().await;
     assert_eq!(before, json!({ "slide": 2, "selection": ["s1", "s3"] }), "the person is on the second slide with two objects selected");
 
@@ -202,7 +202,7 @@ async fn state_a_run_with_a_target_leaves_the_current_part_and_selection_as_they
 async fn state_a_failing_run_on_a_clean_document_is_reopened_with_its_part_and_selection_put_back() {
     let Some(f) = Fixture::new("reopened", SLIDES).await else { return };
     f.person("slide.go", json!({ "index": 1 })).await;
-    f.person("selection.set", json!({ "ids": ["s2"] })).await;
+    f.person("select.set", json!({ "ids": ["s2"] })).await;
     let before = f.editor().await;
 
     let failed = f.refused("run", json!({ "target": { "slide": 1 }, "steps": [set_text("s1", "X"), set_text("s9", "Y")] })).await;
@@ -219,7 +219,7 @@ async fn state_a_failing_run_on_a_clean_document_is_reopened_with_its_part_and_s
 async fn state_a_failing_run_on_a_dirty_document_is_undone_with_its_part_and_selection_put_back() {
     let Some(f) = Fixture::new("undone", SLIDES).await else { return };
     f.ok("run", json!({ "target": { "slide": 2 }, "steps": [set_text("s3", "B3")], "save": false })).await;
-    f.person("selection.set", json!({ "ids": ["s2"] })).await;
+    f.person("select.set", json!({ "ids": ["s2"] })).await;
     let before = f.editor().await;
     assert_eq!(before, json!({ "slide": 1, "selection": ["s2"] }), "the unsaved run left the first slide current");
 
@@ -279,7 +279,7 @@ async fn state_a_mode_a_run_sets_holds_for_its_later_steps_and_is_put_back() {
 #[tokio::test]
 async fn state_inspect_with_a_target_leaves_the_current_part_and_selection_as_they_were() {
     let Some(f) = Fixture::new("looks", SLIDES).await else { return };
-    f.person("selection.set", json!({ "ids": ["s1"] })).await;
+    f.person("select.set", json!({ "ids": ["s1"] })).await;
     let before = f.editor().await;
     assert_eq!(before, json!({ "slide": 1, "selection": ["s1"] }));
 
@@ -349,7 +349,7 @@ async fn on_for_a_command_that_acts_on_no_object_is_invalid_params_and_says_why(
 async fn on_drives_a_selection_command_on_exactly_those_objects_and_leaves_the_selection() {
     let Some(f) = Fixture::new("marks", SLIDES).await else { return };
     f.person("slide.go", json!({ "index": 1 })).await;
-    f.person("selection.set", json!({ "ids": ["s2"] })).await;
+    f.person("select.set", json!({ "ids": ["s2"] })).await;
     let before = f.editor().await;
 
     let ran = f.ok("run", json!({ "target": { "slide": 2 }, "steps": [{ "command": "format.mark", "on": ["s1", "s3"] }] })).await;
@@ -487,7 +487,7 @@ async fn nohooks_a_target_and_on_for_a_target_parameter_keep_working() {
 #[tokio::test]
 async fn nohooks_on_for_a_selection_command_is_unsupported_and_never_acts_on_the_old_selection() {
     let Some(f) = Fixture::new("oldsel", SLIDES_WITHOUT_HOOKS).await else { return };
-    f.person("selection.set", json!({ "ids": ["s1"] })).await;
+    f.person("select.set", json!({ "ids": ["s1"] })).await;
     let refused = f.refused("run", json!({ "target": { "slide": 1 }, "steps": [set_text("s2", "A2"), { "command": "format.mark", "on": ["s2"] }] })).await;
     assert_eq!(refused["error"]["code"], "unsupported", "{refused}");
     assert_eq!(refused["error"]["index"], 1, "{refused}");

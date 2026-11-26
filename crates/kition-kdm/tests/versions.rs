@@ -105,3 +105,35 @@ fn a_snapshot_ahead_on_the_line_replaces_the_state_and_tells_what_changed() {
     assert!(matches!(b.import_changes(&behind), Err(KdmError::Stale(_))));
     assert!(b.import_changes(&b.snapshot().unwrap()).unwrap().is_empty());
 }
+
+/// A replica takes back the changes after a version (a scratch replica whose change the engine
+/// refused): state, version and log as at that version, the undo step of the change gone, and
+/// what changed since an earlier version still told, as it would not be on a replica loaded
+/// again. A version on another line, or ahead, is refused and changes nothing.
+#[test]
+fn a_replica_takes_back_its_changes_after_a_version_and_keeps_its_log_before_it() {
+    let mut replica = Replica::create(schema(), DocId::new(), actor(1)).unwrap();
+    let start = replica.version();
+    let (page, _) = page_with_shape(&mut replica);
+    let kept = replica.version();
+    let state = replica.state_json().unwrap();
+    replica.transact(&person(), |tx| tx.set(&page, "title", json!("Refused"))).unwrap();
+    let changed = replica.take_back_to(&kept).unwrap();
+    assert!(changed.contains(&page));
+    assert_eq!(replica.version(), kept);
+    assert_eq!(replica.state_json().unwrap(), state);
+    assert!(!replica.can_redo());
+    let since = replica.changes_since(&start).unwrap();
+    assert_eq!(since.created.len(), 2, "the log before the version stays");
+    assert!(replica.undo().unwrap().is_done(), "the step before the version stays");
+    assert!(!replica.exists(&page));
+    let other = Replica::create(schema(), DocId::new(), actor(2)).unwrap().version();
+    assert!(matches!(replica.take_back_to(&other), Err(KdmError::HistoryMissing(_))));
+    let ahead = Version::decode(&{
+        let mut bytes = replica.version().encode();
+        bytes[16..].copy_from_slice(&99u64.to_be_bytes());
+        bytes
+    })
+    .unwrap();
+    assert!(matches!(replica.take_back_to(&ahead), Err(KdmError::HistoryMissing(_))));
+}

@@ -50,17 +50,17 @@
     {
       "extension": "svg",
       "mime": "image/svg+xml",
-      "command": "document.exportBytes"
+      "command": "file.exportBytes"
     },
     {
       "extension": "pdf",
       "mime": "application/pdf",
-      "command": "document.exportBytes"
+      "command": "file.exportBytes"
     },
     {
       "extension": "png",
       "mime": "image/png",
-      "command": "document.exportBytes"
+      "command": "file.exportBytes"
     }
   ],
   "capabilities": [
@@ -95,7 +95,7 @@
     "objectModel": true,
     "layout": false,
     "export": {
-      "command": "document.exportBytes",
+      "command": "file.exportBytes",
       "data": "data"
     },
     "describe": {

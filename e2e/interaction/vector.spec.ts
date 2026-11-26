@@ -23,7 +23,7 @@ const layersOf = async (bytes: Buffer) => ((await engine.inspect('Saved.kvector'
 const logo = (count: number) =>
   engine.make('Logo.kvector', 400, 300, (doc) => {
     for (let index = 0; index < count; index += 1) doc.execute('shape.rectangle', JSON.stringify({ x: 20 + index * 60, y: 40, width: 40, height: 40 }))
-    doc.execute('select.none', '{}')
+    doc.execute('edit.deselectAll', '{}')
   })
 
 /** Draws a rectangle with the Rectangle tool in an empty part of the canvas. */

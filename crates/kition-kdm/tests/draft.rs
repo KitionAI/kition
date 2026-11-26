@@ -7,7 +7,7 @@ mod common;
 
 use common::{fields, page_with_shape, person, schema};
 use kition_kdm::diff::diff_states;
-use kition_kdm::{ActorId, DocId, KdmError, Origin, Replica};
+use kition_kdm::{ActorId, DocId, KdmError, Origin, Replica, UndoScope};
 use serde_json::json;
 
 fn actor(n: u64) -> ActorId {
@@ -76,26 +76,28 @@ fn a_merge_is_one_undo_step() {
     let preview = live.merged_state(&changes).expect("preview");
     assert_eq!(live.state_json().expect("state"), before, "a preview changes nothing");
     live.take_changed();
-    let changed = live.merge_changes(&changes, &agent()).expect("merge");
+    let merged = live.merge_changes(&changes, &agent()).expect("merge");
+    let changed = &merged.objects;
     assert!(changed.contains(&added) && changed.contains(&shape) && changed.contains(&page), "{changed:?}");
+    assert_eq!(merged.scope, Some(UndoScope::Person), "the agent's draft is the person's step");
     assert_eq!(live.state_json().expect("state"), preview);
     assert_eq!(live.state_json().expect("state"), draft.state_json().expect("state"));
     assert_eq!(live.list(&page, "shapes").expect("list").len(), 2);
     assert_eq!(live.text(&added, "label").expect("text"), "Hello");
 
     // Undo takes the whole merge back in one step, and redo brings it back.
-    assert!(live.undo().expect("undo"));
+    assert!(live.undo().expect("undo").is_done());
     assert_eq!(live.state_json().expect("state"), before);
-    assert!(live.redo().expect("redo"));
+    assert!(live.redo().expect("redo").is_done());
     assert_eq!(live.state_json().expect("state"), preview);
-    assert!(live.undo().expect("undo"));
+    assert!(live.undo().expect("undo").is_done());
     // The person's own edit before the draft is the next step.
-    assert!(live.undo().expect("undo"));
+    assert!(live.undo().expect("undo").is_done());
     assert!(!live.exists(&page));
 
     // A replica that syncs with this one gets the merge as ordinary changes. (Never the draft's
     // own changes as well: a replica holding both would show the draft's effects twice.)
-    assert!(live.redo().expect("redo") && live.redo().expect("redo"));
+    assert!(live.redo().expect("redo").is_done() && live.redo().expect("redo").is_done());
     follower.import_changes(&live.export_changes(&follower.version()).expect("export")).expect("import");
     assert_eq!(follower.state_json().expect("state"), live.state_json().expect("state"));
 }
@@ -145,7 +147,7 @@ fn live_edits_made_during_a_draft_survive_its_merge_and_its_undo() {
         later.export_changes(&live.version()).expect("export")
     })
     .expect("import");
-    assert!(live.undo().expect("undo"));
+    assert!(live.undo().expect("undo").is_done());
     assert_eq!(live.text(&shape, "label").expect("text"), "ab");
     assert_eq!(live.get(&shape, "x").expect("x"), json!(10));
     assert_eq!(live.get(&shape, "y").expect("y"), json!(7));
@@ -203,7 +205,9 @@ fn a_merge_refuses_changes_it_cannot_take_and_changes_nothing() {
     assert_eq!((live.version(), live.state_json().expect("state")), before);
     // An empty draft merges to nothing, with no undo step.
     let empty = live.fork(actor(10)).expect("fork");
-    assert!(live.merge_changes(&empty.export_changes(&live.version()).expect("export"), &agent()).expect("merge").is_empty());
+    let merged = live.merge_changes(&empty.export_changes(&live.version()).expect("export"), &agent()).expect("merge");
+    assert!(merged.objects.is_empty());
+    assert_eq!(merged.scope, None, "no step recorded");
     assert_eq!(live.version(), before.0);
 }
 
@@ -250,4 +254,39 @@ fn the_comparison_lists_created_changed_and_deleted_objects_and_texts() {
     assert!(!summary.is_empty());
     assert_eq!(summary.to_json()["created"][0]["type"], "Shape");
     assert!(diff_states(&live.state_json().expect("state"), &live.state_json().expect("state")).is_empty());
+}
+
+/// The kit's repair of a merged state is part of the merge's one change and undo step (data model
+/// 6.6, D9): one undo gives back the exact state before the merge, one redo the exact repaired
+/// state; a repair that fails refuses the merge, which changes nothing.
+#[test]
+fn a_merges_repair_joins_its_change_and_undo_step() {
+    let mut live = Replica::create(schema(), DocId::new(), actor(1)).unwrap();
+    let (page, shape) = page_with_shape(&mut live);
+    let mut draft = live.fork(actor(2)).unwrap();
+    let base = draft.version();
+    draft.transact(&agent(), |tx| tx.set(&shape, "x", json!(500))).unwrap();
+    let before = live.state_json().unwrap();
+    let merged = live
+        .merge_changes_repaired(&draft.export_changes(&base).unwrap(), &agent(), |tx, changed| {
+            assert!(changed.contains(&shape));
+            // The kit keeps x at most 100.
+            tx.set(&shape, "x", json!(100))
+        })
+        .unwrap();
+    assert_eq!(merged.scope, Some(UndoScope::Person));
+    assert_eq!(live.get(&shape, "x").unwrap(), json!(100));
+    let repaired = live.state_json().unwrap();
+    assert!(live.undo().unwrap().is_done());
+    assert_eq!(live.state_json().unwrap(), before, "one undo: the exact state before the merge");
+    assert!(live.redo().unwrap().is_done());
+    assert_eq!(live.state_json().unwrap(), repaired, "one redo: the exact repaired state");
+
+    let mut other = live.fork(actor(3)).unwrap();
+    let since = other.version();
+    other.transact(&agent(), |tx| tx.set(&page, "title", json!("Draft"))).unwrap();
+    let version = live.version();
+    let refused = live.merge_changes_repaired(&other.export_changes(&since).unwrap(), &agent(), |_, _| Err(KdmError::Engine("refused".into())));
+    assert!(refused.is_err());
+    assert_eq!((live.version(), live.state_json().unwrap()), (version, repaired));
 }

@@ -43,16 +43,16 @@
     {
       "extension": "csv",
       "mime": "text/csv",
-      "command": "table.file.export"
+      "command": "file.export"
     },
     {
       "extension": "md",
       "mime": "text/markdown",
-      "command": "table.file.export"
+      "command": "file.export"
     }
   ],
   "outline": {
-    "command": "table.file.outline"
+    "command": "file.outline"
   },
   "extras": {
     "call": {
@@ -202,18 +202,18 @@
       "table",
       "view"
     ],
-    "render": "table.file.render",
+    "render": "file.render",
     "export": {
-      "command": "table.file.export",
+      "command": "file.export",
       "data": "data"
     },
     "describe": {
       "noun": "table file",
       "fileTypes": ".ktable",
-      "reports": "its tables with their fields (names, types, choices, link targets), views (filters, sorts, groups), record counts and first records (ids and values, by the ids the commands take; the rest a page at a time with `table.read`), and its dashboards",
-      "covers": "tables, fields, records, views, filters, sorting, grouping, links, dashboards, and more; `table.records.create` adds a record; a new file holds one starter table (table 1, `Table`: title, status, notes) that `table.tables.delete` removes",
+      "reports": "its tables with their fields (names, types, choices, link targets), views (filters, sorts, groups), record counts and first records (ids and values, by the ids the commands take; the rest a page at a time with `file.read`), and its dashboards",
+      "covers": "tables, fields, records, views, filters, sorting, grouping, links, dashboards, and more; `record.add` adds a record; a new file holds one starter table (table 1, `Table`: title, status, notes) that `table.delete` removes",
       "queries": "`records`, `fields`, or `views`",
-      "example": "table.records.create",
+      "example": "record.add",
       "use": "structured, spreadsheet-like results"
     }
   },

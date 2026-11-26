@@ -38,20 +38,20 @@ describe('kit shortcuts', () => {
 
   it('finds the command by shortcut; whether it can run is asked when the key is pressed', () => {
     const commands = [
-      { id: 'select.all', shortcut: 'Cmd+A', enabled: false },
-      { id: 'select.deselect', shortcut: 'Cmd+D', enabled: true },
+      { id: 'edit.selectAll', shortcut: 'Cmd+A', enabled: false },
+      { id: 'edit.deselectAll', shortcut: 'Cmd+D', enabled: true },
     ] as KitCommand[]
-    expect(commandForShortcut(commands, key('KeyA', { metaKey: true }), true)?.id).toBe('select.all')
-    expect(commandForShortcut(commands, key('KeyD', { metaKey: true }), true)?.id).toBe('select.deselect')
+    expect(commandForShortcut(commands, key('KeyA', { metaKey: true }), true)?.id).toBe('edit.selectAll')
+    expect(commandForShortcut(commands, key('KeyD', { metaKey: true }), true)?.id).toBe('edit.deselectAll')
     expect(commandForShortcut(commands, key('KeyQ', { metaKey: true }), true)).toBeUndefined()
   })
 
   it('prefers the exact key over the Delete and Backspace alias', () => {
     const commands = [
       { id: 'markers.clear', shortcut: 'Delete', enabled: true },
-      { id: 'edit.clear', shortcut: 'Backspace', enabled: true },
+      { id: 'edit.delete', shortcut: 'Backspace', enabled: true },
     ] as KitCommand[]
-    expect(commandForShortcut(commands, key('Backspace', { key: 'Backspace' }), true)?.id).toBe('edit.clear')
+    expect(commandForShortcut(commands, key('Backspace', { key: 'Backspace' }), true)?.id).toBe('edit.delete')
     expect(commandForShortcut(commands, key('Delete', { key: 'Delete' }), true)?.id).toBe('markers.clear')
     expect(commandForShortcut([commands[0]], key('Backspace', { key: 'Backspace' }), true)?.id).toBe('markers.clear')
   })

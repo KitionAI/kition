@@ -124,7 +124,7 @@
       "reports": "its pages, spreads, frames, stories, styles, and swatches",
       "covers": "pages, frames, text, styles, swatches, tables, and more",
       "queries": "`text frame`, `paragraph style`, or `insert page`",
-      "example": "frame.create"
+      "example": "frame.add"
     }
   },
   "headless": {

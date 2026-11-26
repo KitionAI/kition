@@ -18,7 +18,7 @@ const engine = kitEngine<{ LayoutDocument: { create(name: string, width: number,
 async function flyer(pages = 0) {
   const sdk = await engine.load()
   const doc = sdk.LayoutDocument.create('Flyer.klayout', 612, 792)
-  doc.execute('frame.create', JSON.stringify({ rect: [54, 72, 558, 200], content: 'text', caret: true }))
+  doc.execute('frame.add', JSON.stringify({ rect: [54, 72, 558, 200], content: 'text', caret: true }))
   doc.execute('text.insert', JSON.stringify({ text: 'Spring concert' }))
   doc.execute('text.exitToFrame', '{}')
   doc.execute('edit.deselectAll', '{}')

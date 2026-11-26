@@ -72,14 +72,14 @@ fn undo_and_redo_of_a_large_write_keep_little_more_than_the_write_itself() {
     let opened = live();
     clear_column(&mut replica, &ids);
     let wrote = live();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     let undone = live();
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     let redone = live();
     for (id, value) in [(&ids[0], json!(null)), (&ids[SHEETS - 1], json!(null))] {
         assert_eq!(replica.map_get(id, "cells", "k0").unwrap(), value);
     }
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(replica.map_get(&ids[7], "cells", "k0").unwrap(), json!("cell 7.0"));
     assert_eq!(replica.map_get(&ids[7], "cells", "k1").unwrap(), json!("cell 7.1"));
 

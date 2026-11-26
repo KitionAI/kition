@@ -183,7 +183,7 @@ static BATCH_COMMANDS: LazyLock<bool> = LazyLock::new(|| std::env::var("KITION_K
 /// slide and each `|`-separated piece of it an object, whose id (`s1`, `s2`, …) is unique only
 /// within its slide, as in an engine that resolves ids against the current slide. The kit then
 /// offers `slide.go`, `slide.inspect`, `shape.text` and `shape.upper`, which edit objects of the
-/// current slide, `selection.set`, and `format.mark`, which marks the selected objects (`*b1*`)
+/// current slide, `select.set`, and `format.mark`, which marks the selected objects (`*b1*`)
 /// and takes no id at all. The current slide and the selection are editor state, not the
 /// document: the kit answers the Kit Process Protocol's `context.get`, `context.set` and
 /// `context.restore` for them, unless [`CONTEXT`] says it has no such hooks.
@@ -1286,7 +1286,7 @@ impl Kit {
         }
     }
 
-    /// `document.open`. A file already open answers its document; when the file changed since it
+    /// `file.open`. A file already open answers its document; when the file changed since it
     /// was read and the document has no unsaved edits, it is read again first, as kition-headless
     /// does, so a caller that opens a document to see it as it was sees the file as it is.
     fn open(&self, params: DocumentOpenParams, step: &mut Step) -> Handled {
@@ -1613,7 +1613,7 @@ impl Kit {
         if *SLIDES
             && matches!(
                 params.command.as_str(),
-                "slide.go" | "slide.inspect" | "shape.text" | "shape.write" | "shape.upper" | "selection.set" | "format.mark" | "mode.set"
+                "slide.go" | "slide.inspect" | "shape.text" | "shape.write" | "shape.upper" | "select.set" | "format.mark" | "mode.set"
             )
         {
             return self.execute_on_slides(&params, step);
@@ -1735,7 +1735,7 @@ impl Kit {
                     document.mode = mode.ok_or_else(|| invalid("/mode", "`mode` is `normal` or `caps`".to_owned()))?.to_owned();
                     Ok((false, None, None))
                 }
-                "selection.set" => {
+                "select.set" => {
                     let ids = given.get("ids").and_then(Value::as_array).ok_or_else(|| invalid("/ids", "`ids` is a list of object ids".to_owned()))?;
                     let ids: Vec<Value> = ids.clone();
                     document.selection = objects_of(&slides, document.current.min(count - 1), &ids)
@@ -2549,7 +2549,7 @@ fn slide_commands() -> Vec<CommandInfo> {
             true,
         ),
         command(
-            "selection.set",
+            "select.set",
             "Select objects",
             "Selects objects of the current slide by their `ids`, as a person clicking them does.",
             json!({

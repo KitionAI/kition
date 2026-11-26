@@ -63,12 +63,12 @@ requests! {
     Ping = "kit.ping" (Empty) -> Empty;
     SetPreferences = "kit.setPreferences" (SetPreferencesParams) -> Empty;
     Shutdown = "kit.shutdown" (Empty) -> Empty;
-    DocumentOpen = "document.open" (DocumentOpenParams) -> DocumentState;
-    DocumentList = "document.list" (Empty) -> DocumentListResult;
-    DocumentActivate = "document.activate" (DocumentRef) -> Empty;
-    DocumentSave = "document.save" (DocumentRef) -> DocumentWritten;
+    DocumentOpen = "file.open" (DocumentOpenParams) -> DocumentState;
+    DocumentList = "file.list" (Empty) -> DocumentListResult;
+    DocumentActivate = "file.activate" (DocumentRef) -> Empty;
+    DocumentSave = "file.save" (DocumentRef) -> DocumentWritten;
     DocumentSaveAs = "document.saveAs" (DocumentSaveAsParams) -> DocumentWritten;
-    DocumentExport = "document.export" (DocumentExportParams) -> DocumentWritten;
+    DocumentExport = "file.export" (DocumentExportParams) -> DocumentWritten;
     DocumentClose = "document.close" (DocumentCloseParams) -> Empty;
     /// Optional: a kit with the feature `document.identity` (section 5.6).
     DocumentIdentity = "document.identity" (DocumentIdentityParams) -> DocumentIdentityResult;
@@ -76,12 +76,12 @@ requests! {
     DocumentFork = "document.fork" (DocumentForkParams) -> DocumentForkResult;
     /// Host: reads the document's file again, dropping its unsaved edits (a conflict, section 5).
     DocumentReload = "document.reload" (DocumentRef) -> DocumentState;
-    CommandsList = "commands.list" (CommandsListParams) -> CommandsListResult;
+    CommandsList = "command.list" (CommandsListParams) -> CommandsListResult;
     CommandsExecute = "commands.execute" (CommandsExecuteParams) -> CommandsExecuteResult;
     ViewScreenshot = "view.screenshot" (ViewScreenshotParams) -> Image;
     ViewDescribe = "view.describe" (DocumentRef) -> ViewDescribeResult;
     /// Optional: a kit with the capability `document-text` (`KitText 1.0`).
-    DocumentText = "document.text" (DocumentTextParams) -> DocumentTextResult;
+    DocumentText = "file.text" (DocumentTextParams) -> DocumentTextResult;
 }
 
 macro_rules! host_services {
@@ -136,7 +136,7 @@ notifications! {
 
 /// Whether only the `host` role may send this method (protocol section 1).
 pub fn is_host_only(method: &str) -> bool {
-    matches!(method, "kit.shutdown" | "kit.setPreferences" | "document.activate" | "document.didChangeOnDisk" | "document.reload")
+    matches!(method, "kit.shutdown" | "kit.setPreferences" | "file.activate" | "document.didChangeOnDisk" | "document.reload")
 }
 
 #[cfg(test)]
@@ -145,10 +145,10 @@ mod tests {
 
     #[test]
     fn host_only_methods() {
-        for method in ["kit.shutdown", "kit.setPreferences", "document.activate"] {
+        for method in ["kit.shutdown", "kit.setPreferences", "file.activate"] {
             assert!(is_host_only(method), "{method}");
         }
-        for method in ["kit.ping", "document.open", "commands.execute", "view.screenshot"] {
+        for method in ["kit.ping", "file.open", "commands.execute", "view.screenshot"] {
             assert!(!is_host_only(method), "{method}");
         }
     }

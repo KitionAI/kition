@@ -18,8 +18,10 @@ use serde_json::json;
 
 const OUT: &str = "KITION_KDM_REPRODUCIBLE_OUT";
 
+/// The document's snapshot followed by its changes after its creation: both are the same bytes.
 fn build() -> Vec<u8> {
     let mut replica = Replica::create(schema(), DocId::new(), ActorId::random()).unwrap();
+    let created = replica.version();
     replica
         .transact(&person(), |tx| {
             let page = tx.create("Page", fields(json!({ "title": "One" })))?;
@@ -28,7 +30,7 @@ fn build() -> Vec<u8> {
             Ok(())
         })
         .unwrap();
-    replica.snapshot().unwrap()
+    [replica.snapshot().unwrap(), replica.export_changes(&created).unwrap()].join(&b'\n')
 }
 
 /// The child's half: builds the document into the file `OUT` names (nothing without it).

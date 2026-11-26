@@ -181,7 +181,7 @@ async fn projected_receipts_name_changes_and_never_store_computed_objects() {
     let f = Fixture::new();
     for (command, params, list, id) in [
         ("line.set", json!({"id":"line:a","text":"Revised"}), "changed", "line:a"),
-        ("line.create", json!({"id":"line:d","text":"Delta","in":"section:s.lines"}), "created", "line:d"),
+        ("line.add", json!({"id":"line:d","text":"Delta","in":"section:s.lines"}), "created", "line:d"),
         ("line.move", json!({"id":"line:a","to":2}), "moved", "line:a"),
         ("line.delete", json!({"id":"line:b"}), "deleted", "line:b"),
     ] {

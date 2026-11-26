@@ -97,7 +97,7 @@ impl Lines {
                 "Document":{"fields":{"text":{"kind":"string"},"lines":{"kind":"list","of":"Line"}}},
                 "Line":{"projected":true,"label":"text","text":"text","fields":{"text":{"kind":"string"}},"projectedOps":{
                     "set.text":{"command":"line.set","params":{"id":"target","text":"value"}},
-                    "create":{"command":"line.create","params":{"id":"id","text":"fields.text","at":"at"}},
+                    "create":{"command":"line.add","params":{"id":"id","text":"fields.text","at":"at"}},
                     "delete":{"command":"line.delete","params":{"id":"target"}},
                     "list.move":{"command":"line.move","params":{"id":"target","to":"to"}}
                 }}
@@ -152,7 +152,7 @@ impl BatchTarget for Lines {
             "line.delete" => {
                 lines.remove(at.ok_or("no line")?);
             }
-            "line.create" => {
+            "line.add" => {
                 lines.insert(
                     params["at"].as_u64().map_or(lines.len(), |at| at as usize),
                     serde_json::from_value(json!({"id":target,"type":"Line","fields":{"text":params["text"]}})).unwrap(),

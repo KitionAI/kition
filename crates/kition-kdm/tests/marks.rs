@@ -209,9 +209,9 @@ fn unmark_removes_a_mark_from_part_of_a_range() {
 fn marks_are_undone_like_any_transaction() {
     let mut replica = paragraph(1, "Hello");
     replica.transact(&person(), |tx| tx.text_mark(&id("p1"), "text", 0, 5, "bold", json!(true))).unwrap();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(delta(&replica), vec![TextRun::new("Hello")]);
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     assert_eq!(delta(&replica), vec![run("Hello", json!({ "bold": true }))]);
 }
 

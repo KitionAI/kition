@@ -104,7 +104,7 @@
         },
         "capabilities": {
           "type": "array",
-          "description": "Optional platform capabilities of the executable, as the manifest's headless.capabilities lists them, for example document-text (KitText 1.0, document.text).",
+          "description": "Optional platform capabilities of the executable, as the manifest's headless.capabilities lists them, for example document-text (KitText 1.0, file.text).",
           "uniqueItems": true,
           "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" }
         }
@@ -375,7 +375,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["documentId"],
-      "description": "document.text (KitText 1.0), for a kit with the capability document-text. Read-only.",
+      "description": "file.text (KitText 1.0), for a kit with the capability document-text. Read-only.",
       "properties": {
         "documentId": { "$ref": "#/$defs/documentId" },
         "limit": { "type": "integer", "minimum": 0, "description": "The most Unicode scalar values to answer; 1048576 when absent." }

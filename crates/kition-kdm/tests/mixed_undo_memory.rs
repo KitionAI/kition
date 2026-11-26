@@ -66,13 +66,13 @@ fn undo_of_a_creation_older_than_a_large_write_keeps_nothing_of_the_history_it_r
     let start = resident();
     clear(&mut replica, &ids, "k0");
     let wrote = resident();
-    assert!(replica.undo().unwrap(), "the clear is undone");
+    assert!(replica.undo().unwrap().is_done(), "the clear is undone");
     assert_eq!(replica.map_get(&ids[7], "cells", "k0").unwrap(), json!("cell 7.0"));
     let undone = resident();
-    assert!(replica.undo().unwrap(), "the creation is undone");
+    assert!(replica.undo().unwrap().is_done(), "the creation is undone");
     assert!(!replica.exists(&made));
     let engine_undone = resident();
-    assert!(replica.redo().unwrap(), "the creation is redone");
+    assert!(replica.redo().unwrap().is_done(), "the creation is redone");
     assert!(replica.exists(&made));
     // A second write as large as the first, after the history was released.
     clear(&mut replica, &ids, "k1");

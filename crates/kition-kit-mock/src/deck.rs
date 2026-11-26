@@ -932,7 +932,7 @@ pub fn edit(replica: &mut Replica, command: &str, params: &Map<String, Value>, o
                 Some(scope) => UndoScope::parse(scope).ok_or("`scope` is person or agent")?,
                 None => UndoScope::of(origin.kind).unwrap_or(UndoScope::Person),
             };
-            let done = if command == "edit.undo" { replica.undo_in(scope) } else { replica.redo_in(scope) }.map_err(kdm)?;
+            let done = if command == "edit.undo" { replica.undo_in(scope) } else { replica.redo_in(scope) }.map_err(kdm)?.is_done();
             if !done {
                 return Err(format!("nothing to {}", if command == "edit.undo" { "undo" } else { "redo" }));
             }

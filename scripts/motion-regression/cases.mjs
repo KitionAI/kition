@@ -32,7 +32,7 @@ export const cases = [
   ...['hold', 'ease'].map(kind => scenario(`opacity-${kind}`, `Opacity with ${kind} interpolation`, [
     solid(), key('opacity', 0, 0), key('opacity', 1, 100),
     command('prop.select', { layer: '#1', path: 'transform/opacity' }),
-    kind === 'hold' ? command('keys.interpolation', { interpolation: 'hold' }) : command('keys.easyEase'),
+    kind === 'hold' ? command('keyframe.interpolation', { interpolation: 'hold' }) : command('keyframe.easyEase'),
     ...sample([0, 0.25, 0.5, 0.75, 1], 'opacity'),
   ])),
   ...['rect', 'ellipse'].map(shape => scenario(`mask-${shape}`, `Add, inverted, and subtract ${shape} masks`, [
@@ -63,7 +63,7 @@ export const cases = [
   scenario('duplicate-history', 'Duplicate, delete, undo, and redo retain content and order', [
     solid('Tile', '#00aaff', { width: 16, height: 12 }), checkpoint('one'),
     command('edit.duplicate'), prop('position', [12, 10, 0]), checkpoint('two'),
-    command('edit.clear'), checkpoint('deleted'), command('edit.undo'), checkpoint('undo-delete'),
+    command('edit.delete'), checkpoint('deleted'), command('edit.undo'), checkpoint('undo-delete'),
     command('edit.redo'), checkpoint('redo-delete'),
   ]),
   scenario('precompose', 'Precomposition preserves the outer image and supports undo', [

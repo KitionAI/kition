@@ -34,7 +34,7 @@
     "name": "Edit.kfilm",
     "edit": [
       {
-        "command": "file.newColorMatte",
+        "command": "item.newColorMatte",
         "params": {
           "color": "#ff0000",
           "seconds": 2
@@ -88,7 +88,7 @@
     "name": "Flyer.klayout",
     "edit": [
       {
-        "command": "frame.create",
+        "command": "frame.add",
         "params": {
           "rect": [
             10,
@@ -117,7 +117,7 @@
     "class": "CadDocument",
     "name": "Plan.dxf",
     "edit": {
-      "command": "circle",
+      "command": "circle.add",
       "params": {
         "center": [
           200,
@@ -180,7 +180,7 @@
     "class": "PdfDocument",
     "name": "Report.pdf",
     "edit": {
-      "command": "page_rotate",
+      "command": "page.rotate",
       "params": {
         "degrees": 90,
         "pages": [
@@ -196,7 +196,7 @@
     "class": "TableDocument",
     "name": "Tasks.ktable",
     "edit": {
-      "command": "table.records.create",
+      "command": "record.add",
       "params": {
         "tableId": 1,
         "values": {
@@ -212,7 +212,7 @@
     "class": "BoardDocument",
     "name": "Plan.kboard",
     "edit": {
-      "command": "element.create",
+      "command": "element.add",
       "params": {
         "elements": [
           {
@@ -253,7 +253,7 @@
     "name": "Page.html",
     "optional": true,
     "edit": {
-      "command": "html.setSource",
+      "command": "file.setSource",
       "params": {
         "source": "<!doctype html><html><body style=\"margin:0;background:#5645d4\">Hello</body></html>"
       }
@@ -266,7 +266,7 @@
     "class": "SceneDocument",
     "name": "Room.kscene",
     "edit": {
-      "command": "add.uvSphere",
+      "command": "object.addUvSphere",
       "params": { "location": [2, 0, 1], "radius": 0.5 }
     }
   },

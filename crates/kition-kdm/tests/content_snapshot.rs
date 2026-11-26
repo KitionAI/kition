@@ -75,15 +75,27 @@ fn a_content_snapshot_loads_as_the_same_document_on_a_new_line() {
 
 #[test]
 fn a_content_snapshot_is_no_change() {
-    let (mut replica, _, _) = edited();
+    let (mut replica, page, shape) = edited();
     let version = replica.version();
     replica.take_changed();
     let bytes = replica.content_snapshot().unwrap();
     assert_eq!(replica.version(), version);
     assert!(replica.take_changed().is_empty());
     // An undo after it takes back the last edit, as before.
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
+    assert_eq!(replica.get(&page, "title").unwrap(), json!(OLD_TITLE));
     assert_ne!(replica.content_snapshot().unwrap(), bytes);
+    // On a replica opened from the file: its one edit is its one undo step, before and after a
+    // save, and the undo and redo give back the exact values.
+    let mut file = Replica::load(schema(), &bytes, actor(3)).unwrap();
+    file.transact(&person(), |tx| tx.set(&shape, "x", json!(5))).unwrap();
+    file.content_snapshot().unwrap();
+    assert!(file.undo().unwrap().is_done());
+    assert_eq!(file.get(&shape, "x").unwrap(), json!(10));
+    assert!(!file.can_undo());
+    assert!(file.redo().unwrap().is_done());
+    assert_eq!(file.get(&shape, "x").unwrap(), json!(5));
+    assert!(!file.can_redo());
 }
 
 #[test]

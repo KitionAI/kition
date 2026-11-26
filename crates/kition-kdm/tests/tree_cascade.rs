@@ -44,7 +44,7 @@ fn cascade_is_opt_in_atomic_and_names_every_descendant() {
         let reread = kition_kdm::reread::diff_read_again(&schema, &before, &after).to_json();
         assert_eq!(reread["deleted"], changes["deleted"]);
         assert_eq!(replica.objects_of_type("Node").len(), 1);
-        assert!(replica.undo().unwrap());
+        assert!(replica.undo().unwrap().is_done());
         assert_eq!(replica.state_json().unwrap(), before);
     }
 }

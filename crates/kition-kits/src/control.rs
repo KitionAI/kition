@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn every_method_has_a_deadline() {
         let limits = Limits::default();
-        for method in ["document.open", "document.save", "commands.execute", "model.batch"] {
+        for method in ["file.open", "file.save", "commands.execute", "model.batch"] {
             assert!(!limits.deadline(method).is_zero());
             assert!(limits.deadline(method) <= limits.call_timeout);
         }

@@ -109,7 +109,7 @@ fn a_copy_starts_with_empty_undo_history() {
     assert!(source.can_undo());
     let mut copy = source.copy_as_new_document(DocId::new(), actor(1)).unwrap();
     assert!(!copy.can_undo() && !copy.can_redo());
-    assert!(!copy.undo().unwrap());
+    assert!(!copy.undo().unwrap().is_done());
     assert_eq!(content(&copy), content(&source));
 }
 
@@ -120,7 +120,9 @@ fn a_copy_and_its_source_never_take_each_others_changes() {
     let base = copy.version();
     copy.transact(&person(), |tx| tx.set(&shape, "x", json!(99))).unwrap();
     source.transact(&person(), |tx| tx.set(&page, "title", json!("source only"))).unwrap();
-    let wrong = |result: Result<_, KdmError>| matches!(result, Err(KdmError::WrongDocument { .. }));
+    fn wrong<T>(result: Result<T, KdmError>) -> bool {
+        matches!(result, Err(KdmError::WrongDocument { .. }))
+    }
     // Changes, drafts and snapshots of one are refused by the other, both ways, and change nothing.
     let (source_hash, copy_hash) = (source.state_hash().unwrap(), copy.state_hash().unwrap());
     assert!(wrong(source.import_changes(&copy.export_changes(&base).unwrap())));

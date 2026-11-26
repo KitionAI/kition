@@ -23,10 +23,11 @@ pub const PING_INTERVAL: Duration = Duration::from_secs(15);
 /// Consecutive failed pings after which the host treats the kit as hung.
 pub const PING_FAILURE_LIMIT: u32 = 3;
 
-/// The default response deadline for a request. `document.*` and
+/// The default response deadline for a request. The document methods (`file.open`, `file.save`,
+/// `file.export`, `file.text`, ...; `document.saveAs`, `document.reload`, `document.close`) and
 /// `commands.execute` report progress instead and have no fixed limit.
 pub fn request_timeout(method: &str) -> Option<Duration> {
-    if method.starts_with("document.") || method == "commands.execute" {
+    if method.starts_with("file.") || method.starts_with("document.") || method == "commands.execute" {
         None
     } else if method == "kit.initialize" {
         Some(INITIALIZE_TIMEOUT)
@@ -109,7 +110,7 @@ mod tests {
 
     #[test]
     fn timeouts_follow_section_eleven() {
-        assert_eq!(request_timeout("document.open"), None);
+        assert_eq!(request_timeout("file.open"), None);
         assert_eq!(request_timeout("commands.execute"), None);
         assert_eq!(request_timeout("kit.initialize"), Some(INITIALIZE_TIMEOUT));
         assert_eq!(request_timeout("view.screenshot"), Some(REQUEST_TIMEOUT));

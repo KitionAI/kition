@@ -19,9 +19,9 @@ const entitiesOf = async (bytes: Buffer) => (await engine.inspect('Saved.dxf', b
 /** A drawing with a room outline on its own layer and `lines` more lines. */
 const plan = (lines: number) =>
   engine.make('Plan.dxf', 420, 297, (doc) => {
-    doc.execute('layer.new', JSON.stringify({ name: 'Walls', current: true }))
-    doc.execute('pline', JSON.stringify({ vertices: [[40, 40], [300, 40], [300, 220], [40, 220]], closed: true }))
-    for (let index = 0; index < lines; index += 1) doc.execute('line', JSON.stringify({ points: [[60, 60 + index * 10], [200, 60 + index * 10]] }))
+    doc.execute('layer.add', JSON.stringify({ name: 'Walls', current: true }))
+    doc.execute('polyline.add', JSON.stringify({ vertices: [[40, 40], [300, 40], [300, 220], [40, 220]], closed: true }))
+    for (let index = 0; index < lines; index += 1) doc.execute('line.add', JSON.stringify({ points: [[60, 60 + index * 10], [200, 60 + index * 10]] }))
   })
 
 /** Types a command and its points on the command line, as a drafter would. */

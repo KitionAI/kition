@@ -19,10 +19,10 @@ const engine = kitEngine<{ DocDocument: { create(name: string, width: number, he
 async function letter(breaks = 0) {
   const sdk = await engine.load()
   const doc = sdk.DocDocument.create('Letter.docx', 612, 792)
-  doc.execute('para.style', JSON.stringify({ style: 'Title' }))
+  doc.execute('paragraph.style', JSON.stringify({ style: 'Title' }))
   doc.execute('text.insert', JSON.stringify({ text: 'Field notes' }))
   doc.execute('text.newParagraph', '{}')
-  doc.execute('para.style', JSON.stringify({ style: 'Normal' }))
+  doc.execute('paragraph.style', JSON.stringify({ style: 'Normal' }))
   doc.execute('text.insert', JSON.stringify({ text: 'Auroras appear near the poles.' }))
   for (let index = 0; index < breaks; index += 1) doc.execute('text.pageBreak', '{}')
   doc.execute('caret.docStart', '{}')
@@ -42,7 +42,7 @@ async function read<T>(bytes: Buffer, work: (doc: NodeDocDocument) => T) {
 }
 
 const pagesOf = (bytes: Buffer) => read(bytes, (doc) => (JSON.parse(doc.inspect()) as { pages: unknown[] }).pages.length)
-const textOf = (bytes: Buffer) => read(bytes, (doc) => (JSON.parse(doc.execute('document.text', '{}')) as { text: string }).text)
+const textOf = (bytes: Buffer) => read(bytes, (doc) => (JSON.parse(doc.execute('file.text', '{}')) as { text: string }).text)
 
 /** Puts the caret at the end of the document, as a click on the page and Cmd+Down do. */
 async function toEnd(kit: FrameLocator, page: Page) {

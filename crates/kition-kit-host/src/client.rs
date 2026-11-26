@@ -384,7 +384,7 @@ mod control_tests {
             let frame = framing::encode(&json!({ "jsonrpc": "2.0", "id": request["id"], "result": {} })).unwrap();
             write_frame_async(&mut writer, &frame).await.unwrap();
         };
-        let (answer, ()) = tokio::join!(control.scope(client.request("document.save", json!({}), Some(Duration::from_secs(2)))), peer);
+        let (answer, ()) = tokio::join!(control.scope(client.request("file.save", json!({}), Some(Duration::from_secs(2)))), peer);
         assert_eq!(answer.unwrap(), json!({}));
         assert_eq!(received.try_recv().unwrap().title, "Saving");
         assert!(received.try_recv().is_err());

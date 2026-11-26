@@ -72,7 +72,7 @@ fn a_failed_transaction_leaves_no_trace_and_cannot_be_undone_into_existence() {
         .unwrap_err();
     assert!(matches!(error, KdmError::InvalidValue { .. }));
     assert_eq!(replica.state_hash().unwrap(), before);
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert!(!replica.exists(&shape), "undo reverts the creation, not the rolled-back transaction");
 }
 
@@ -179,7 +179,7 @@ fn bulk_content_written_at_creation_is_not_undoable() {
         Replica::create_with(schema(), DocId::new(), ActorId::from_u64(1).unwrap(), &origin, |tx| tx.create("Page", fields(json!({ "title": "Imported" }))))
             .unwrap();
     assert_eq!(replica.get(&page, "title").unwrap(), json!("Imported"));
-    assert!(!replica.undo().unwrap());
+    assert!(!replica.undo().unwrap().is_done());
     assert!(replica.exists(&page));
 }
 
@@ -335,10 +335,10 @@ fn undo_and_redo_report_the_objects_they_change() {
     let (_, shape) = page_with_shape(&mut replica);
     replica.transact(&person(), |tx| tx.set(&shape, "x", json!(55))).unwrap();
     replica.take_changed();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(replica.get(&shape, "x").unwrap(), json!(10));
     assert_eq!(replica.take_changed().into_iter().collect::<Vec<_>>(), vec![shape.clone()]);
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     assert_eq!(replica.get(&shape, "x").unwrap(), json!(55));
     assert_eq!(replica.take_changed().into_iter().collect::<Vec<_>>(), vec![shape]);
 }
@@ -580,13 +580,13 @@ fn page_with_a_corrupt_list() -> Vec<u8> {
 /// A list item that is not an object id is refused when the content is read: no read or index
 /// ever disagrees with the list.
 #[test]
-fn a_list_item_that_is_not_an_id_is_an_error_and_indices_stay_the_engines() {
+fn content_whose_list_holds_an_item_that_is_not_an_id_is_refused_at_load() {
     let error = Replica::load(schema(), &page_with_a_corrupt_list(), ActorId::from_u64(2).unwrap()).err().unwrap();
     assert!(matches!(error, KdmError::Encoding(_)), "{error:?}");
 }
 
 /// Random list edits in one transaction against a plain vector model, reading the items in the
-/// middle of the transaction (`observe`) or never; the engine must end where the model does.
+/// middle of the transaction (`observe`) or never; the replica must end where the model does.
 fn list_edits_match_a_model(observe: bool) {
     for seed in 0..20 {
         let mut replica = replica();
@@ -630,12 +630,12 @@ fn list_edits_match_a_model(observe: bool) {
 }
 
 #[test]
-fn list_edits_read_back_mid_transaction_match_the_engine() {
+fn list_edits_read_back_mid_transaction_match_a_vector_model() {
     list_edits_match_a_model(true);
 }
 
 #[test]
-fn list_edits_never_read_back_match_the_engine() {
+fn list_edits_never_read_back_match_a_vector_model() {
     list_edits_match_a_model(false);
 }
 
@@ -892,7 +892,7 @@ fn system_transactions_are_not_undo_steps() {
 
     replica.transact(&person(), |tx| tx.set(&repaired, "x", json!(5))).unwrap();
     replica.transact(&Origin::system("migrate"), |tx| tx.set(&repaired, "y", json!(9))).unwrap();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(replica.get(&repaired, "x").unwrap(), json!(1));
     assert_eq!(replica.get(&repaired, "y").unwrap(), json!(9));
     assert!(!replica.can_undo());
@@ -905,11 +905,11 @@ fn import_transactions_are_not_undo_steps() {
     let imported = Origin::new(kition_kdm::OriginKind::Import, "file");
     replica.transact(&person(), |tx| tx.set(&shape, "x", json!(5))).unwrap();
     replica.transact(&imported, |tx| tx.set(&shape, "y", json!(9))).unwrap();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(replica.get(&shape, "x").unwrap(), json!(10));
     assert_eq!(replica.get(&shape, "y").unwrap(), json!(9));
     // The only step left is the person's creation of the shape; the import is never one.
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert!(!replica.exists(&shape));
     assert!(!replica.can_undo());
 }
@@ -922,7 +922,7 @@ fn undoes_a_group_of_transactions_as_one_step() {
     replica.transact(&person(), |tx| tx.set(&shape, "x", json!(1))).unwrap();
     replica.transact(&person(), |tx| tx.set(&shape, "y", json!(2))).unwrap();
     replica.end_undo_group();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(replica.get(&shape, "x").unwrap(), json!(10));
     assert_eq!(replica.get(&shape, "y").unwrap(), json!(20));
     replica.begin_undo_group().unwrap();
@@ -942,7 +942,7 @@ fn undo_while_grouping_ends_the_group_and_reverts_it_as_one_step() {
     replica.transact(&person(), |tx| tx.set(&shape, "x", json!(1))).unwrap();
     replica.transact(&person(), |tx| tx.set(&shape, "y", json!(2))).unwrap();
     replica.transact(&person(), |tx| tx.set(&shape, "fill", json!("#000"))).unwrap();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     let state = [replica.get(&shape, "x").unwrap(), replica.get(&shape, "y").unwrap(), replica.get(&shape, "fill").unwrap()];
     assert_eq!(state, [json!(10), json!(20), json!(null)]);
     replica.begin_undo_group().unwrap();
@@ -955,12 +955,12 @@ fn redo_while_grouping_ends_the_group_first() {
     let mut replica = replica();
     let (_, shape) = page_with_shape(&mut replica);
     replica.transact(&person(), |tx| tx.set(&shape, "x", json!(1))).unwrap();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     replica.begin_undo_group().unwrap();
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     assert_eq!(replica.get(&shape, "x").unwrap(), json!(1));
     replica.transact(&person(), |tx| tx.set(&shape, "y", json!(2))).unwrap();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!([replica.get(&shape, "x").unwrap(), replica.get(&shape, "y").unwrap()], [json!(1), json!(20)]);
     replica.begin_undo_group().unwrap();
     replica.end_undo_group();
@@ -982,12 +982,12 @@ fn an_import_that_changes_what_the_group_changed_keeps_the_group_one_undo_step()
     replica.transact(&person(), |tx| tx.set(&shape, "kind", json!("ellipse"))).unwrap();
     replica.end_undo_group();
     let state = |replica: &Replica| ["x", "y", "kind", "fill"].map(|field| replica.get(&shape, field).unwrap());
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(state(&replica), [json!(10), json!(20), json!("rect"), json!("#111")]);
     // Redo puts the whole group back as one step too, keeping the other replica's change.
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     assert_eq!(state(&replica), [json!(1), json!(2), json!("ellipse"), json!("#111")]);
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(state(&replica), [json!(10), json!(20), json!("rect"), json!("#111")]);
     replica.begin_undo_group().unwrap();
     replica.end_undo_group();
@@ -1010,9 +1010,9 @@ fn two_undo_groups_split_by_imports_stay_two_steps() {
     replica.begin_undo_group().unwrap();
     replica.transact(&person(), |tx| tx.set(&shape, "y", json!(5))).unwrap();
     replica.end_undo_group();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!([replica.get(&shape, "x").unwrap(), replica.get(&shape, "y").unwrap()], [json!(2), json!(20)]);
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!([replica.get(&shape, "x").unwrap(), replica.get(&shape, "fill").unwrap()], [json!(10), json!("#222")]);
 }
 
@@ -1029,7 +1029,7 @@ fn an_import_that_leaves_the_group_alone_keeps_the_group_one_undo_step() {
     replica.import_changes(&other.export_changes(&since).unwrap()).unwrap();
     replica.transact(&person(), |tx| tx.set(&shape, "y", json!(2))).unwrap();
     replica.end_undo_group();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!([replica.get(&shape, "x").unwrap(), replica.get(&shape, "y").unwrap()], [json!(10), json!(20)]);
     assert!(replica.exists(&page));
     replica.begin_undo_group().unwrap();

@@ -205,7 +205,7 @@ async fn handle_inner(kits: &KitManager, method: &str, request: Value) -> Result
             let answer = kits.check(Caller::User, &document.kit, &document.document_id).await.map_err(failed)?;
             Ok(answer.unwrap_or_else(|| json!({ "diagnostics": [] })))
         }
-        "commands.list" => {
+        "command.list" => {
             let list: CommandsListParams = params(request)?;
             let commands = kits.commands(Caller::User, &list.kit, list.document_id.as_deref(), list.query.as_deref()).await.map_err(failed)?;
             Ok(json!({ "commands": commands }))

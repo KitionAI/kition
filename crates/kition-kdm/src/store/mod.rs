@@ -11,6 +11,7 @@
 
 pub(crate) mod check;
 pub(crate) mod op;
+pub(crate) mod scalar;
 pub(crate) mod text;
 pub(crate) mod transform;
 pub(crate) mod tree;
@@ -19,23 +20,28 @@ pub(crate) mod tree;
 mod tests;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::Arc;
 
 use serde_json::{Map, Value};
 
-use crate::content::{self, Content, ContentVersion, TYPE_KEY};
+use crate::content::{self, Content, TYPE_KEY};
 use crate::{DocId, Expand, FieldDef, FieldKind, KdmError, ObjectId, Result, Schema, TextRun};
 use op::{Name, Op, TreePlace};
+use scalar::{Entries, Key, Scalar};
 use text::Text;
 use tree::Tree;
 
-/// One field an object holds.
+/// One field an object holds. 24 bytes: a register's value inline, a container behind a box.
 #[derive(Clone, Debug, PartialEq)]
+// A boxed list keeps every field of every object at the size of a value (a `Vec` is 24 bytes and
+// would make each field 32).
+#[allow(clippy::box_collection)]
 pub(crate) enum Field {
     /// A register: any field that is not a container, and any field the schema does not declare.
-    Value(Value),
+    Value(Scalar),
     Text(Box<Text>),
-    List(Vec<ObjectId>),
-    Map(BTreeMap<String, Value>),
+    List(Box<Vec<ObjectId>>),
+    Map(Box<Entries>),
     Tree(Box<Tree>),
 }
 
@@ -51,24 +57,23 @@ impl Field {
         }
     }
 
-    /// The field in its content form (data model 7.4, rule C8); `None` when it is empty. It
-    /// depends on the field alone, never on a schema: a text is a string exactly when no run
-    /// carries a mark. List items and tree nodes `keep` refuses are left out (a node with its
-    /// subtree); a list or tree left with nothing is empty.
-    pub(crate) fn content(&self, keep: &dyn Fn(&ObjectId) -> bool) -> Option<Value> {
+    /// The field in its content form (data model 7.4, rule C8), as a change carries it; `None`
+    /// when it is empty. It depends on the field alone, never on a schema: a text is a string
+    /// exactly when no run carries a mark.
+    pub(crate) fn content(&self) -> Option<Value> {
         match self {
-            Self::Value(value) => (!value.is_null()).then(|| value.clone()),
+            Self::Value(value) => (!value.is_null()).then(|| value.to_value()),
             Self::Text(text) if text.is_empty() => None,
             Self::Text(text) if text.has_marks() => Some(Value::Array(text.runs().iter().map(TextRun::to_json).collect())),
             Self::Text(text) => Some(Value::String(text.string())),
-            Self::List(items) => {
-                let kept: Vec<Value> = items.iter().filter(|item| keep(item)).map(|item| Value::String(item.to_string())).collect();
-                (!kept.is_empty()).then_some(Value::Array(kept))
-            }
-            Self::Map(entries) => (!entries.is_empty()).then(|| Value::Object(entries.iter().map(|(key, value)| (key.clone(), value.clone())).collect())),
+            Self::List(items) => (!items.is_empty()).then(|| Value::Array(items.iter().map(|item| Value::String(item.to_string())).collect())),
+            Self::Map(entries) => (!entries.is_empty()).then(|| Value::Object(entries.iter().map(|(key, value)| (key.to_text(), value.to_value())).collect())),
             Self::Tree(tree) => {
-                let nodes: Vec<Value> =
-                    tree.flat(keep).into_iter().map(|(depth, node)| Value::Array(vec![Value::from(depth), Value::String(node.to_string())])).collect();
+                let nodes: Vec<Value> = tree
+                    .flat(&|_: &ObjectId| true)
+                    .into_iter()
+                    .map(|(depth, node)| Value::Array(vec![Value::from(depth), Value::String(node.to_string())]))
+                    .collect();
                 (!nodes.is_empty()).then_some(Value::Array(nodes))
             }
         }
@@ -79,36 +84,40 @@ impl Field {
     /// other than `insert` and `attributes`, a tree entry that is not `[depth, "<id>"]`, a map
     /// entry holding `null`, and an id (list item, tree node, ref) that is a UUID not in
     /// lowercase hyphenated form.
-    fn from_content(name: &str, value: &Value, def: Option<&FieldDef>) -> Result<Self> {
+    pub(crate) fn from_content(name: &str, value: Value, def: Option<&FieldDef>) -> Result<Self> {
         let bad = |shape: &str| KdmError::Encoding(format!("not KDM content: field `{name}` is not {shape}"));
         Ok(match def.map(|def| def.kind) {
             Some(FieldKind::Text) => match value {
-                Value::String(text) => Self::Text(Box::new(Text::plain(text))),
-                Value::Array(runs) => Self::Text(Box::new(Text::from_runs(&runs_from_content(runs).ok_or_else(|| bad("a string or an array of runs"))?))),
+                Value::String(text) => Self::Text(Box::new(Text::plain(&text))),
+                Value::Array(runs) => Self::Text(Box::new(Text::from_runs(&runs_from_content(&runs).ok_or_else(|| bad("a string or an array of runs"))?))),
                 _ => return Err(bad("a string or an array of runs")),
             },
             Some(FieldKind::List) => {
                 let Value::Array(items) = value else { return Err(bad("an array of object ids")) };
-                Self::List(items.iter().map(|item| id_from_content(item).unwrap_or_else(|| Err(bad("an array of object ids")))).collect::<Result<Vec<_>>>()?)
+                Self::List(Box::new(
+                    items.iter().map(|item| id_from_content(item).unwrap_or_else(|| Err(bad("an array of object ids")))).collect::<Result<Vec<_>>>()?,
+                ))
             }
             Some(FieldKind::Map) => {
                 let Value::Object(entries) = value else { return Err(bad("a JSON object")) };
-                let mut out = BTreeMap::new();
+                let ids = def.is_some_and(|def| def.of.is_some());
+                let mut out = Vec::with_capacity(entries.len());
                 for (key, entry) in entries {
                     if entry.is_null() {
                         return Err(KdmError::Encoding(format!("not KDM content: map entry `{key}` of field `{name}` holds null")));
                     }
-                    if let (Some(_), Value::String(id)) = (def.and_then(|def| def.of.as_ref()), entry) {
+                    if let (true, Value::String(id)) = (ids, &entry) {
                         content::check_id(id)?;
                     }
-                    out.insert(key.clone(), entry.clone());
+                    out.push((Key::new(&key), Scalar::from_value(entry)));
                 }
-                Self::Map(out)
+                out.sort_by(|a, b| a.0.cmp(&b.0));
+                Self::Map(Box::new(Entries::from_sorted(out)))
             }
             Some(FieldKind::Tree) => {
                 let Value::Array(entries) = value else { return Err(bad("an array of [depth, id] entries")) };
                 let mut nodes = Vec::with_capacity(entries.len());
-                for entry in entries {
+                for entry in &entries {
                     let Some([depth, node]) = entry.as_array().map(Vec::as_slice) else { return Err(bad("an array of [depth, id] entries")) };
                     let depth = depth.as_u64().and_then(|depth| usize::try_from(depth).ok()).ok_or_else(|| bad("an array of [depth, id] entries"))?;
                     nodes.push((depth, id_from_content(node).unwrap_or_else(|| Err(bad("an array of [depth, id] entries")))?));
@@ -116,12 +125,12 @@ impl Field {
                 Self::Tree(Box::new(Tree::from_flat(nodes)?))
             }
             Some(FieldKind::Ref) => {
-                if let Value::String(id) = value {
+                if let Value::String(id) = &value {
                     content::check_id(id)?;
                 }
-                Self::Value(value.clone())
+                Self::Value(Scalar::from_value(value))
             }
-            _ => Self::Value(value.clone()),
+            _ => Self::Value(Scalar::from_value(value)),
         })
     }
 }
@@ -129,7 +138,7 @@ impl Field {
 /// An id in content: `None` when it is not a string, an error when it is not a well-formed id.
 fn id_from_content(value: &Value) -> Option<Result<ObjectId>> {
     let id = value.as_str()?;
-    Some(content::check_id(id).map(|()| ObjectId::from_string(id)))
+    Some(content::check_id(id).map(|()| ObjectId::from_text(id)))
 }
 
 /// A text's runs from content: `None` when a run is not `{"insert": "<text>"}` with an optional
@@ -154,29 +163,65 @@ fn runs_from_content(items: &[Value]) -> Option<Vec<TextRun>> {
         .collect()
 }
 
-/// One object: its type and the fields it holds, sorted by name.
+/// What objects of one type holding the same fields share: the type and the fields' names,
+/// sorted. A store holds each once ([`Names::shape`]): a million cells of one type with the same
+/// four fields hold one shape between them.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct Shape {
+    ty: Name,
+    names: Box<[Name]>,
+}
+
+/// One object: its type and the fields it holds, sorted by name. Its shape names them; it holds
+/// their values, 24 bytes each.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Object {
-    pub(crate) ty: Name,
-    fields: Vec<(Name, Field)>,
+    shape: Arc<Shape>,
+    /// The value of each field its shape names, in that order.
+    values: Box<[Field]>,
 }
 
 impl Object {
     pub(crate) fn new(ty: Name) -> Self {
-        Self { ty, fields: Vec::new() }
+        Self { shape: Arc::new(Shape { ty, names: Box::default() }), values: Box::default() }
+    }
+
+    /// An object of type `ty` holding `fields` (each name once, in any order), its shape held once
+    /// in `names`; empty fields are left out.
+    pub(crate) fn of_fields(ty: Name, mut fields: Vec<(Name, Field)>, names: &mut Names) -> Self {
+        fields.retain(|(_, field)| !field.is_empty());
+        fields.sort_by(|a, b| a.0.cmp(&b.0));
+        let (held, values): (Vec<Name>, Vec<Field>) = fields.into_iter().unzip();
+        let shape = names.shape(&Arc::new(Shape { ty, names: held.into_boxed_slice() }));
+        Self { shape, values: values.into_boxed_slice() }
+    }
+
+    /// The object's type.
+    pub(crate) fn ty(&self) -> &Name {
+        &self.shape.ty
     }
 
     fn position(&self, name: &str) -> std::result::Result<usize, usize> {
-        self.fields.binary_search_by(|(held, _)| (**held).cmp(name))
+        self.shape.names.binary_search_by(|held| (**held).cmp(name))
     }
 
     pub(crate) fn get(&self, name: &str) -> Option<&Field> {
-        self.position(name).ok().and_then(|at| self.fields.get(at)).map(|(_, field)| field)
+        self.position(name).ok().and_then(|at| self.values.get(at))
     }
 
     fn get_mut(&mut self, name: &str) -> Option<&mut Field> {
         let at = self.position(name).ok()?;
-        self.fields.get_mut(at).map(|(_, field)| field)
+        self.values.get_mut(at)
+    }
+
+    /// Adds field `name` at `at` (its place among the names).
+    fn insert(&mut self, at: usize, name: Name, field: Field) {
+        let mut names = self.shape.names.to_vec();
+        names.insert(at, name);
+        let mut values = std::mem::take(&mut self.values).into_vec();
+        values.insert(at, field);
+        self.shape = Arc::new(Shape { ty: self.shape.ty.clone(), names: names.into_boxed_slice() });
+        self.values = values.into_boxed_slice();
     }
 
     /// Sets a field; an empty one is removed.
@@ -187,17 +232,23 @@ impl Object {
         }
         match self.position(&name) {
             Ok(at) => {
-                if let Some(slot) = self.fields.get_mut(at) {
-                    slot.1 = field;
+                if let Some(slot) = self.values.get_mut(at) {
+                    *slot = field;
                 }
             }
-            Err(at) => self.fields.insert(at, (name, field)),
+            Err(at) => self.insert(at, name, field),
         }
     }
 
     fn take(&mut self, name: &str) -> Option<Field> {
         let at = self.position(name).ok()?;
-        Some(self.fields.remove(at).1)
+        let mut names = self.shape.names.to_vec();
+        names.remove(at);
+        let mut values = std::mem::take(&mut self.values).into_vec();
+        let taken = values.remove(at);
+        self.shape = Arc::new(Shape { ty: self.shape.ty.clone(), names: names.into_boxed_slice() });
+        self.values = values.into_boxed_slice();
+        Some(taken)
     }
 
     /// Removes the field when it became empty.
@@ -209,30 +260,31 @@ impl Object {
 
     /// The fields the object holds, by name.
     pub(crate) fn fields(&self) -> impl Iterator<Item = (&Name, &Field)> {
-        self.fields.iter().map(|(name, field)| (name, field))
+        self.shape.names.iter().zip(self.values.iter())
+    }
+
+    /// The fields the object holds, by name, to change in place (none added or removed).
+    pub(crate) fn fields_mut(&mut self) -> impl Iterator<Item = (&Name, &mut Field)> {
+        self.shape.names.iter().zip(self.values.iter_mut())
     }
 
     /// The object's content form: `$type` and every field it holds (data model 7.4), as a change
     /// carries it.
     pub(crate) fn to_content(&self) -> Map<String, Value> {
-        self.content_keeping(&|_: &ObjectId| true)
-    }
-
-    /// [`Object::to_content`] with the list items and tree nodes `keep` refuses left out.
-    fn content_keeping(&self, keep: &dyn Fn(&ObjectId) -> bool) -> Map<String, Value> {
         let mut out = Map::new();
-        out.insert(TYPE_KEY.to_owned(), Value::String(self.ty.to_string()));
-        for (name, field) in &self.fields {
-            if let Some(value) = field.content(keep) {
+        out.insert(TYPE_KEY.to_owned(), Value::String(self.ty().to_string()));
+        for (name, field) in self.fields() {
+            if let Some(value) = field.content() {
                 out.insert(name.to_string(), value);
             }
         }
         out
     }
 
-    /// An object from its content form; each field as the schema declares it, a field it does not
-    /// declare as a register. Refuses ([`KdmError::Encoding`]) a field holding `null` and a field
-    /// of the wrong shape ([`Field::from_content`]); a container field written empty is left out.
+    /// An object from its content form (as a change carries it); each field as the schema
+    /// declares it, a field it does not declare as a register. Refuses ([`KdmError::Encoding`]) a
+    /// field holding `null` and a field of the wrong shape ([`Field::from_content`]); a container
+    /// field written empty is left out.
     pub(crate) fn from_content(fields: &Map<String, Value>, schema: &Schema) -> Result<Self> {
         let ty = fields.get(TYPE_KEY).and_then(Value::as_str).ok_or_else(|| KdmError::Encoding("not KDM content: an object has no `$type`".into()))?;
         let def = schema.types.get(ty);
@@ -245,7 +297,7 @@ impl Object {
                 return Err(KdmError::Encoding(format!("not KDM content: field `{name}` holds null (a field without a value is left out)")));
             }
             let field = def.and_then(|def| def.fields.get(name));
-            object.put(Name::from(name.as_str()), Field::from_content(name, value, field)?);
+            object.put(Name::from(name.as_str()), Field::from_content(name, value.clone(), field)?);
         }
         Ok(object)
     }
@@ -255,17 +307,21 @@ impl Object {
 type Holders = Vec<(ObjectId, Name)>;
 
 /// One document's state.
+///
+/// Objects are held in id order (the order the content encoding writes them, data model 7.4 C3),
+/// each behind an `Arc`: a copy of the store ([`crate::Replica::fork`], drafts, plans) shares every
+/// object with the original and copies one only when either writes it.
 #[derive(Clone, Debug)]
 pub(crate) struct Store {
     pub(crate) doc_id: DocId,
     pub(crate) kit: String,
     /// The minimum schema version (rule M20).
     pub(crate) schema_version: u64,
-    objects: HashMap<ObjectId, Object>,
+    objects: BTreeMap<ObjectId, Arc<Object>>,
     /// For each object that is a node of a tree, the trees holding it.
     nodes: HashMap<ObjectId, Holders>,
-    /// The type and field names in use, each held once.
-    names: HashSet<Name>,
+    /// The type and field names and the shapes of objects in use, each held once.
+    names: Names,
 }
 
 impl PartialEq for Store {
@@ -293,14 +349,33 @@ fn stale(reason: impl Into<String>) -> KdmError {
     KdmError::Stale(reason.into())
 }
 
-/// `name` as held in `names`.
-fn intern(names: &mut HashSet<Name>, name: &str) -> Name {
-    if let Some(held) = names.get(name) {
-        return held.clone();
+/// The type and field names in use and the shapes of objects, each held once.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Names {
+    names: HashSet<Name>,
+    shapes: HashSet<Arc<Shape>>,
+}
+
+impl Names {
+    /// `name` as held here.
+    pub(crate) fn name(&mut self, name: &str) -> Name {
+        if let Some(held) = self.names.get(name) {
+            return held.clone();
+        }
+        let held = Name::from(name);
+        self.names.insert(held.clone());
+        held
     }
-    let held = Name::from(name);
-    names.insert(held.clone());
-    held
+
+    /// `shape` as held here.
+    pub(crate) fn shape(&mut self, shape: &Arc<Shape>) -> Arc<Shape> {
+        if let Some(held) = self.shapes.get(&**shape) {
+            return Arc::clone(held);
+        }
+        let held = Arc::new(Shape { ty: self.name(&shape.ty), names: shape.names.iter().map(|name| self.name(name)).collect() });
+        self.shapes.insert(Arc::clone(&held));
+        held
+    }
 }
 
 /// The expand of mark `key` on field `field` of type `ty`.
@@ -310,67 +385,71 @@ fn expand_of(schema: &Schema, ty: &str, field: &str, key: &str) -> Option<Expand
 
 impl Store {
     pub(crate) fn new(doc_id: DocId, kit: String, schema_version: u64) -> Self {
-        Self { doc_id, kit, schema_version, objects: HashMap::new(), nodes: HashMap::new(), names: HashSet::new() }
+        Self { doc_id, kit, schema_version, objects: BTreeMap::new(), nodes: HashMap::new(), names: Names::default() }
     }
 
-    /// The state that content holds (data model 7.4), its fields read as `schema` declares them.
-    /// Refuses ([`KdmError::Encoding`]) a file's content (no version) whose list item or tree node
-    /// names no object of it (the writer leaves them out, [`Store::to_content`]); a snapshot holds
-    /// the state exactly, such entries included.
-    pub(crate) fn from_content(content: &Content, schema: &Schema) -> Result<Self> {
-        let mut store = Self::new(content.doc_id, content.kit.clone(), content.schema_version);
-        store.objects.reserve(content.objects.len());
-        for (id, fields) in &content.objects {
-            let mut object = Object::from_content(fields, schema)?;
-            store.intern_object(&mut object);
-            let id = ObjectId::from_string(id.clone());
-            store.index_trees(&id, &object, true);
-            store.objects.insert(id, object);
+    /// The state that content holds (data model 7.4), read by [`content::read`] and
+    /// [`content::decode`]. Refuses ([`KdmError::Encoding`]) a field of the wrong shape for its
+    /// kind (the first one the reader met), and a file's content (no version) whose list item or
+    /// tree node names no object of it (the writer leaves them out, [`content::write`]); a snapshot
+    /// holds the state exactly, such entries included.
+    pub(crate) fn from_content(content: Content) -> Result<Self> {
+        let Content { kit, doc_id, schema_version, version, objects } = content;
+        let (list, names) = objects.into_parts()?;
+        let mut store = Self { doc_id, kit, schema_version, objects: list.into_iter().collect(), nodes: HashMap::new(), names };
+        for (owner, object) in &store.objects {
+            for (field, held) in object.fields() {
+                let Field::Tree(tree) = held else { continue };
+                for (node, _) in tree.nodes() {
+                    store.nodes.entry(node.clone()).or_default().push((owner.clone(), field.clone()));
+                }
+            }
         }
-        let exact = content.version.is_some();
-        for (id, object) in store.objects.iter().filter(|_| !exact) {
-            for (name, field) in &object.fields {
-                let missing = match field {
-                    Field::List(items) => items.iter().find(|item| !store.objects.contains_key(*item)),
-                    Field::Tree(tree) => tree.nodes().map(|(node, _)| node).find(|node| !store.objects.contains_key(*node)),
-                    _ => None,
-                };
-                if let Some(missing) = missing {
-                    return Err(KdmError::Encoding(format!("not KDM content: {id}.{name} names `{missing}`, which is no object of the document")));
+        if version.is_none() {
+            for (id, object) in &store.objects {
+                for (name, field) in object.fields() {
+                    let missing = match field {
+                        Field::List(items) => items.iter().find(|item| !store.objects.contains_key(*item)),
+                        Field::Tree(tree) => tree.nodes().map(|(node, _)| node).find(|node| !store.objects.contains_key(*node)),
+                        _ => None,
+                    };
+                    if let Some(missing) = missing {
+                        return Err(KdmError::Encoding(format!("not KDM content: {id}.{name} names `{missing}`, which is no object of the document")));
+                    }
                 }
             }
         }
         Ok(store)
     }
 
-    /// The state as content (with `version`, a snapshot's). It depends on the state alone. In a
-    /// file's content (no version), list items and tree nodes naming no object of the document (a
-    /// deleted object's list entries, which stay until the kit removes them) are left out, a node
-    /// with its subtree, as reads skip them: a file never names a missing object. A snapshot holds
-    /// the state exactly, so that a replica loaded from it at its version holds the same state and
-    /// takes the same later changes (a `list_remove` of such an entry included).
-    pub(crate) fn to_content(&self, version: Option<ContentVersion>) -> Content {
-        let exact = version.is_some();
-        let keep = |id: &ObjectId| exact || self.objects.contains_key(id);
-        Content {
-            kit: self.kit.clone(),
-            doc_id: self.doc_id,
-            schema_version: self.schema_version,
-            version,
-            objects: self.objects.iter().map(|(id, object)| (id.to_string(), object.content_keeping(&keep))).collect(),
+    /// A store of only the objects `ids` (those it holds), shared with this one, and the nodes of
+    /// their trees: what changes to those objects alone can be taken back in.
+    pub(crate) fn subset(&self, ids: &std::collections::BTreeSet<ObjectId>) -> Self {
+        let mut out = Self::new(self.doc_id, self.kit.clone(), self.schema_version);
+        let held: Vec<(ObjectId, Arc<Object>)> = ids.iter().filter_map(|id| self.objects.get(id).map(|object| (id.clone(), Arc::clone(object)))).collect();
+        for (id, object) in held {
+            out.index_trees(&id, &object, true);
+            out.objects.insert(id, object);
         }
+        out
+    }
+
+    /// Whether both stores hold one document's same objects (the tree index follows from them).
+    pub(crate) fn same_objects(&self, other: &Self) -> bool {
+        self.doc_id == other.doc_id && self.kit == other.kit && self.schema_version == other.schema_version && self.objects == other.objects
     }
 
     pub(crate) fn object(&self, id: &ObjectId) -> Option<&Object> {
-        self.objects.get(id)
+        self.objects.get(id).map(|object| &**object)
     }
 
     pub(crate) fn contains(&self, id: &ObjectId) -> bool {
         self.objects.contains_key(id)
     }
 
+    /// The objects in id order.
     pub(crate) fn objects(&self) -> impl Iterator<Item = (&ObjectId, &Object)> {
-        self.objects.iter()
+        self.objects.iter().map(|(id, object)| (id, &**object))
     }
 
     /// The trees (owner and field) holding `id` as a node.
@@ -383,17 +462,30 @@ impl Store {
         self.objects.get(id)?.get(name)
     }
 
-    /// Holds the object's type and field names once.
+    /// The object to change: copied first when a copy of the store shares it.
+    fn object_mut<'a>(objects: &'a mut BTreeMap<ObjectId, Arc<Object>>, id: &ObjectId) -> Option<&'a mut Object> {
+        objects.get_mut(id).map(Arc::make_mut)
+    }
+
+    /// Holds the object's shape (its type and field names) once.
     fn intern_object(&mut self, object: &mut Object) {
-        object.ty = intern(&mut self.names, &object.ty);
-        for (name, _) in &mut object.fields {
-            *name = intern(&mut self.names, name);
+        object.shape = self.names.shape(&object.shape);
+    }
+
+    /// Holds the shape of object `id` once again after a field was added to it or taken from it.
+    fn reshape(&mut self, id: &ObjectId) {
+        let Some(object) = self.objects.get(id) else { return };
+        let shared = self.names.shape(&object.shape);
+        if !Arc::ptr_eq(&shared, &object.shape)
+            && let Some(object) = Self::object_mut(&mut self.objects, id)
+        {
+            object.shape = shared;
         }
     }
 
     /// Adds (or removes) the nodes of `object`'s own tree fields to the index of tree members.
     fn index_trees(&mut self, owner: &ObjectId, object: &Object, add: bool) {
-        for (field, held) in &object.fields {
+        for (field, held) in object.fields() {
             let Field::Tree(tree) = held else { continue };
             for (node, _) in tree.nodes() {
                 if add {
@@ -442,11 +534,11 @@ impl Store {
 
     /// Puts `node` at `place` (checked).
     fn attach(&mut self, place: &TreePlace, node: &ObjectId) {
-        let field = intern(&mut self.names, &place.field);
-        let Some(object) = self.objects.get_mut(&place.owner) else { return };
+        let field = self.names.name(&place.field);
+        let Some(object) = Self::object_mut(&mut self.objects, &place.owner) else { return };
         // An empty tree is not kept (`put` drops it), so a first node makes its field here.
         if let Err(at) = object.position(&field) {
-            object.fields.insert(at, (field.clone(), Field::Tree(Box::default())));
+            object.insert(at, field.clone(), Field::Tree(Box::default()));
         }
         if let Some(Field::Tree(tree)) = object.get_mut(&field) {
             tree.insert(node.clone(), place.parent.clone(), place.index);
@@ -457,6 +549,21 @@ impl Store {
     /// Applies one operation, or changes nothing and answers [`KdmError::Stale`] when its
     /// preconditions do not hold. Answers the operation as applied.
     pub(crate) fn apply(&mut self, op: Op, schema: &Schema) -> Result<Op> {
+        let done = self.apply_op(op, schema)?;
+        // An object whose fields came or went holds its new shape once (a created object's own
+        // shape is held when it is made).
+        if let Op::Create { trees, .. } | Op::Delete { trees, .. } = &done {
+            for place in trees {
+                self.reshape(&place.owner);
+            }
+        }
+        if let Some(id) = done.object() {
+            self.reshape(id);
+        }
+        Ok(done)
+    }
+
+    fn apply_op(&mut self, op: Op, schema: &Schema) -> Result<Op> {
         match op {
             Op::Create { id, object, trees } => {
                 if self.objects.contains_key(&id) {
@@ -465,7 +572,7 @@ impl Store {
                 let mut stored = (*object).clone();
                 self.intern_object(&mut stored);
                 self.index_trees(&id, &stored, true);
-                self.objects.insert(id.clone(), stored);
+                self.objects.insert(id.clone(), Arc::new(stored));
                 if let Some(error) = trees.iter().find_map(|place| self.check_place(place, &id).err()) {
                     if let Some(stored) = self.objects.remove(&id) {
                         self.index_trees(&id, &stored, false);
@@ -489,7 +596,7 @@ impl Store {
                 }
                 let mut trees = Vec::with_capacity(holders.len());
                 for (owner, field) in holders {
-                    let Some(object) = self.objects.get_mut(&owner) else { continue };
+                    let Some(object) = Self::object_mut(&mut self.objects, &owner) else { continue };
                     let Some(Field::Tree(tree)) = object.get_mut(&field) else { continue };
                     if let Some((parent, index)) = tree.detach(&id) {
                         trees.push(TreePlace { owner: owner.clone(), field: field.clone(), parent, index });
@@ -498,24 +605,25 @@ impl Store {
                 }
                 self.nodes.remove(&id);
                 let Some(object) = self.objects.remove(&id) else { return Err(stale(format!("object `{id}` does not exist"))) };
+                let object = Arc::unwrap_or_clone(object);
                 self.index_trees(&id, &object, false);
                 Ok(Op::Delete { id, was: Some(Box::new(object)), trees })
             }
             Op::Set { id, field, value, .. } => {
-                let name = intern(&mut self.names, &field);
-                let object = self.objects.get_mut(&id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let name = self.names.name(&field);
+                let object = Self::object_mut(&mut self.objects, &id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
                 let was = match object.get(&field) {
                     None => Value::Null,
-                    Some(Field::Value(value)) => value.clone(),
+                    Some(Field::Value(value)) => value.to_value(),
                     Some(_) => return Err(stale(format!("{id}.{field} is a container"))),
                 };
-                object.put(name, Field::Value(value.clone()));
+                object.put(name, Field::Value(Scalar::from_value(value.clone())));
                 Ok(Op::Set { id, field, value, was })
             }
             Op::TextInsert { id, field, index, text, marks } => {
-                let name = intern(&mut self.names, &field);
-                let object = self.objects.get_mut(&id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
-                let ty = object.ty.clone();
+                let name = self.names.name(&field);
+                let object = Self::object_mut(&mut self.objects, &id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let ty = object.ty().clone();
                 let held = match object.get(&field) {
                     None => None,
                     Some(Field::Text(text)) => Some(text),
@@ -542,7 +650,7 @@ impl Store {
                 Ok(Op::TextInsert { id, field, index, text, marks: Some(marks) })
             }
             Op::TextDelete { id, field, index, count, .. } => {
-                let object = self.objects.get_mut(&id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let object = Self::object_mut(&mut self.objects, &id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
                 let len = match object.get(&field) {
                     None => 0,
                     Some(Field::Text(text)) => text.len(),
@@ -559,7 +667,7 @@ impl Store {
                 Ok(Op::TextDelete { id, field, index, count, was })
             }
             Op::TextMark { id, field, start, end, key, value, .. } => {
-                let object = self.objects.get_mut(&id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let object = Self::object_mut(&mut self.objects, &id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
                 let len = match object.get(&field) {
                     None => 0,
                     Some(Field::Text(text)) => text.len(),
@@ -575,8 +683,8 @@ impl Store {
                 Ok(Op::TextMark { id, field, start, end, key, value, was })
             }
             Op::ListInsert { id, field, index, item } => {
-                let name = intern(&mut self.names, &field);
-                let object = self.objects.get_mut(&id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let name = self.names.name(&field);
+                let object = Self::object_mut(&mut self.objects, &id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
                 let len = match object.get(&field) {
                     None => 0,
                     Some(Field::List(items)) => items.len(),
@@ -587,12 +695,12 @@ impl Store {
                 }
                 match object.get_mut(&field) {
                     Some(Field::List(items)) => items.insert(index, item.clone()),
-                    _ => object.put(name, Field::List(vec![item.clone()])),
+                    _ => object.put(name, Field::List(Box::new(vec![item.clone()]))),
                 }
                 Ok(Op::ListInsert { id, field, index, item })
             }
             Op::ListRemove { id, field, index, item } => {
-                let object = self.objects.get_mut(&id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let object = Self::object_mut(&mut self.objects, &id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
                 let Some(Field::List(items)) = object.get_mut(&field) else { return Err(stale(format!("{id}.{field} holds no item {index}"))) };
                 match items.get(index) {
                     None => return Err(stale(format!("{id}.{field} holds no item {index}"))),
@@ -606,7 +714,7 @@ impl Store {
                 Ok(Op::ListRemove { id, field, index, item: Some(removed) })
             }
             Op::ListMove { id, field, from, to, item } => {
-                let object = self.objects.get_mut(&id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let object = Self::object_mut(&mut self.objects, &id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
                 let Some(Field::List(items)) = object.get_mut(&field) else { return Err(stale(format!("{id}.{field} holds no item {from}"))) };
                 let len = items.len();
                 match items.get(from) {
@@ -624,20 +732,22 @@ impl Store {
             Op::MapSet { id, field, key, value, .. } => {
                 // Setting a key to `null` deletes it: a map holds no `null` (data model 7.4, C5).
                 let value = value.filter(|value| !value.is_null());
-                let name = intern(&mut self.names, &field);
-                let object = self.objects.get_mut(&id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let name = self.names.name(&field);
+                let object = Self::object_mut(&mut self.objects, &id).ok_or_else(|| stale(format!("object `{id}` does not exist")))?;
+                let held = Key::new(&key);
                 let was = match object.get_mut(&field) {
                     None => None,
                     Some(Field::Map(entries)) => match &value {
-                        Some(value) => entries.insert(key.clone(), value.clone()),
-                        None => entries.remove(&key),
+                        Some(value) => entries.insert(held, Scalar::from_value(value.clone())),
+                        None => entries.remove(&held),
                     },
                     Some(_) => return Err(stale(format!("{id}.{field} is not a map"))),
-                };
+                }
+                .map(|was| was.to_value());
                 if object.get(&field).is_none()
                     && let Some(value) = &value
                 {
-                    object.put(name, Field::Map([(key.clone(), value.clone())].into_iter().collect()));
+                    object.put(name, Field::Map(Box::new(Entries::from_sorted(vec![(Key::new(&key), Scalar::from_value(value.clone()))]))));
                 }
                 object.settle(&field);
                 Ok(Op::MapSet { id, field, key, value, was })
@@ -673,7 +783,7 @@ impl Store {
                 if index > siblings {
                     return Err(stale(format!("index {index} is beyond {siblings} siblings")));
                 }
-                if let Some(Field::Tree(tree)) = self.objects.get_mut(&id).and_then(|object| object.get_mut(&field)) {
+                if let Some(Field::Tree(tree)) = Self::object_mut(&mut self.objects, &id).and_then(|object| object.get_mut(&field)) {
                     tree.detach(&node);
                     tree.insert(node.clone(), parent.clone(), index);
                 }
@@ -688,7 +798,7 @@ impl Store {
                     return Err(stale(format!("`{node}` has children in {id}.{field}")));
                 }
                 let mut was = None;
-                if let Some(object) = self.objects.get_mut(&id) {
+                if let Some(object) = Self::object_mut(&mut self.objects, &id) {
                     if let Some(Field::Tree(tree)) = object.get_mut(&field) {
                         was = tree.detach(&node);
                     }
@@ -708,33 +818,30 @@ impl Store {
     /// Applies `ops` in order as one change: all of them, or (when one fails) none, the error
     /// answered. Answers the operations as applied.
     pub(crate) fn apply_all(&mut self, ops: Vec<Op>, schema: &Schema) -> Result<Vec<Op>> {
-        let mut applied = Vec::with_capacity(ops.len());
-        for op in ops {
-            match self.apply(op, schema) {
-                Ok(done) => applied.push(done),
-                Err(error) => {
-                    self.revert(&applied, schema);
-                    return Err(error);
-                }
-            }
-        }
-        Ok(applied)
+        self.apply_each(ops, schema, |store, op| store.apply(op, schema))
     }
 
     /// [`Store::apply_all`] for operations from another replica: each checked against the schema
     /// on the state it applies to ([`check::checked`]) before it applies.
     pub(crate) fn apply_all_checked(&mut self, ops: Vec<Op>, schema: &Schema) -> Result<Vec<Op>> {
-        let mut applied = Vec::with_capacity(ops.len());
-        for op in ops {
-            match check::checked(op, self, schema).and_then(|op| self.apply(op, schema)) {
-                Ok(done) => applied.push(done),
+        self.apply_each(ops, schema, |store, op| check::checked(op, store, schema).and_then(|op| store.apply(op, schema)))
+    }
+
+    /// Applies `ops` in order with `apply`, each answer in its operation's place (no second list of
+    /// them: a bulk import's change holds millions); when one fails, reverts those before it.
+    fn apply_each(&mut self, mut ops: Vec<Op>, schema: &Schema, apply: impl Fn(&mut Self, Op) -> Result<Op>) -> Result<Vec<Op>> {
+        for at in 0..ops.len() {
+            let Some(slot) = ops.get_mut(at) else { break };
+            let op = std::mem::replace(slot, Op::SchemaVersion { version: 0, was: 0 });
+            match apply(self, op) {
+                Ok(done) => *slot = done,
                 Err(error) => {
-                    self.revert(&applied, schema);
+                    self.revert(ops.get(..at).unwrap_or_default(), schema);
                     return Err(error);
                 }
             }
         }
-        Ok(applied)
+        Ok(ops)
     }
 
     /// Undoes applied operations, last first.

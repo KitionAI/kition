@@ -44,7 +44,7 @@ fn parse(mut argv: impl Iterator<Item = String>) -> Option<Args> {
 
 async fn open(kit: &HeadlessKit, file: &str) -> Result<String, String> {
     let opened = kit.open(file, true, LIMIT).await.map_err(|error| error.to_string())?;
-    opened["documentId"].as_str().map(str::to_owned).ok_or_else(|| format!("document.open answered no documentId: {opened}"))
+    opened["documentId"].as_str().map(str::to_owned).ok_or_else(|| format!("file.open answered no documentId: {opened}"))
 }
 
 async fn probe(args: Args) -> Result<Value, String> {
@@ -69,7 +69,7 @@ async fn probe(args: Args) -> Result<Value, String> {
         },
         None => None,
     };
-    let listed = kit.request("commands.list", json!({ "documentId": document }), LIMIT).await;
+    let listed = kit.request("command.list", json!({ "documentId": document }), LIMIT).await;
     match listed {
         Ok(answer) => out.insert("commands".into(), answer["commands"].clone()),
         Err(error) => out.insert("commandsError".into(), json!(error.to_string())),

@@ -69,7 +69,7 @@ impl KitFiles {
         Ok(Self { store, session, principal: principal.to_owned(), documents: Mutex::default() })
     }
 
-    /// A handle on the workspace file `path` for `document.open` or `document.saveAs`: `read` and
+    /// A handle on the workspace file `path` for `file.open` or `document.saveAs`: `read` and
     /// `write` on an existing file, `read`, `create` and `write` on a new one (its first save makes
     /// it, H3). `read_only` grants `read` alone. `own` admits the host's own hidden files.
     pub fn document(&self, path: &str, read_only: bool, own: bool) -> Result<FileStat, FileError> {
@@ -82,7 +82,7 @@ impl KitFiles {
         self.store.grant_document(&self.session, &self.principal, path, rights, own)
     }
 
-    /// A `create` handle on the new workspace file `path`, for `document.export`: an export
+    /// A `create` handle on the new workspace file `path`, for `file.export`: an export
     /// never replaces a file.
     pub fn export(&self, path: &str) -> Result<FileStat, FileError> {
         self.store.grant_document(&self.session, &self.principal, path, &[Right::Create], false)

@@ -34,11 +34,11 @@ async function leadsFixture() {
   const sdk = await engine.load()
   const doc = sdk.TableDocument.create('Leads.ktable', 0, 0)
   const call = caller(doc)
-  const [table] = call<{ tables: Array<{ id: number; fields: Field[] }> }>('documents.get').tables
-  call('tables.update', { tableId: table.id, title: 'Leads' })
-  for (const field of table.fields.filter((field) => !field.is_primary)) call('fields.delete', { tableId: table.id, fieldId: field.id })
-  call('fields.create', { tableId: table.id, title: 'Tagline', type: 'text', options: { ai_config: { type: 'text_generation', prompt: 'Write a tagline', enabled: true } } })
-  call('records.create', { tableId: table.id, values: { title: 'Ada' } })
+  const [table] = call<{ tables: Array<{ id: number; fields: Field[] }> }>('file.get').tables
+  call('table.set', { tableId: table.id, title: 'Leads' })
+  for (const field of table.fields.filter((field) => !field.is_primary)) call('field.delete', { tableId: table.id, fieldId: field.id })
+  call('field.add', { tableId: table.id, title: 'Tagline', type: 'text', options: { ai_config: { type: 'text_generation', prompt: 'Write a tagline', enabled: true } } })
+  call('record.add', { tableId: table.id, values: { title: 'Ada' } })
   doc.markSaved()
   const bytes = Buffer.from(doc.save())
   doc.free()
@@ -50,8 +50,8 @@ async function savedRecords(bytes: Buffer) {
   const sdk = await engine.load()
   const doc = sdk.TableDocument.open('Saved.ktable', bytes)
   const call = caller(doc)
-  const [table] = call<{ tables: Array<{ id: number }> }>('documents.get').tables
-  const records = call<{ items: Record_[] }>('records.list', { tableId: table.id }).items
+  const [table] = call<{ tables: Array<{ id: number }> }>('file.get').tables
+  const records = call<{ items: Record_[] }>('record.list', { tableId: table.id }).items
   doc.free()
   return records
 }
@@ -172,7 +172,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
             path: 'Leads.ktable',
             kit: 'kit.table',
             tool: 'run',
-            arguments: { steps: [{ command: 'table.records.create', params: { tableId, values: { title: 'From the host' }, asOrigin: 'system:scenario' } }], save: false },
+            arguments: { steps: [{ command: 'record.add', params: { tableId, values: { title: 'From the host' }, asOrigin: 'system:scenario' } }], save: false },
           },
         },
       ]
@@ -203,7 +203,7 @@ test('a host write reaches the open table live, keeps the person’s unsaved edi
     await expect.poll(() => posted.find((message) => message.id === 1), { timeout: 30_000 }).toBeTruthy()
     const answer = posted.find((message) => message.id === 1)!
     expect(answer.error).toBeUndefined()
-    expect(answer.result).toMatchObject({ completed: [{ command: 'table.records.create', changed: true }], saved: false })
+    expect(answer.result).toMatchObject({ completed: [{ command: 'record.add', changed: true }], saved: false })
     await expect(records(kit)).toContainText('3 records')
     await expect(kit.getByTestId('table-unsaved')).toBeVisible()
 
@@ -328,11 +328,11 @@ async function baseFixture() {
   const sdk = await engine.load()
   const doc = sdk.TableDocument.create('Base.ktable', 0, 0)
   const call = caller(doc)
-  const [first] = call<{ tables: Array<{ id: number }> }>('documents.get').tables
-  call('tables.update', { tableId: first.id, title: 'Leads' })
-  const people = call<{ id: number }>('tables.create', { title: 'People' })
-  call('dashboards.upsert', { dashboardId: 'overview', title: 'Overview', source_table_id: first.id, layout: [], widgets: [] })
-  const dashboards = call<{ items: Array<{ id: string }> }>('dashboards.list').items
+  const [first] = call<{ tables: Array<{ id: number }> }>('file.get').tables
+  call('table.set', { tableId: first.id, title: 'Leads' })
+  const people = call<{ id: number }>('table.add', { title: 'People' })
+  call('dashboard.set', { dashboardId: 'overview', title: 'Overview', source_table_id: first.id, layout: [], widgets: [] })
+  const dashboards = call<{ items: Array<{ id: string }> }>('dashboard.list').items
   doc.markSaved()
   const bytes = Buffer.from(doc.save())
   doc.free()
@@ -343,7 +343,7 @@ test('the tree lists a table file’s tables and dashboards, and opens the file 
   test.setTimeout(120_000)
   const { bytes, leads, people, dashboard } = await baseFixture()
   const described: string[] = []
-  // The file's outline, as the runtime answers it from the Table kit (`table.file.outline`) for the one file the tree reads.
+  // The file's outline, as the runtime answers it from the Table kit (`file.outline`) for the one file the tree reads.
   const routes = async (page: Page) => {
     await page.route(/\/api\/v1\/kits\/outline\?path=/, async (route) => {
       const path = new URL(route.request().url()).searchParams.get('path') ?? ''

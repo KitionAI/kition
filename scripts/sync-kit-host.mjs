@@ -31,10 +31,36 @@ const allowUnwrap = (relative, text) => {
 }
 // This English-only repository holds no CJK text, also not as an escape (scripts/check-i18n.py):
 // a char literal escaping a CJK code point in a copied source becomes the same char built from
-// its number.
+// its number, and a string literal escaping some becomes the same string formatted from their
+// numbers (`&*format!(..)`, a &str for the expression it stands in), one run of them a `{}`.
 const cjk = (code) => (code >= 0x3400 && code <= 0x9fff) || (code >= 0xf900 && code <= 0xfaff) || (code >= 0x20000 && code <= 0x2fa1f) || (code >= 0x3040 && code <= 0x31ff) || (code >= 0xac00 && code <= 0xd7af)
+const numberedChar = (hex) => `char::from_u32(0x${hex}).unwrap_or(char::REPLACEMENT_CHARACTER)`
+const numberedString = (literal, body) => {
+  const runs = []
+  const pieces = body.match(/\\u\{[0-9a-fA-F]{1,6}\}|\\.|[{}]|[^\\{}]+/g) ?? []
+  let format = ''
+  for (const piece of pieces) {
+    const hex = piece.match(/^\\u\{([0-9a-fA-F]{1,6})\}$/)?.[1]
+    if (hex !== undefined && cjk(Number.parseInt(hex, 16))) {
+      if (format.endsWith('{}') && runs.at(-1)?.open) runs.at(-1).codes.push(`0x${hex}`)
+      else {
+        runs.push({ codes: [`0x${hex}`], open: true })
+        format += '{}'
+      }
+      continue
+    }
+    if (runs.length) runs.at(-1).open = false
+    format += piece === '{' ? '{{' : piece === '}' ? '}}' : piece
+  }
+  const args = runs.map(({ codes }) => `[${codes.join(', ')}].into_iter().filter_map(char::from_u32).collect::<String>()`)
+  return runs.length ? `&*format!("${format}", ${args.join(', ')})` : literal
+}
 const numberedCjk = (text) =>
-  text.replace(/'\\u\{([0-9a-fA-F]{1,6})\}'/g, (literal, hex) => (cjk(Number.parseInt(hex, 16)) ? `char::from_u32(0x${hex}).unwrap_or(char::REPLACEMENT_CHARACTER)` : literal))
+  text
+    .replace(/'\\u\{([0-9a-fA-F]{1,6})\}'/g, (literal, hex) => (cjk(Number.parseInt(hex, 16)) ? numberedChar(hex) : literal))
+    .split('\n')
+    .map((line) => (/\\u\{/.test(line) ? line.replace(/"((?:[^"\\\n]|\\.)*)"/g, numberedString) : line))
+    .join('\n')
 const files = [
   // JSON has no comments; the schema's $id names its source.
   { source: 'schemas/kit.schema.json', out: 'contracts/kit/kit.schema.json', rewrite: (text) => text },
@@ -67,10 +93,10 @@ const rustKdm = 'crates/kition-kdm'
 // whose key order follows serde_json's map: sorted in kition-sdk, insertion order here
 // (`preserve_order`), so equal changes print differently; kition-sdk runs it.
 const rustSkipped = new Set([`${rustKdm}/tests/nested_text.rs`, `${rustKdm}/tests/cross_language.rs`, 'crates/kition-kits/tests/draft_compare.rs'])
-// The sources' own folders (src/store/) too; the tests' folders are their fixtures (below).
-const rustKdmSourceDirs = ['tests']
-const sourceDirs = (dir) => [dir, ...fs.readdirSync(path.join(sdk, rustKdm, dir), { withFileTypes: true }).filter((entry) => entry.isDirectory()).sort((a, b) => a.name.localeCompare(b.name)).flatMap((entry) => sourceDirs(`${dir}/${entry.name}`))]
-rustKdmSourceDirs.unshift(...sourceDirs('src'))
+// The sources' own folders (src/store/) too, and the tests' modules (tests/large/); the tests'
+// fixtures folder is copied below.
+const sourceDirs = (dir) => [dir, ...fs.readdirSync(path.join(sdk, rustKdm, dir), { withFileTypes: true }).filter((entry) => entry.isDirectory() && `${dir}/${entry.name}` !== 'tests/fixtures').sort((a, b) => a.name.localeCompare(b.name)).flatMap((entry) => sourceDirs(`${dir}/${entry.name}`))]
+const rustKdmSourceDirs = [...sourceDirs('src'), ...sourceDirs('tests')]
 for (const dir of rustKdmSourceDirs) {
   for (const name of fs.readdirSync(path.join(sdk, rustKdm, dir)).filter((name) => name.endsWith('.rs') && !rustSkipped.has(`${rustKdm}/${dir}/${name}`)).sort()) {
     const source = `${rustKdm}/${dir}/${name}`

@@ -100,7 +100,7 @@
       "reports": "its HTML source, viewport, and undo state",
       "covers": "HTML source replacement and undo/redo; HTML/CSS rendering and bounded JavaScript with supplied resources",
       "queries": "`Replace HTML` or `Undo`",
-      "example": "html.setSource"
+      "example": "file.setSource"
     }
   },
   "headless": {

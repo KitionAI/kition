@@ -10,6 +10,7 @@
 use serde_json::Value;
 
 use super::op::Op;
+use super::scalar::Scalar;
 use super::{Field, Object, Store};
 use crate::value::canonical;
 use crate::{FieldDef, FieldKind, KdmError, ObjectId, Result, Schema, read};
@@ -102,7 +103,7 @@ pub(crate) fn checked(op: Op, store: &Store, schema: &Schema) -> Result<Op> {
 /// declares no such type or field.
 fn declared<'s>(store: &Store, schema: &'s Schema, id: &ObjectId, field: &str) -> Option<(&'s str, &'s FieldDef)> {
     let object = store.object(id)?;
-    let (ty, def) = schema.types.get_key_value(&*object.ty)?;
+    let (ty, def) = schema.types.get_key_value(&**object.ty())?;
     Some((ty.as_str(), def.fields.get(field)?))
 }
 
@@ -120,10 +121,10 @@ fn kind<'s>(store: &Store, schema: &'s Schema, id: &ObjectId, field: &str, kind:
 fn check_target(store: &Store, ty: &str, field: &str, def: &FieldDef, target: &str) -> Result<()> {
     let Some(of) = &def.of else { return Ok(()) };
     match store.object(&ObjectId::from_string(target)) {
-        Some(object) if &*object.ty != of.as_str() => Err(KdmError::InvalidValue {
+        Some(object) if &**object.ty() != of.as_str() => Err(KdmError::InvalidValue {
             ty: ty.to_owned(),
             field: field.to_owned(),
-            reason: format!("expects an object of type `{of}`, and `{target}` is a `{}`", object.ty),
+            reason: format!("expects an object of type `{of}`, and `{target}` is a `{}`", object.ty()),
         }),
         _ => Ok(()),
     }
@@ -132,7 +133,7 @@ fn check_target(store: &Store, ty: &str, field: &str, def: &FieldDef, target: &s
 /// A value of a field the schema does not declare (or a mark value): refused when it nests deeper
 /// than a change carries or holds an integer beyond ±2^53; canonical otherwise.
 fn portable(store: &Store, id: &ObjectId, field: &str, value: Value) -> Result<Value> {
-    let ty = store.object(id).map_or_else(|| id.to_string(), |object| object.ty.to_string());
+    let ty = store.object(id).map_or_else(|| id.to_string(), |object| object.ty().to_string());
     crate::tx::nesting_refusal(&ty, field, &value)?;
     if let Some(reason) = crate::schema::unportable(&value) {
         return Err(KdmError::InvalidValue { ty, field: field.to_owned(), reason: reason.into() });
@@ -144,30 +145,32 @@ fn portable(store: &Store, id: &ObjectId, field: &str, value: Value) -> Result<V
 /// `map_set`, canonical; its list items as a `list_insert`'s. Its container fields were read as
 /// the schema declares them ([`Object::from_content`]).
 fn checked_object(mut object: Object, schema: &Schema) -> Result<Object> {
-    let def = schema.types.get(&*object.ty);
-    let ty = object.ty.to_string();
-    for (name, field) in &mut object.fields {
+    let def = schema.types.get(&**object.ty());
+    let ty = object.ty().to_string();
+    for (name, field) in object.fields_mut() {
         let declared = def.and_then(|def| def.fields.get(&**name));
         match field {
-            Field::Value(value) => {
-                crate::tx::nesting_refusal(&ty, name, value)?;
+            Field::Value(held) => {
+                let value = held.to_value();
+                crate::tx::nesting_refusal(&ty, name, &value)?;
                 match declared {
-                    Some(_) => schema.check_value(&ty, name, value)?,
+                    Some(_) => schema.check_value(&ty, name, &value)?,
                     None => {
-                        if let Some(reason) = crate::schema::unportable(value) {
+                        if let Some(reason) = crate::schema::unportable(&value) {
                             return Err(KdmError::InvalidValue { ty, field: name.to_string(), reason: reason.into() });
                         }
                     }
                 }
-                *value = canonical(std::mem::take(value));
+                *held = Scalar::from_value(canonical(value));
             }
             Field::Map(entries) => {
-                for value in entries.values_mut() {
-                    crate::tx::nesting_refusal(&ty, name, value)?;
-                    if let Some(reason) = crate::schema::unportable(value) {
+                for held in entries.values_mut() {
+                    let value = held.to_value();
+                    crate::tx::nesting_refusal(&ty, name, &value)?;
+                    if let Some(reason) = crate::schema::unportable(&value) {
                         return Err(KdmError::InvalidValue { ty, field: name.to_string(), reason: reason.into() });
                     }
-                    *value = canonical(std::mem::take(value));
+                    *held = Scalar::from_value(canonical(value));
                 }
             }
             Field::Text(_) | Field::List(_) | Field::Tree(_) => {}

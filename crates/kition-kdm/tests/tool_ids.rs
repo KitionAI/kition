@@ -106,3 +106,47 @@ fn a_schema_without_tool_ids_answers_object_ids() {
     assert_eq!(gone.message, "object `frame:9` not found", "the KDM's own message, as before");
     assert!(!ToolIds::of_replica(&replica).is_active());
 }
+
+/// An agent's reply names objects by their tool ids only where it refers to them (film: the
+/// project's id is the word `project`). A member name, and a value that merely equals an id the
+/// kit chose, stay as the kit wrote them; a chosen id is a reference as the value of a member
+/// that holds references (`id`, `object`, `selection`, ...); a minted id (a UUID) is one wherever
+/// it is, also as a member name.
+#[test]
+fn a_reply_shows_references_by_tool_id_and_leaves_member_names_and_words_alone() {
+    let schema = json!({"kdm":1,"kit":"kit.film","schemaVersion":1,"root":"Project","types":{
+        "Project":{"toolId":{"field":"key","prefix":"project:"},"fields":{"key":{"kind":"string","readOnly":true,"optional":true},"clips":{"kind":"list","of":"Clip"}}},
+        "Clip":{"toolId":{"field":"key","prefix":"clip:"},"fields":{"key":{"kind":"integer","readOnly":true,"optional":true}}}
+    }});
+    let mut replica = Replica::create(Arc::new(Schema::parse(&schema.to_string()).unwrap()), DocId::new(), ActorId::from_u64(1).unwrap()).unwrap();
+    let clip = replica
+        .transact(&Origin::system("open"), |tx| {
+            let project = tx.create_with_id("Project", &kition_kdm::ObjectId::from_string("project"), json!({"key":"main"}).as_object().unwrap().clone())?;
+            let clip = tx.create("Clip", json!({"key":3}).as_object().unwrap().clone())?;
+            tx.list_insert(&project, "clips", 0, &clip)?;
+            Ok(clip)
+        })
+        .unwrap()
+        .to_string();
+    let reply = json!({
+        "project": { "id": "project" },
+        "note": "project",
+        "target": { "object": "project", "kind": "project" },
+        "selection": ["project", clip.clone()],
+        "projectId": "project",
+        "clips": { clip.clone(): [clip.clone()] },
+        "literal": format!("text {clip}"),
+    });
+    assert_eq!(
+        ToolIds::show_reply(&replica, &reply),
+        json!({
+            "project": { "id": "project:main" },
+            "note": "project",
+            "target": { "object": "project:main", "kind": "project" },
+            "selection": ["project:main", "clip:3"],
+            "projectId": "project:main",
+            "clips": { "clip:3": ["clip:3"] },
+            "literal": format!("text {clip}"),
+        })
+    );
+}

@@ -162,7 +162,7 @@ pub fn declared(schema: &Schema) -> bool {
 
 impl View {
     pub fn read(replica: &Replica, projected: Vec<ProjectedObject>) -> Result<Self, BatchError> {
-        let names = crate::tool_ids::ToolIds::of_replica(replica);
+        let names = replica.tool_ids();
         let mut state = names.show_json(&replica.state_json().map_err(|error| invalid(error.to_string()))?);
         let schema = replica.schema();
         let stored = state.get_mut("objects").and_then(Value::as_object_mut).ok_or_else(|| invalid("missing model objects"))?;

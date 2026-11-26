@@ -2,7 +2,7 @@ format: 1
 id: regressions/issue-command-output
 feature: kition.kit-protocol.command-output
 intent: >-
-  A command in commands.list may carry `output`, the JSON Schema of its result, as kition-sdk's kit
+  A command in command.list may carry `output`, the JSON Schema of its result, as kition-sdk's kit
   server sends it (KHP A1); Kition's protocol schema accepted no such member and dropped it, so a
   kit's declared result shape never reached the host.
 layer: gate

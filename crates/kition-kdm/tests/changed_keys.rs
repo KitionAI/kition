@@ -75,9 +75,9 @@ fn a_write_its_import_undo_and_redo_report_the_map_keys_written() {
     copy.import_changes(&replica.export_changes(&since).unwrap()).unwrap();
     reported(&copy.take_changes(), &one, &two, &shape, true, "the import");
 
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     reported(&replica.take_changes(), &one, &two, &shape, false, "the undo");
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     reported(&replica.take_changes(), &one, &two, &shape, true, "the redo");
 }
 
@@ -116,7 +116,7 @@ fn an_undo_that_keeps_another_replicas_later_write_reports_the_value_kept() {
     replica.import_changes(&other.export_changes(&theirs).unwrap()).unwrap();
     replica.take_changes();
 
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(replica.map_get(&one, "cells", "a").unwrap(), json!(99));
     let changes = replica.take_changes();
     let written = changes.map_writes(&one).and_then(|fields| fields.get("cells")).and_then(|keys| keys.get("a")).cloned();

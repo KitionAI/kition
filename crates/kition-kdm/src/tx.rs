@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 use crate::overlay::{ListEdit, ListState, Overlay, TreeState};
 use crate::read;
 use crate::store::op::{Name, Op};
+use crate::store::scalar::Scalar;
 use crate::store::{Field, Object, Store};
 use crate::value::canonical;
 use crate::{FieldDef, FieldKind, KdmError, NodeRef, ObjectId, Result, Schema};
@@ -159,7 +160,7 @@ impl<'a> Tx<'a> {
             // `check_value` accepted only declared fields.
             let Some((name, _)) = def.fields.get_key_value(&name) else { continue };
             let name = self.name(name);
-            object.put(name, Field::Value(canonical(value)));
+            object.put(name, Field::Value(Scalar::from_value(canonical(value))));
         }
         self.overlay.created.insert(id.clone(), (ty.as_str(), self.ops.len()));
         self.overlay.created_by_type.entry(ty.as_str()).or_default().push(id.clone());
@@ -430,22 +431,22 @@ impl<'a> Tx<'a> {
         if self.overlay.is_created(id) {
             return Ok(Value::Null);
         }
-        Ok(read::map(self.store, self.schema, id, name)?.and_then(|entries| entries.get(key)).cloned().unwrap_or(Value::Null))
+        Ok(read::map(self.store, self.schema, id, name)?.and_then(|entries| entries.get_text(key)).map_or(Value::Null, Scalar::to_value))
     }
 
     /// A map field's keys and values including this transaction's writes, sorted by key (code
     /// point order, as in the canonical state), each as [`Tx::map_get`] reads it.
     pub fn map_entries(&self, id: &ObjectId, field: &str) -> Result<Vec<(String, Value)>> {
         let name = self.container_field(id, field, FieldKind::Map)?;
-        let mut entries: BTreeMap<String, Value> =
-            if self.overlay.is_created(id) { BTreeMap::new() } else { read::map(self.store, self.schema, id, name)?.cloned().unwrap_or_default() };
-        if let Some(writes) = self.overlay.maps.get(&(id.clone(), name)) {
-            for (key, write) in writes {
-                match write {
-                    Some(index) => entries.insert(key.clone(), self.pending_map_value(*index)),
-                    None => entries.remove(key),
-                };
-            }
+        let committed = if self.overlay.is_created(id) { None } else { read::map(self.store, self.schema, id, name)? };
+        let committed = committed.into_iter().flat_map(|entries| entries.iter()).map(|(key, value)| (key.to_text(), value.to_value()));
+        let Some(writes) = self.overlay.maps.get(&(id.clone(), name)) else { return Ok(committed.collect()) };
+        let mut entries: BTreeMap<String, Value> = committed.collect();
+        for (key, write) in writes {
+            match write {
+                Some(index) => entries.insert(key.clone(), self.pending_map_value(*index)),
+                None => entries.remove(key),
+            };
         }
         Ok(entries.into_iter().collect())
     }
@@ -631,7 +632,7 @@ impl<'a> Tx<'a> {
         }
         let object = self.store.object(id).ok_or_else(|| KdmError::NotFound(id.to_string()))?;
         let schema: &'a Schema = self.schema;
-        schema.types.get_key_value(&*object.ty).map(|(name, _)| name.as_str()).ok_or_else(|| KdmError::UnknownType(object.ty.to_string()))
+        schema.types.get_key_value(&**object.ty()).map(|(name, _)| name.as_str()).ok_or_else(|| KdmError::UnknownType(object.ty().to_string()))
     }
 
     /// The object's type, and the schema's name and definition of `field`.
@@ -692,7 +693,7 @@ impl<'a> Tx<'a> {
         let (_, index) = self.overlay.created.get(id)?;
         match self.ops.get(*index) {
             Some(Op::Create { object, .. }) => Some(match object.get(name) {
-                Some(Field::Value(value)) => value.clone(),
+                Some(Field::Value(value)) => value.to_value(),
                 _ => Value::Null,
             }),
             _ => None,

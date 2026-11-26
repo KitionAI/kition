@@ -173,7 +173,7 @@ pub struct CommandView {
     pub title: String,
     pub description: Option<String>,
     pub group: String,
-    /// JSON Schema for the command's params, as the kit's `commands.list` gives it.
+    /// JSON Schema for the command's params, as the kit's `command.list` gives it.
     pub params: Value,
     /// JSON Schema for what the command answers (KHP A1 `output.schema`), when the kit gives one.
     pub output: Option<Value>,
@@ -305,9 +305,9 @@ impl RunningKit {
         }
         match result {
             Ok(mut answer) => {
-                if matches!(method, "document.open" | "document.reload" | "model.open") {
-                    self.name_document(&mut answer, method == "document.open");
-                } else if method == "document.list"
+                if matches!(method, "file.open" | "document.reload" | "model.open") {
+                    self.name_document(&mut answer, method == "file.open");
+                } else if method == "file.list"
                     && let Some(documents) = answer.get_mut("documents").and_then(Value::as_array_mut)
                 {
                     for document in documents {
@@ -383,7 +383,7 @@ impl RunningKit {
 
     /// Shared by idle reclaim and shutdown. An unsavable dirty file keeps its process alive.
     async fn save_dirty(&self, persisted: &[String]) -> Result<(), ClientError> {
-        let list: DocumentListResult = serde_json::from_value(self.exchange(Caller::User, "document.list", serde_json::json!({})).await?)?;
+        let list: DocumentListResult = serde_json::from_value(self.exchange(Caller::User, "file.list", serde_json::json!({})).await?)?;
         for document in list.documents.iter().filter(|document| document.dirty) {
             // Replica drafts are persisted by drafts::persist before this routine is called.
             if self.files.handle_of(&self.wire_id(&document.document_id)).is_none() {
@@ -395,7 +395,7 @@ impl RunningKit {
                 }
                 continue;
             }
-            self.exchange(Caller::User, "document.save", serde_json::json!({ "documentId": document.document_id })).await?;
+            self.exchange(Caller::User, "file.save", serde_json::json!({ "documentId": document.document_id })).await?;
             if let Some(path) = self.path_of(&document.document_id) {
                 let _ = self.saves.send(SavedFile { kit_id: self.definition.id, path, document_id: document.document_id.clone() });
             }
@@ -881,7 +881,7 @@ impl KitManager {
         })
     }
 
-    /// `document.open` of the file of `handle`, remembered as that document's file.
+    /// `file.open` of the file of `handle`, remembered as that document's file.
     async fn open_handle(
         &self,
         kit: &'static KitDefinition,

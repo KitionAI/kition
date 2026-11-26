@@ -84,10 +84,10 @@ pub struct Capabilities {
     pub capabilities: Vec<String>,
 }
 
-/// The capability of a kit that answers `document.text` (`KitText 1.0`).
+/// The capability of a kit that answers `file.text` (`KitText 1.0`).
 pub const DOCUMENT_TEXT_CAPABILITY: &str = "document-text";
 
-/// The `limit` of a `document.text` request without one, in Unicode scalar values.
+/// The `limit` of a `file.text` request without one, in Unicode scalar values.
 pub const DOCUMENT_TEXT_LIMIT: u64 = 1_048_576;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,7 +124,7 @@ pub struct DocumentState {
     pub can_undo: bool,
     pub can_redo: bool,
     /// The file changed since the kit read it while the document has unsaved edits: the next
-    /// `document.save` fails `file_conflict` (section 5). `document.reload`, `saveAs` or a close
+    /// `file.save` fails `file_conflict` (section 5). `document.reload`, `saveAs` or a close
     /// without saving resolves it.
     pub conflict: bool,
 }
@@ -218,7 +218,7 @@ pub struct DocumentForkResult {
 /// when it answers `document.identity` and `document.fork` (section 5.6).
 pub const DOCUMENT_IDENTITY_FEATURE: &str = "document.identity";
 
-/// What `document.save`, `document.saveAs` and `document.export` wrote: the file's display name
+/// What `file.save`, `document.saveAs` and `file.export` wrote: the file's display name
 /// and the version its commit answered.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DocumentWritten {
@@ -286,7 +286,7 @@ pub struct CommandsListResult {
 pub enum Origin {
     User,
     Agent,
-    /// A change the host makes on the person's behalf (`links.retarget` after a rename); only
+    /// A change the host makes on the person's behalf (`link.retarget` after a rename); only
     /// from the host connection.
     System,
 }
@@ -376,7 +376,7 @@ pub struct ViewDescribeResult {
     pub state: Map<String, Value>,
 }
 
-/// `document.text` (`KitText 1.0`): the document's words, read-only.
+/// `file.text` (`KitText 1.0`): the document's words, read-only.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentTextParams {

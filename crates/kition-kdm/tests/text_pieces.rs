@@ -68,9 +68,9 @@ fn a_long_insert_is_one_undo_step_and_marks_span_its_pieces() {
     let tail: String = long.chars().skip(count - 10).collect();
     assert_eq!(replica.text_delta(&id("p1"), "text").unwrap(), vec![TextRun::new(head), TextRun::new(middle).with("bold", json!(true)), TextRun::new(tail)]);
 
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(replica.text(&id("p1"), "text").unwrap(), "");
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     assert_eq!(replica.text(&id("p1"), "text").unwrap(), long);
 }
 

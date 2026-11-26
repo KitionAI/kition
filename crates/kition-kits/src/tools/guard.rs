@@ -5008,8 +5008,8 @@ mod tests {
             } } } } },
             "material": { "type": "integer", "x-khp-role": "object", "x-khp-types": ["Material"] }
         } });
-        let acts = HashMap::from([("particles.set".to_owned(), Acts::of(&schema))]);
-        let steps = [json!({ "command": "particles.set", "params": {
+        let acts = HashMap::from([("particle.set".to_owned(), Acts::of(&schema))]);
+        let steps = [json!({ "command": "particle.set", "params": {
             "node": "Emitter", "material": 4, "boids": { "rules": [{ "target": 7, "weight": 3 }, { "target": 8, "weight": 9 }] }
         } })];
         let run = Premises::of_run(&steps, None, &acts, None);

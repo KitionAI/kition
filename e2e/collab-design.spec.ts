@@ -20,7 +20,7 @@ async function screenFixture() {
   const sdk = await engine.load()
   const doc = sdk.DesignDocument.create('Screen.kdesign', 1440, 1024)
   doc.execute('shape.rectangle', JSON.stringify({ x: 120, y: 120, width: 320, height: 200 }))
-  doc.execute('select.none', '{}')
+  doc.execute('edit.deselectAll', '{}')
   const bytes = Buffer.from(doc.save())
   doc.free()
   return bytes
@@ -130,10 +130,10 @@ test("the agent reads and edits an open design through its object model, and eac
     // The person draws a rectangle; then the agent adds a text layer beside the frame.
     await drawRectangle(page, kit, 0.45, 0.45)
     await expect.poll(() => liveLayers(page, file)).toBe(3)
-    agent.send([call(4, file, 'run', { steps: [{ command: 'text.create', params: { text: 'Agent note', x: 1600, y: 100 } }], save: false })])
+    agent.send([call(4, file, 'run', { steps: [{ command: 'text.add', params: { text: 'Agent note', x: 1600, y: 100 } }], save: false })])
     const added = await agent.answer(4)
     expect(added.error).toBeUndefined()
-    expect(added.result).toMatchObject({ completed: [{ command: 'text.create', changed: true }] })
+    expect(added.result).toMatchObject({ completed: [{ command: 'text.add', changed: true }] })
     await expect.poll(() => liveLayers(page, file)).toBe(4)
     await expect(layers).toContainText('Agent note', { timeout: 15_000 })
 

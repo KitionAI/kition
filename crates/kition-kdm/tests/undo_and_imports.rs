@@ -80,7 +80,7 @@ fn undo_steps_older_than_the_log_are_dropped_when_the_log_trims() {
     }
     // The steps the log can no longer carry over what came after are gone, not undone wrongly.
     assert!(!replica.can_undo());
-    assert!(!replica.undo().unwrap());
+    assert!(!replica.undo().unwrap().is_done());
     assert_eq!(replica.text(&shape, "label").unwrap(), "Xabc");
 }
 
@@ -109,7 +109,7 @@ fn an_undone_delete_whose_parent_is_gone_comes_back_as_a_root() {
             tx.delete(&parent)
         })
         .unwrap();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert!(replica.exists(&d), "the deletion of `d` is undone");
     assert_eq!(tree(&replica, &page), roots(&[&d]));
     // The step before it (the creation of `a` and `d`) is not undone in its place.
@@ -129,7 +129,7 @@ fn an_undone_delete_goes_back_among_its_siblings_after_a_sibling_moved() {
     let a_node = node(&replica, &page, a);
     replica.transact(&agent(), |tx| tx.tree_move(&page, "outline", &a_node, None)).unwrap();
     assert_eq!(tree(&replica, &page), roots(&[c, d, a]));
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(tree(&replica, &page), roots(&[b, c, d, a]));
 }
 
@@ -143,20 +143,32 @@ fn an_undone_move_goes_back_among_its_siblings_after_a_sibling_moved() {
     assert_eq!(tree(&replica, &page), roots(&[a, c, d, b]));
     replica.transact(&agent(), |tx| tx.tree_move(&page, "outline", &a_node, None)).unwrap();
     assert_eq!(tree(&replica, &page), roots(&[c, d, b, a]));
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(tree(&replica, &page), roots(&[b, c, d, a]));
 }
 
 #[test]
-fn a_merge_is_refused_when_the_draft_deletes_a_node_of_a_tree_the_document_changed() {
+fn a_merge_takes_a_draft_deleting_a_node_of_a_tree_the_document_changed_elsewhere_and_refuses_one_on_the_same_node() {
+    // Data model 6.6, rule D7: a tree both sides changed merges by node. The draft deletes a
+    // node's object; the document moves another node: both apply.
     let mut live = replica();
     let (page, s) = outline(&mut live, 3);
     let base = live.version();
     let mut draft = live.fork(ActorId::from_u64(9).unwrap()).unwrap();
-    // The draft deletes a node's object: that writes the outline. The document moves a node.
     draft.transact(&agent(), |tx| tx.delete(&s[1])).unwrap();
     let first = node(&live, &page, &s[0]);
     live.transact(&person(), |tx| tx.tree_move(&page, "outline", &first, None)).unwrap();
+    live.merge_changes(&draft.export_changes(&base).unwrap(), &agent()).unwrap();
+    assert_eq!(tree(&live, &page), roots(&[&s[2], &s[0]]));
+    assert!(!live.exists(&s[1]));
+
+    // The draft deletes the node the document moved: refused, naming the outline and the node.
+    let base = live.version();
+    let mut draft = live.fork(ActorId::from_u64(10).unwrap()).unwrap();
+    draft.transact(&agent(), |tx| tx.delete(&s[0])).unwrap();
+    let last = node(&live, &page, &s[0]);
+    let other = node(&live, &page, &s[2]);
+    live.transact(&person(), |tx| tx.tree_move(&page, "outline", &last, Some(&other))).unwrap();
     let before = live.version();
     let error = live.merge_changes(&draft.export_changes(&base).unwrap(), &agent()).unwrap_err();
     assert!(matches!(error, KdmError::Stale(ref reason) if reason.contains("outline")), "{error:?}");

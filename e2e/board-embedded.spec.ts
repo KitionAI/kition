@@ -15,7 +15,7 @@ const engine = kitEngine<{ BoardDocument: { create(name: string, width: number, 
 async function planFixture() {
   const sdk = await engine.load()
   const doc = sdk.BoardDocument.create('Plan.kboard', 1920, 1080)
-  doc.execute('element.create', JSON.stringify({ elements: [{ kind: 'shape', position: { x: 40, y: 40 }, size: { w: 160, h: 100 } }] }))
+  doc.execute('element.add', JSON.stringify({ elements: [{ kind: 'shape', position: { x: 40, y: 40 }, size: { w: 160, h: 100 } }] }))
   const bytes = Buffer.from(doc.save())
   doc.free()
   return bytes

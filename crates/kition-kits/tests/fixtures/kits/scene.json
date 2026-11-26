@@ -245,7 +245,7 @@
       "reports": "its objects (meshes, curves, texts, lattices, armatures, lights, cameras, empties) with transforms, materials, modifiers, constraints, and animation, the images, and the frame range; not the editor's selection, mode, current frame or viewport",
       "covers": "adding primitives, curves, and text, transforms, parenting, edit-mode modeling (extrude, inset, bevel, loop cut, knife, dissolve, bridge, bisect, spin), sculpting (sculpt.stroke, sculpt.gesture, dynamic topology, multires, face sets), modifiers (including shrinkwrap and lattice), seams and UV unwrapping, image and normal-map textures, materials, lights, cameras, armatures, skinning, constraints and IK, shape keys, keyframe animation with drivers, actions, and keying sets, rigid body and cloth physics with constraints and force fields, particles and hair, Geometry Nodes (nodes.*), fast and path-traced rendering with a compositor (compositor.*), glTF/FBX/USD (usda, usdc, usdz)/OBJ/STL import and export, and .blend import; rotations are in degrees and Z is up",
       "queries": "`cube`, `extrude`, or `modifier`",
-      "example": "add.cube"
+      "example": "object.addCube"
     }
   },
   "headless": {

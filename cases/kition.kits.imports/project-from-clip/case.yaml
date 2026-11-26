@@ -7,7 +7,7 @@ intent: >-
   no other file; Kition names no kit. The kit catalog reads `imports` from the manifest. Starting
   the project makes the kit's new document (its first `creates` entry, with its size) beside the
   file, named after it, and runs `file.import` with the file's name alone, then
-  `file.newSequenceFromClip` with the items the import answered. When the import answers no
+  `sequence.newFromClip` with the items the import answered. When the import answers no
   items, the project fails saying the file could not be imported, and no sequence is made.
 layer: gate
 source:

@@ -230,7 +230,7 @@ License: MIT
 Homepage: https://github.com/jridgewell/sourcemaps/tree/main/packages/trace-mapping
 License text: 24
 
-@kitionstage/sdk 0.5.2-stage.23
+@kitionstage/sdk 0.5.2-stage.33
 License: Apache-2.0
 Homepage: https://github.com/KitionAI/kition-sdk/tree/main/packages/sdk#readme
 License text: 26
@@ -4034,7 +4034,7 @@ SOFTWARE.
 ================================================================================
 
 License text 26
-Packages: @kitionstage/sdk 0.5.2-stage.23; @tauri-apps/api 2.12.4; @tauri-apps/cli 2.12.4; xml-name-validator 5.0.0
+Packages: @kitionstage/sdk 0.5.2-stage.33; @tauri-apps/api 2.12.4; @tauri-apps/cli 2.12.4; xml-name-validator 5.0.0
 
 Apache License
                            Version 2.0, January 2004

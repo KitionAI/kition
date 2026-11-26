@@ -20,7 +20,7 @@ const objectsOf = async (bytes: Buffer) => (await namesOf(bytes)).length
 /** The starter scene (cube, light, camera) and `spheres` spheres beside the cube. */
 const room = (spheres: number) =>
   engine.make('Room.kscene', 1280, 720, (doc) => {
-    for (let index = 0; index < spheres; index += 1) doc.execute('add.uvSphere', JSON.stringify({ name: `Ball ${index + 1}`, location: [3 + index * 2, 0, 1] }))
+    for (let index = 0; index < spheres; index += 1) doc.execute('object.addUvSphere', JSON.stringify({ name: `Ball ${index + 1}`, location: [3 + index * 2, 0, 1] }))
   })
 
 /**

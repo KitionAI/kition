@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn serializes_round_trip() {
         let messages = [
-            Message::Request(Request { id: RequestId::String("x".into()), method: "document.list".into(), params: Some(json!({})) }),
+            Message::Request(Request { id: RequestId::String("x".into()), method: "file.list".into(), params: Some(json!({})) }),
             Message::Notification(Notification::new("kit.initialized", None)),
             Message::Response(Response { id: Some(7.into()), outcome: Err(RpcError::method_not_found("nope")) }),
         ];

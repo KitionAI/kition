@@ -112,7 +112,7 @@ impl HeadlessKit {
         })
     }
 
-    /// `document.open` of the workspace file `path`, with a handle minted for it. Answers the
+    /// `file.open` of the workspace file `path`, with a handle minted for it. Answers the
     /// document's state.
     pub async fn open(&self, path: &str, read_only: bool, limit: Duration) -> Result<Value, ClientError> {
         let files = self.workspace_files()?;
@@ -121,19 +121,19 @@ impl HeadlessKit {
         if read_only {
             params["readOnly"] = json!(true);
         }
-        let state = self.request("document.open", params, limit).await?;
+        let state = self.request("file.open", params, limit).await?;
         if let Some(id) = state["documentId"].as_str() {
             files.opened(id, &handle);
         }
         Ok(state)
     }
 
-    /// `document.open` with `create`: a new document of `format` that its first save writes to
+    /// `file.open` with `create`: a new document of `format` that its first save writes to
     /// the workspace file `path`, which must not exist.
     pub async fn create(&self, path: &str, format: &str, limit: Duration) -> Result<Value, ClientError> {
         let files = self.workspace_files()?;
         let handle = files.document(path, false, false).map_err(|error| ClientError::Rpc(file_error(&error)))?.handle;
-        let state = self.request("document.open", json!({ "file": handle, "create": { "format": format } }), limit).await?;
+        let state = self.request("file.open", json!({ "file": handle, "create": { "format": format } }), limit).await?;
         if let Some(id) = state["documentId"].as_str() {
             files.opened(id, &handle);
         }

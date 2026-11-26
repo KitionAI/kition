@@ -52,7 +52,7 @@ describe('a project from a clip', () => {
         // The clip is named by its file name alone: the project sits beside it.
         calls: [
           ['file.import', { paths: [`Clip.${extension}`] }],
-          ['file.newSequenceFromClip', { items: [7] }],
+          ['sequence.newFromClip', { items: [7] }],
         ],
       },
     ])

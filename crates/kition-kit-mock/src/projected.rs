@@ -23,7 +23,7 @@ const SCHEMA: &str = r#"{
   "Line":{"projected":true,"toolId":{"field":"key","prefix":"line:"},"label":"text","text":"text","fields":{"key":{"kind":"string","readOnly":true},"text":{"kind":"string"}},"projectedOps":{
    "set.text":{"command":"line.set","params":{"id":"target","text":"value"}},
    "text.set":{"command":"line.set","params":{"id":"target","text":"text"}},
-   "create":{"command":"line.create","params":{"id":"id","text":"fields.text","key":"fields.key","in":"in","at":"at"}},
+   "create":{"command":"line.add","params":{"id":"id","text":"fields.text","key":"fields.key","in":"in","at":"at"}},
    "delete":{"command":"line.delete","params":{"id":"target"}},
    "list.move":{"command":"line.move","params":{"id":"target","in":"in","to":"to"}}
   }}
@@ -173,7 +173,7 @@ pub fn edit(replica: &mut Replica, command: &str, params: &Map<String, Value>, o
             let (s, i) = line_at.ok_or("line not found")?;
             sections[s].lines.remove(i);
         }
-        "line.create" => {
+        "line.add" => {
             let parent = params.get("in").and_then(Value::as_str).unwrap_or("section:s.lines").trim_end_matches(".lines");
             let s = sections.iter().position(|section| parent == format!("section:{}", section.key)).ok_or("destination section not found")?;
             let key = params
@@ -253,7 +253,7 @@ pub fn commands() -> Vec<(&'static str, &'static str, bool, Value)> {
     [
         ("line.set", "text"),
         ("line.delete", ""),
-        ("line.create", "text"),
+        ("line.add", "text"),
         ("line.move", ""),
         ("section.set", "title"),
         ("section.starred", "starred"),

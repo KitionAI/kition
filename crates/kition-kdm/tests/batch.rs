@@ -140,7 +140,7 @@ fn a_batch_without_commands_is_one_undo_step() {
     ] });
     batch::run(&mut ReplicaTarget(&mut replica), &request).unwrap();
     assert_eq!(replica.objects_of_type("Shape").len(), 1);
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert!(replica.objects_of_type("Page").is_empty() && replica.objects_of_type("Shape").is_empty());
     assert!(!replica.can_undo());
 }
@@ -395,7 +395,7 @@ fn deletion_cascades_through_owned_refs_lists_and_maps() {
     assert_eq!(json!(deleted), fixture["deleted"], "{receipt}");
     let state = replica.state_json().unwrap();
     assert_eq!(json!(state["objects"].as_object().unwrap().keys().collect::<Vec<_>>()), fixture["remaining"]);
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert!(replica.exists(&ObjectId::from_string("prop")), "the cascade is one undo step");
 }
 

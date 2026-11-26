@@ -98,7 +98,7 @@ async fn made(kit: &HeadlessKit, path: &str) {
     let secret = made["refs"]["$secret"].clone();
     batch(kit, &document, json!({ "ops": [{ "op": "delete", "target": secret }] })).await.unwrap();
     batch(kit, &document, json!({ "ops": [{ "op": "create", "type": "Tag", "in": "root.tags", "fields": { "name": "also kept" } }] })).await.unwrap();
-    kit.request("document.save", json!({ "documentId": document }), LIMIT).await.unwrap();
+    kit.request("file.save", json!({ "documentId": document }), LIMIT).await.unwrap();
     kit.request("document.close", json!({ "documentId": document }), LIMIT).await.unwrap();
 }
 

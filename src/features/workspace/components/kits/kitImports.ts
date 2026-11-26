@@ -9,7 +9,7 @@ import type { KitEditorEntry } from './kitEditors'
  * takes the file into the project (`{ paths }`, answers `{ items }`), the second makes a sequence
  * of the clip's own size and frame rate from those items (`{ items }`).
  */
-const PROJECT_FROM_CLIP = { action: 'project-from-clip', import: 'file.import', sequence: 'file.newSequenceFromClip' } as const
+const PROJECT_FROM_CLIP = { action: 'project-from-clip', import: 'file.import', sequence: 'sequence.newFromClip' } as const
 
 /** The kits of this build that start a project from the file at `path`, each with what it creates. */
 export function kitsStartingFromClip(path: string): KitEditorEntry[] {

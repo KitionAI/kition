@@ -30,8 +30,8 @@ export async function savedTables(bytes: Buffer) {
     return answer.result as T
   }
   const tables: Record<string, TableRecord[]> = {}
-  for (const table of call<{ tables: Array<{ id: number; title: string }> }>('documents.get').tables) {
-    tables[table.title] = call<{ items: TableRecord[] }>('records.list', { tableId: table.id }).items
+  for (const table of call<{ tables: Array<{ id: number; title: string }> }>('file.get').tables) {
+    tables[table.title] = call<{ items: TableRecord[] }>('record.list', { tableId: table.id }).items
   }
   doc.free()
   return tables

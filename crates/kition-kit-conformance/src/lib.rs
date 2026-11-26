@@ -352,7 +352,7 @@ pub async fn run(options: &Options) -> Report {
             }
             _ => {
                 for id in ["round-trip", "files"] {
-                    report.skip(id, title(id), "commands.list failed");
+                    report.skip(id, title(id), "command.list failed");
                 }
             }
         }
@@ -752,12 +752,12 @@ impl Context<'_> {
             .map_err(|error| format!("cannot grant the fixture: {error}"))
     }
 
-    /// `document.open` of the file of `handle`, remembered as that document's file.
+    /// `file.open` of the file of `handle`, remembered as that document's file.
     async fn open(&self, client: &KitClient, handle: &str) -> Result<DocumentState, String> {
         let raw = client
             .request(methods::DocumentOpen::NAME, json!({ "file": handle }), None)
             .await
-            .map_err(|error| format!("document.open: {error}"))?;
+            .map_err(|error| format!("file.open: {error}"))?;
         self.schemas.protocol_def("documentState", &raw)?;
         let state: DocumentState =
             serde_json::from_value(raw).map_err(|error| error.to_string())?;
@@ -824,7 +824,7 @@ impl Context<'_> {
         }
         if opened.name != fixture.file_name {
             return Err(format!(
-                "document.open named the document `{}`, not the file's name `{}`",
+                "file.open named the document `{}`, not the file's name `{}`",
                 opened.name, fixture.file_name
             ));
         }
@@ -855,13 +855,13 @@ impl Context<'_> {
         let listed = host
             .call::<methods::DocumentList>(&Empty {})
             .await
-            .map_err(|error| format!("document.list: {error}"))?;
+            .map_err(|error| format!("file.list: {error}"))?;
         let Some(edited) = listed
             .documents
             .iter()
             .find(|document| document.document_id == opened.document_id)
         else {
-            return Err("document.list does not include the open document".into());
+            return Err("file.list does not include the open document".into());
         };
         if executed.changed && !edited.dirty {
             return Err("the document is not dirty after a change".into());
@@ -873,10 +873,10 @@ impl Context<'_> {
                 document_id: opened.document_id.clone(),
             })
             .await
-            .map_err(|error| format!("document.save: {error}"))?;
+            .map_err(|error| format!("file.save: {error}"))?;
         if saved.name != fixture.file_name {
             return Err(format!(
-                "document.save named `{}`, not the file's name `{}`",
+                "file.save named `{}`, not the file's name `{}`",
                 saved.name, fixture.file_name
             ));
         }
@@ -890,7 +890,7 @@ impl Context<'_> {
             .map_err(|error| format!("files.stat: {}", error.message))?;
         if stat["version"] != json!(saved.version) {
             return Err(format!(
-                "document.save answered version {}, but the file's is {}",
+                "file.save answered version {}, but the file's is {}",
                 saved.version, stat["version"]
             ));
         }
@@ -934,7 +934,7 @@ impl Context<'_> {
             .await,
             ErrorReason::FileNotGranted,
         )
-        .map_err(|error| format!("document.open of an ungranted handle: {error}"))?;
+        .map_err(|error| format!("file.open of an ungranted handle: {error}"))?;
 
         let fixture = &self.options.fixture;
         let handle = self.write_fixture()?;
@@ -961,14 +961,14 @@ impl Context<'_> {
             .await,
             ErrorReason::FileConflict,
         )
-        .map_err(|error| format!("document.save over a file changed since it was read: {error}"))?;
+        .map_err(|error| format!("file.save over a file changed since it was read: {error}"))?;
         if std::fs::read(&path).map_err(|error| error.to_string())? != changed {
             return Err("a save refused file_conflict still replaced the file".into());
         }
         let listed = host
             .call::<methods::DocumentList>(&Empty {})
             .await
-            .map_err(|error| format!("document.list: {error}"))?;
+            .map_err(|error| format!("file.list: {error}"))?;
         if !listed
             .documents
             .iter()
@@ -1012,7 +1012,7 @@ impl Context<'_> {
                 .await,
             ErrorReason::FileNotGranted,
         )
-        .map_err(|error| format!("document.open of an ungranted handle: {error}"))?;
+        .map_err(|error| format!("file.open of an ungranted handle: {error}"))?;
 
         // A handle the host minted for the agent's run opens through the host's files.
         let handle = self.write_fixture()?;

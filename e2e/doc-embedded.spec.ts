@@ -29,10 +29,10 @@ async function loadSdk() {
 async function letterFixture() {
   const sdk = await loadSdk()
   const doc = sdk.DocDocument.create('Letter.docx', 612, 792)
-  doc.execute('para.style', JSON.stringify({ style: 'Title' }))
+  doc.execute('paragraph.style', JSON.stringify({ style: 'Title' }))
   doc.execute('text.insert', JSON.stringify({ text: 'Field notes' }))
   doc.execute('text.newParagraph', '{}')
-  doc.execute('para.style', JSON.stringify({ style: 'Normal' }))
+  doc.execute('paragraph.style', JSON.stringify({ style: 'Normal' }))
   doc.execute('text.insert', JSON.stringify({ text: 'Auroras appear near the poles.' }))
   doc.execute('caret.docStart', '{}')
   const bytes = doc.save()
@@ -43,7 +43,7 @@ async function letterFixture() {
 async function textOf(bytes: Buffer) {
   const sdk = await loadSdk()
   const doc = sdk.DocDocument.open('Saved.docx', bytes)
-  const text = (JSON.parse(doc.execute('document.text', '{}')) as { text: string }).text
+  const text = (JSON.parse(doc.execute('file.text', '{}')) as { text: string }).text
   doc.free()
   return text
 }

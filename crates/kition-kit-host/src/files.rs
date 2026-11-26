@@ -71,7 +71,7 @@ pub enum Flow {
     /// A file an agent's command names (`KitAgent` A28): `write` only when approved (FA13).
     Agent,
     /// The document file the host opens in a headless kit, or saves it to (Kit Process Protocol
-    /// `document.open`, `saveAs`, `export`): the host chose it, under the kit's formats.
+    /// `file.open`, `saveAs`, `export`): the host chose it, under the kit's formats.
     Document,
     /// A file a document refers to, resolved from its stored path (`files.resolve`, E5): `read`.
     Lent,

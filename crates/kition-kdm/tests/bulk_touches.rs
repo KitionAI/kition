@@ -61,9 +61,9 @@ fn a_large_transaction_notes_one_touch_per_object_with_every_field() {
         let fields: Vec<&str> = touch.fields.as_ref().expect("fields, not the whole object").iter().map(String::as_str).collect();
         assert_eq!(fields, ["x", "y"], "{}", touch.id);
     }
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert!(ids.iter().enumerate().all(|(index, id)| replica.get(id, "x").unwrap() == json!(index) && replica.get(id, "y").unwrap() == json!(0)));
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     assert!(ids.iter().all(|id| replica.get(id, "x").unwrap() == json!(7) && replica.get(id, "y").unwrap() == json!(7)));
 }
 

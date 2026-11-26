@@ -15,7 +15,7 @@ async function budgetFixture() {
   for (const [cell, input] of [['A1', 'Item'], ['B1', 'Cost'], ['A2', 'Rent'], ['B2', '1200'], ['A3', 'Food'], ['B3', '450'], ['A4', 'Total'], ['B4', '=SUM(B2:B3)']]) {
     doc.execute('cell.set', JSON.stringify({ cell, input }))
   }
-  doc.execute('selection.set', JSON.stringify({ range: 'A1' }))
+  doc.execute('select.set', JSON.stringify({ range: 'A1' }))
   const bytes = doc.save()
   doc.free()
   return Buffer.from(bytes)
@@ -54,8 +54,8 @@ test('opens a workbook in the Sheet kit’s own editor, edits it there, and save
     await kit.getByTestId('sheet-formula').fill('1300')
     await kit.getByTestId('sheet-formula').press('Enter')
     await expect(kit.getByTestId('sheet-unsaved')).toBeVisible()
-    await kit.getByTestId('sheet-cmd-home.bold').click()
-    await expect(kit.getByTestId('sheet-cmd-home.bold')).toHaveAttribute('aria-pressed', 'true')
+    await kit.getByTestId('sheet-cmd-format.bold').click()
+    await expect(kit.getByTestId('sheet-cmd-format.bold')).toHaveAttribute('aria-pressed', 'true')
 
     // A second sheet.
     await kit.getByTestId('sheet-add').click()

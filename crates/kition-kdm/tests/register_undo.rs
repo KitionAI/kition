@@ -142,11 +142,11 @@ fn run(replicas: &mut [Replica], actions: &[Action], engine: bool, sync_each: bo
             }
             Action::Undo { replica, agent } => {
                 let scope = if *agent { UndoScope::Agent } else { UndoScope::Person };
-                answers.push(replicas[*replica].undo_in(scope).unwrap());
+                answers.push(replicas[*replica].undo_in(scope).unwrap().is_done());
             }
             Action::Redo { replica, agent } => {
                 let scope = if *agent { UndoScope::Agent } else { UndoScope::Person };
-                answers.push(replicas[*replica].redo_in(scope).unwrap());
+                answers.push(replicas[*replica].redo_in(scope).unwrap().is_done());
             }
             Action::Group { replica, open: true } => {
                 let _ = replicas[*replica].begin_undo_group();
@@ -209,12 +209,12 @@ fn an_undo_keeps_the_cells_another_replica_wrote_later_and_converges() {
         })
         .unwrap();
     sync(&mut net);
-    assert!(net[0].undo().unwrap());
+    assert!(net[0].undo().unwrap().is_done());
     sync(&mut net);
     let cells = |replica: &Replica| ["k0", "k1", "k2"].map(|key| replica.map_get(&sheet, "cells", key).unwrap());
     assert_eq!(cells(&net[0]), [json!("s0.0"), json!("theirs"), json!("theirs")]);
     assert_eq!(cells(&net[1]), cells(&net[0]));
-    assert!(net[0].redo().unwrap());
+    assert!(net[0].redo().unwrap().is_done());
     sync(&mut net);
     assert_eq!(cells(&net[0]), [json!("mine"), json!("theirs"), json!("theirs")]);
     assert_eq!(objects(&net[1]), objects(&net[0]));
@@ -232,12 +232,12 @@ fn a_group_of_register_writes_and_other_edits_is_one_step() {
     replica.transact(&person(), |tx| tx.map_set(&id("s1"), "cells", "k0", json!("grouped"))).unwrap();
     replica.end_undo_group();
     let after = objects(&replica);
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(objects(&replica), before);
     assert!(!replica.can_undo());
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     assert_eq!(objects(&replica), after);
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(objects(&replica), before);
 }
 
@@ -257,14 +257,14 @@ fn a_register_step_undoes_into_an_object_deleted_and_brought_back() {
         })
         .unwrap();
     assert!(!replica.exists(&shape));
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(objects(&replica), written);
-    assert!(replica.undo().unwrap());
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(replica.get(&shape, "x").unwrap(), json!(1));
     assert_eq!(replica.map_get(&sheet, "cells", "k0").unwrap(), json!("s0.0"));
-    assert!(replica.redo().unwrap());
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
+    assert!(replica.redo().unwrap().is_done());
     assert_eq!(objects(&replica), written);
 }
 
@@ -283,7 +283,7 @@ fn an_undo_after_another_replica_deleted_the_object_writes_back_the_rest() {
     sync(&mut net);
     net[1].transact(&person(), |tx| tx.delete(&gone)).unwrap();
     sync(&mut net);
-    assert!(net[0].undo().unwrap());
+    assert!(net[0].undo().unwrap().is_done());
     sync(&mut net);
     assert!(!net[0].exists(&gone));
     assert_eq!(net[0].map_get(&kept, "cells", "k0").unwrap(), json!("s1.0"));
@@ -304,13 +304,13 @@ fn register_steps_keep_the_other_scopes_later_writes() {
             tx.map_set(&sheet, "cells", "k1", json!("agent"))
         })
         .unwrap();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!([cell(&replica, "k0"), cell(&replica, "k1")], [json!("agent"), json!("agent")]);
-    assert!(replica.undo_in(UndoScope::Agent).unwrap());
+    assert!(replica.undo_in(UndoScope::Agent).unwrap().is_done());
     // The agent's undo writes back what its step replaced: the person's value, which nothing
     // wrote since (the person's undo kept the agent's value instead of writing its own).
     assert_eq!([cell(&replica, "k0"), cell(&replica, "k1")], [json!("person"), json!("s0.1")]);
-    assert!(replica.redo_in(UndoScope::Agent).unwrap());
+    assert!(replica.redo_in(UndoScope::Agent).unwrap().is_done());
     assert_eq!([cell(&replica, "k0"), cell(&replica, "k1")], [json!("agent"), json!("agent")]);
 }
 
@@ -325,10 +325,10 @@ fn an_undo_skips_a_step_whose_objects_are_all_gone() {
     sync(&mut net);
     net[1].transact(&person(), |tx| tx.delete(&sheet)).unwrap();
     sync(&mut net);
-    assert!(net[0].undo().unwrap());
+    assert!(net[0].undo().unwrap().is_done());
     assert_eq!(net[0].get(&shape, "x").unwrap(), json!(0));
     assert!(!net[0].can_undo());
-    assert!(net[0].redo().unwrap());
+    assert!(net[0].redo().unwrap().is_done());
     assert_eq!(net[0].get(&shape, "x").unwrap(), json!(50));
-    assert!(!net[0].redo().unwrap(), "the dropped step has nothing to redo");
+    assert!(!net[0].redo().unwrap().is_done(), "the dropped step has nothing to redo");
 }

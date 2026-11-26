@@ -12,7 +12,7 @@ async function logoFixture() {
   const sdk = await engine.load()
   const doc = sdk.VectorDocument.create('Logo.kvector', 400, 300)
   doc.execute('shape.rectangle', JSON.stringify({ x: 40, y: 40, width: 120, height: 80 }))
-  doc.execute('select.none', '{}')
+  doc.execute('edit.deselectAll', '{}')
   const bytes = doc.save()
   doc.free()
   return Buffer.from(bytes)

@@ -93,7 +93,7 @@
     "objectModel": true,
     "layout": true,
     "exclude": [
-      "review.readAloud",
+      "readAloud.open",
       "readAloud.playPause"
     ],
     "describe": {

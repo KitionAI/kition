@@ -18,7 +18,7 @@ const elementsOf = async (bytes: Buffer) => (await engine.inspect('Saved.kboard'
 /** A board with `count` shapes in a row. */
 const plan = (count: number) =>
   engine.make('Plan.kboard', 1920, 1080, (doc) => {
-    if (count) doc.execute('element.create', JSON.stringify({ elements: Array.from({ length: count }, (_, index) => ({ kind: 'shape', position: { x: 40 + index * 200, y: 40 }, size: { w: 160, h: 100 } })) }))
+    if (count) doc.execute('element.add', JSON.stringify({ elements: Array.from({ length: count }, (_, index) => ({ kind: 'shape', position: { x: 40 + index * 200, y: 40 }, size: { w: 160, h: 100 } })) }))
   })
 
 /** Draws a rectangle with the shape tool (`r`) in an empty part of the view. */

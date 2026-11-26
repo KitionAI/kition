@@ -790,7 +790,7 @@ async fn resolve_part(kits: &KitManager, view: &DocumentView, input: &Value) -> 
 const PART_MEMBERS: [&str; 4] = ["slide", "page", "slideId", "pageId"];
 
 /// The view a kit's render command ([`KitAgent::render`]) takes, read from the parameter schema the
-/// kit publishes for it (`commands.list`), so a kit adds a view member (`time`, `range`,
+/// kit publishes for it (`command.list`), so a kit adds a view member (`time`, `range`,
 /// `sequence`, `comp`, …) without a change here.
 ///
 /// [`KitAgent::render`]: crate::KitAgent::render
@@ -1091,7 +1091,7 @@ async fn live_rendered_preview(
 /// The objects of one slide or page, through the kit's `slide.inspect` or `page.inspect` query
 /// (`{index}` counted from 0) when it has one: what an agent needs to find the object to edit.
 /// What a spreadsheet or document holds, through the kit's own readers (`sheet.read`,
-/// `document.inspect {text}`), cut to a size an agent can read: the content an inspect answer
+/// `file.inspect {text}`), cut to a size an agent can read: the content an inspect answer
 /// lists, so cells and paragraphs need not be read through the object model. None for kits
 /// without them, and for a slide or page target (listed as objects).
 async fn part_content(kits: &KitManager, view: &DocumentView, input: &Value) -> Option<Value> {
@@ -1107,7 +1107,7 @@ async fn part_content(kits: &KitManager, view: &DocumentView, input: &Value) -> 
     }
     let mut params = Map::new();
     params.insert("text".into(), json!(true));
-    if let Ok(executed) = kits.execute(Caller::Agent, view.kit_id, &view.document_id, "document.inspect", params).await
+    if let Ok(executed) = kits.execute(Caller::Agent, view.kit_id, &view.document_id, "file.inspect", params).await
         && let Some(blocks) = executed.result.as_ref().and_then(|r| r.get("blocks")).and_then(Value::as_array)
     {
         let span = target
@@ -1193,7 +1193,7 @@ fn sheet_content(read: &Value, asked: bool) -> Value {
     content
 }
 
-/// `document.inspect`'s blocks as paragraphs: index, style, kind and text.
+/// `file.inspect`'s blocks as paragraphs: index, style, kind and text.
 fn document_content(blocks: &[Value], span: Option<(usize, Option<usize>)>) -> Value {
     let (from, to) = span.unwrap_or((0, None));
     let to = to.map_or_else(|| blocks.len().min(from + CONTENT_BLOCKS), |t| (t + 1).min(blocks.len()));

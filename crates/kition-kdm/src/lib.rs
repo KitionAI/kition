@@ -20,6 +20,7 @@ mod error;
 pub mod footprint;
 mod ids;
 mod marks;
+mod merge;
 mod origin;
 mod overlay;
 pub mod projection;
@@ -37,8 +38,9 @@ pub use changes::{Changes, MapWrites};
 pub use error::{KdmError, Result};
 pub use ids::{ActorId, DocId, NodeRef, ObjectId};
 pub use marks::TextRun;
+pub use merge::{MergeAt, MergeConflict};
 pub use origin::{Origin, OriginKind, UndoScope};
-pub use replica::{Replica, TreeEntry, UndoTouch, Version};
+pub use replica::{DraftMerge, Replica, TreeEntry, UndoOutcome, UndoTouch, Version};
 pub use schema::{
     Expand, FieldDef, FieldKind, KDM_VERSION, MarkDef, NumberLimits, ProjectedCommand, ReadOnlyWhen, Schema, StructuralConsequence, ToolIdDef, TypeDef,
 };

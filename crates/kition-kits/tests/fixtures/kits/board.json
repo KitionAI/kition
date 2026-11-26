@@ -58,9 +58,9 @@
       "noun": "board",
       "fileTypes": ".kboard",
       "reports": "its pages, frames, and element counts",
-      "covers": "shapes, sticky notes, text, connectors, frames, mind maps, templates, layout, pages, and more; `element.create` adds elements",
+      "covers": "shapes, sticky notes, text, connectors, frames, mind maps, templates, layout, pages, and more; `element.add` adds elements",
       "queries": "`connector`, `frame`, or `mindmap`",
-      "example": "element.create"
+      "example": "element.add"
     }
   },
   "headless": {

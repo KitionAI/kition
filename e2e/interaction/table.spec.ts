@@ -29,10 +29,10 @@ async function leads(count = 1) {
   const sdk = await engine.load()
   const doc = sdk.TableDocument.create('Leads.ktable', 0, 0)
   const call = caller(doc)
-  const [table] = call<{ tables: Array<{ id: number }> }>('documents.get').tables
-  call('tables.update', { tableId: table.id, title: 'Leads' })
+  const [table] = call<{ tables: Array<{ id: number }> }>('file.get').tables
+  call('table.set', { tableId: table.id, title: 'Leads' })
   const names = ['Ada', 'Grace', 'Edsger', 'Barbara']
-  for (let index = 0; index < count; index += 1) call('records.create', { tableId: table.id, values: { title: names[index] } })
+  for (let index = 0; index < count; index += 1) call('record.add', { tableId: table.id, values: { title: names[index] } })
   doc.markSaved()
   const bytes = Buffer.from(doc.save())
   doc.free()
@@ -43,8 +43,8 @@ async function recordsOf(bytes: Buffer) {
   const sdk = await engine.load()
   const doc = sdk.TableDocument.open('Saved.ktable', bytes)
   const call = caller(doc)
-  const [table] = call<{ tables: Array<{ id: number }> }>('documents.get').tables
-  const items = call<{ items: Array<{ values: Record<string, unknown> }> }>('records.list', { tableId: table.id }).items
+  const [table] = call<{ tables: Array<{ id: number }> }>('file.get').tables
+  const items = call<{ items: Array<{ values: Record<string, unknown> }> }>('record.list', { tableId: table.id }).items
   doc.free()
   return items
 }
@@ -86,7 +86,7 @@ hostMatrix({
   undo: (kit) => kit.getByTestId('table-undo').click(),
   redo: (kit) => kit.getByTestId('table-redo').click(),
   create: { group: 'Data', name: 'Untitled table.ktable', count: 0 },
-  agent: { command: 'table.records.create', params: { tableId: FIRST_TABLE, values: { title: 'From the agent' } } },
+  agent: { command: 'record.add', params: { tableId: FIRST_TABLE, values: { title: 'From the agent' } } },
   damaged: Buffer.from('this is not a table file'),
   // H16: the records grid is the work area and follows the scheme.
   dark: { surface: 'dark', area: (kit) => kit.getByTestId('table-grid') },

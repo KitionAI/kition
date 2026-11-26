@@ -687,7 +687,7 @@ pub fn edit(replica: &mut Replica, command: &str, params: &Map<String, Value>, o
                 Some(scope) => UndoScope::parse(scope).ok_or("`scope` is person or agent")?,
                 None => UndoScope::of(origin.kind).unwrap_or(UndoScope::Person),
             };
-            if !replica.undo_in(scope).map_err(kdm)? {
+            if !replica.undo_in(scope).map_err(kdm)?.is_done() {
                 return Err("nothing to undo".to_owned());
             }
             done(None)

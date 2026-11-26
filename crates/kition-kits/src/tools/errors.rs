@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn resource_failures_keep_their_types() {
-        assert_eq!(KitToolError::from(KitError::Timeout { name: "Test", method: "document.open".into() }).to_json()["code"], "timeout");
+        assert_eq!(KitToolError::from(KitError::Timeout { name: "Test", method: "file.open".into() }).to_json()["code"], "timeout");
         let memory = KitToolError::from(KitError::MemoryLimit { name: "Test" });
         assert_eq!(memory.to_json()["code"], "memory-limit");
         assert!(!memory.retryable, "blindly retrying an oversized document is not a remedy");

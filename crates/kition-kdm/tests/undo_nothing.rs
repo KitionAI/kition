@@ -101,16 +101,16 @@ fn one_undo_after_a_step_that_changed_nothing_takes_back_the_step_before() {
         type_text(&mut replica, 5, "x");
         nothing(&mut replica, kind);
         assert_eq!(state(&replica), ("startx".into(), 10, true, false), "{kind:?}");
-        assert!(replica.undo().unwrap(), "{kind:?}");
+        assert!(replica.undo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("start".into(), 10, false, true), "{kind:?}: the typing is undone and no step is left");
-        assert!(!replica.undo().unwrap(), "{kind:?}");
-        assert!(replica.redo().unwrap(), "{kind:?}");
+        assert!(!replica.undo().unwrap().is_done(), "{kind:?}");
+        assert!(replica.redo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("startx".into(), 10, true, false), "{kind:?}: one redo puts the typing back, and no step is left");
-        assert!(!replica.redo().unwrap(), "{kind:?}");
+        assert!(!replica.redo().unwrap().is_done(), "{kind:?}");
         // Undo and redo again: the step that changed nothing stays out of both.
-        assert!(replica.undo().unwrap(), "{kind:?}");
+        assert!(replica.undo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("start".into(), 10, false, true), "{kind:?}");
-        assert!(replica.redo().unwrap(), "{kind:?}");
+        assert!(replica.redo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("startx".into(), 10, true, false), "{kind:?}");
     }
 }
@@ -120,9 +120,9 @@ fn an_undo_of_only_a_step_that_changed_nothing_changes_nothing_and_answers_false
     for kind in ALL {
         let mut replica = replica();
         nothing(&mut replica, kind);
-        assert!(!replica.undo().unwrap(), "{kind:?}");
+        assert!(!replica.undo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("start".into(), 10, false, false), "{kind:?}");
-        assert!(!replica.redo().unwrap(), "{kind:?}");
+        assert!(!replica.redo().unwrap().is_done(), "{kind:?}");
     }
 }
 
@@ -133,16 +133,16 @@ fn undo_and_redo_pass_over_a_step_that_changed_nothing_between_two_others() {
         type_text(&mut replica, 5, "a");
         nothing(&mut replica, kind);
         type_text(&mut replica, 6, "b");
-        assert!(replica.undo().unwrap(), "{kind:?}");
+        assert!(replica.undo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("starta".into(), 10, true, true), "{kind:?}");
-        assert!(replica.undo().unwrap(), "{kind:?}");
+        assert!(replica.undo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("start".into(), 10, false, true), "{kind:?}");
-        assert!(replica.redo().unwrap(), "{kind:?}");
+        assert!(replica.redo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("starta".into(), 10, true, true), "{kind:?}");
-        assert!(replica.redo().unwrap(), "{kind:?}");
+        assert!(replica.redo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("startab".into(), 10, true, false), "{kind:?}");
-        assert!(replica.undo().unwrap(), "{kind:?}");
-        assert!(replica.undo().unwrap(), "{kind:?}");
+        assert!(replica.undo().unwrap().is_done(), "{kind:?}");
+        assert!(replica.undo().unwrap().is_done(), "{kind:?}");
         assert_eq!(state(&replica), ("start".into(), 10, false, true), "{kind:?}");
     }
 }
@@ -158,12 +158,12 @@ fn a_group_that_changed_something_besides_what_cancels_out_is_a_step() {
     replica.transact(&person(), |tx| tx.set(&shape(), "x", json!(1))).unwrap();
     replica.transact(&person(), |tx| tx.text_delete(&shape(), "label", 0, 1)).unwrap();
     replica.end_undo_group();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(state(&replica), ("startx".into(), 10, true, true));
-    assert!(replica.redo().unwrap());
+    assert!(replica.redo().unwrap().is_done());
     assert_eq!(state(&replica), ("startx".into(), 1, true, false));
-    assert!(replica.undo().unwrap());
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
+    assert!(replica.undo().unwrap().is_done());
     assert_eq!(state(&replica), ("start".into(), 10, false, true));
 }
 
@@ -173,10 +173,10 @@ fn a_step_that_changed_nothing_clears_the_redo_steps() {
     for kind in [Nothing::TextGroup, Nothing::TextTransaction, Nothing::RegisterGroup, Nothing::MixedGroup] {
         let mut replica = replica();
         type_text(&mut replica, 5, "x");
-        assert!(replica.undo().unwrap());
+        assert!(replica.undo().unwrap().is_done());
         nothing(&mut replica, kind);
         assert!(!replica.can_redo(), "{kind:?}");
-        assert!(!replica.redo().unwrap(), "{kind:?}");
+        assert!(!replica.redo().unwrap().is_done(), "{kind:?}");
         assert_eq!(replica.text(&shape(), "label").unwrap(), "start", "{kind:?}");
     }
 }
@@ -196,8 +196,42 @@ fn a_group_whose_changes_another_replica_took_back_is_passed_over() {
     theirs.transact(&person(), |tx| tx.text_delete(&shape(), "label", 5, 2)).unwrap();
     mine.import_changes(&theirs.export_changes(&mine.version()).unwrap()).unwrap();
     assert_eq!(state(&mine), ("start".into(), 50, true, false));
-    assert!(mine.undo().unwrap());
+    assert!(mine.undo().unwrap().is_done());
     assert_eq!(state(&mine), ("start".into(), 10, false, true));
-    assert!(mine.redo().unwrap());
+    assert!(mine.redo().unwrap().is_done());
     assert_eq!(state(&mine), ("start".into(), 50, true, false));
+}
+
+/// The answer says which steps a call took (kition-slide: a call that passes over a step and
+/// takes back the one below it moved two): the steps passed over, top first, and the one taken
+/// back, each by its footprint. A call that only passes over steps takes them all the same,
+/// changes nothing and says none was taken back; `can_undo` then says no step is left.
+#[test]
+fn an_undo_answers_the_steps_it_passed_over_and_the_one_it_took_back() {
+    for kind in ALL {
+        let mut replica = replica();
+        type_text(&mut replica, 5, "a");
+        nothing(&mut replica, kind);
+        type_text(&mut replica, 6, "b");
+        let typed = replica.undo_touches_in(kition_kdm::UndoScope::Person);
+        let first = replica.undo().unwrap();
+        assert_eq!((first.passed.len(), first.taken.as_ref(), first.steps()), (0, Some(&typed), 1), "{kind:?}");
+        let second = replica.undo().unwrap();
+        assert_eq!((second.passed.len(), second.taken.is_some(), second.steps()), (1, true, 2), "{kind:?}: the step that changed nothing and the typing");
+        assert_eq!(state(&replica), ("start".into(), 10, false, true), "{kind:?}");
+        let none = replica.undo().unwrap();
+        assert_eq!((none.steps(), none.is_done()), (0, false), "{kind:?}: an empty stack");
+        // Only a step that changes nothing: it is taken off the stack, and nothing is done.
+        let mut only = replica_with_nothing(kind);
+        assert!(only.can_undo(), "{kind:?}");
+        let passed = only.undo().unwrap();
+        assert_eq!((passed.passed.len(), passed.is_done()), (1, false), "{kind:?}");
+        assert!(!only.can_undo(), "{kind:?}: the step passed over is gone, as the answer says");
+    }
+}
+
+fn replica_with_nothing(kind: Nothing) -> Replica {
+    let mut replica = replica();
+    nothing(&mut replica, kind);
+    replica
 }

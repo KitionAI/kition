@@ -60,7 +60,7 @@ fn text_of(store: &Store, object: &str, field: &str) -> String {
 
 fn list_of(store: &Store, object: &str, field: &str) -> Vec<ObjectId> {
     match store.field(&id(object), field) {
-        Some(Field::List(items)) => items.clone(),
+        Some(Field::List(items)) => items.to_vec(),
         None => Vec::new(),
         Some(other) => panic!("{object}.{field} is {other:?}"),
     }
@@ -127,7 +127,7 @@ fn every_operation_applied_then_inverted_gives_back_the_state() {
         }
         assert_eq!(store, before, "{what}: the inverse did not give back the state");
         // The content (what a file holds) is the same as well.
-        assert_eq!(store.to_content(None), before.to_content(None), "{what}");
+        assert_eq!(crate::content::write(&store, None).unwrap(), crate::content::write(&before, None).unwrap(), "{what}");
     }
 }
 
@@ -408,9 +408,8 @@ fn a_change_reads_back_from_its_json() {
 fn content_reads_into_a_store_and_back() {
     let schema = schema();
     let store = base();
-    let content = store.to_content(None);
-    let bytes = crate::content::encode(&content).unwrap();
-    let read = Store::from_content(&crate::content::decode_value(crate::content::parse(&bytes, "KDM content").unwrap()).unwrap(), &schema).unwrap();
+    let bytes = crate::content::write(&store, None).unwrap();
+    let read = Store::from_content(crate::content::decode(crate::content::read(&bytes, "KDM content", &schema).unwrap()).unwrap()).unwrap();
     assert_eq!(read, store);
     assert_eq!(read.holders(&id("p2")), &[(id("b1"), Name::from("outline"))]);
 }

@@ -291,10 +291,7 @@
     "collaboration": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "merge"
-      ],
-      "description": "How the kit's documents merge (platform docs/platform/kits/manifest.md, K13).",
+      "description": "The kit's leases and comment commands (platform docs/platform/kits/manifest.md, K13). Only leases and comments are read: a document's changes form one line and a draft merges by the data model's rules (6.6), whatever the kit's merge classes.",
       "properties": {
         "merge": {
           "type": "array",
@@ -312,7 +309,7 @@
               "binary"
             ]
           },
-          "description": "The merge classes the kit's data maps to."
+          "description": "Optional and not read: the merge classes the kit's data maps to, from when documents merged concurrently. Kept valid so manifests that still list it check."
         },
         "leases": {
           "type": "array",
@@ -582,7 +579,7 @@
         },
         "capabilities": {
           "type": "array",
-          "description": "Optional platform capabilities the executable serves, as kit.initialize lists them in capabilities.capabilities (platform docs/platform/kits/manifest.md, K22): document-text, the document's words through document.text (KitText 1.0).",
+          "description": "Optional platform capabilities the executable serves, as kit.initialize lists them in capabilities.capabilities (platform docs/platform/kits/manifest.md, K22): document-text, the document's words through file.text (KitText 1.0).",
           "uniqueItems": true,
           "items": {
             "enum": ["document-text"]

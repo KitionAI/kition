@@ -161,7 +161,7 @@ async fn a_host_opens_edits_and_saves_by_path_and_hears_of_conflicts() {
 
     let preview = service.call("documents.preview", json!({ "kit": "kit.example", "documentId": created["documentId"], "maxSize": 64 })).await.unwrap();
     check("previewResult", &preview);
-    let commands = service.call("commands.list", json!({ "kit": "kit.example", "documentId": created["documentId"] })).await.unwrap();
+    let commands = service.call("command.list", json!({ "kit": "kit.example", "documentId": created["documentId"] })).await.unwrap();
     check("commandsListResult", &commands);
     assert!(commands["commands"].as_array().unwrap().iter().any(|command| command["id"] == "text.append"));
     let unknown = service.call("documents.open", json!({ "path": "art/a.unknown" })).await.unwrap_err();

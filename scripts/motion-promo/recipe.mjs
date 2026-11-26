@@ -26,8 +26,8 @@ export function productLaunch({ width = 1920, height = 1080, frameRate = 24 } = 
       push(scene, 'prop.addKey', { layer: name, path: 'transform/position', time, value })
     }
     // Keyframes have no ids: a run selects them by layer, property and time (the Motion kit's agent guide).
-    push(scene, 'keys.select', { keys: moves.map(([time]) => ({ layer: name, path: 'transform/position', time })) })
-    push(scene, 'keys.easyEase', {})
+    push(scene, 'keyframe.select', { keys: moves.map(([time]) => ({ layer: name, path: 'transform/position', time })) })
+    push(scene, 'keyframe.easyEase', {})
   }
   function shape(scene, suffix, x, y, w, h, fill, { delay = 0, kind = 'rounded', radius = 12 } = {}) {
     const name = `promo.${scene.id}.${suffix}`
@@ -95,11 +95,11 @@ export function productLaunch({ width = 1920, height = 1080, frameRate = 24 } = 
 export function toolCalls(recipe, documentPath) {
   const calls = []
   for (const [scene, steps] of [['setup', recipe.setup], ...recipe.scenes.map(scene => [scene.id, scene.steps])]) {
-    // At most 50 steps a run. A run puts the selection back when it ends, so a keys.select stays in
+    // At most 50 steps a run. A run puts the selection back when it ends, so a keyframe.select stays in
     // the run of the step that acts on the keyframes it selects.
     for (let offset = 0; offset < steps.length;) {
       let end = Math.min(offset + 50, steps.length)
-      if (end < steps.length && steps[end - 1].command === 'keys.select') end -= 1
+      if (end < steps.length && steps[end - 1].command === 'keyframe.select') end -= 1
       calls.push({ scene, tool: 'motion_run', arguments: { path: documentPath, steps: steps.slice(offset, end), save: true } })
       offset = end
     }

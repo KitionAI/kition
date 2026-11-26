@@ -1,4 +1,4 @@
-// Copied from kition-sdk packages/script/test/fakeKitModel.ts (91cf510), which no npm package ships,
+// Copied from kition-sdk packages/script/test/fakeKitModel.ts (68dd08b, unchanged since 91cf510), which no npm package ships,
 // with its imports from @kition/sdk/kdm and one statement split for this repository's lint. A kit editor's object model for tests that need no engine.
 /**
  * A kit's document for tests, in plain objects: it answers `model/describe` and `model/batch` the

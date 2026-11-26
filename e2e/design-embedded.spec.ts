@@ -93,9 +93,9 @@ async function libraryFixtures() {
   const run = (command: string, params: object) => JSON.parse(doc.execute(command, JSON.stringify(params))) as { id?: number }
   const [starter] = (JSON.parse(doc.query('layers', '{}')) as { rows: Array<{ id: number }> }).rows
   run('edit.delete', { ids: [starter!.id] })
-  const button = run('frame.create', { x: 0, y: 0, width: 160, height: 44, name: 'Button/Primary' }).id!
+  const button = run('frame.add', { x: 0, y: 0, width: 160, height: 44, name: 'Button/Primary' }).id!
   run('node.set', { id: button, props: { fill: '#5645d4', cornerRadius: 8 } })
-  run('component.create', { ids: [button] })
+  run('component.add', { ids: [button] })
   run('library.publish', { description: 'A primary button.' })
   const v1 = Buffer.from(doc.save())
   run('node.set', { id: button, props: { fill: '#e5484d' } })
@@ -115,12 +115,12 @@ async function styledLibraryFixture() {
   const run = (command: string, params: object) => JSON.parse(doc.execute(command, JSON.stringify(params))) as { id?: number | string }
   const [starter] = (JSON.parse(doc.query('layers', '{}')) as { rows: Array<{ id: number }> }).rows
   run('edit.delete', { ids: [starter!.id] })
-  const button = run('frame.create', { x: 0, y: 0, width: 160, height: 44, name: 'Button/Primary' }).id!
+  const button = run('frame.add', { x: 0, y: 0, width: 160, height: 44, name: 'Button/Primary' }).id!
   run('node.set', { id: button, props: { fill: '#5645d4', cornerRadius: 8 } })
-  run('style.create', { type: 'paint', name: 'Brand/Primary', from: button })
-  run('component.create', { ids: [button] })
-  const theme = run('variable.createCollection', { name: 'Theme', modes: ['Light', 'Dark'] }).id!
-  run('variable.create', { collection: theme, name: 'Primary', type: 'color', values: { Light: '#ffffff', Dark: '#000000' } })
+  run('style.add', { type: 'paint', name: 'Brand/Primary', from: button })
+  run('component.add', { ids: [button] })
+  const theme = run('variable.addCollection', { name: 'Theme', modes: ['Light', 'Dark'] }).id!
+  run('variable.add', { collection: theme, name: 'Primary', type: 'color', values: { Light: '#ffffff', Dark: '#000000' } })
   run('library.publish', { description: 'Brand styles.' })
   const bytes = Buffer.from(doc.save())
   doc.free()

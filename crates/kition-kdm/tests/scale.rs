@@ -58,7 +58,7 @@ fn undoing_a_100000_operation_change_carried_over_a_later_edit_is_linear() {
     // Another scope's edit to the same text: the undo's 100,000 deletions are carried over it.
     replica.transact(&Origin::agent("agent:writer"), |tx| tx.text_insert(&shape, "label", 0, "X")).unwrap();
     let started = Instant::now();
-    assert!(replica.undo().unwrap());
+    assert!(replica.undo().unwrap().is_done());
     within(started, Duration::from_secs(30), "the undo");
     assert_eq!(replica.text(&shape, "label").unwrap(), "X");
 }

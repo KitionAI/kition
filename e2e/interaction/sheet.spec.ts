@@ -20,9 +20,9 @@ async function budget(extraSheets = 0) {
   const sdk = await engine.load()
   const doc = sdk.SheetDocument.create('Budget.xlsx', 0, 0)
   for (const [cell, input] of [['A1', 'Item'], ['B1', 'Cost'], ['A2', 'Rent'], ['B2', '1200'], ['A3', 'Food'], ['B3', '450'], ['A4', 'Total'], ['B4', '=SUM(B2:B3)']]) doc.execute('cell.set', JSON.stringify({ cell, input }))
-  for (let index = 0; index < extraSheets; index += 1) doc.execute('home.insertSheet', '{}')
+  for (let index = 0; index < extraSheets; index += 1) doc.execute('sheet.insert', '{}')
   doc.execute('sheet.activate', JSON.stringify({ sheet: 0 }))
-  doc.execute('selection.set', JSON.stringify({ range: 'A1' }))
+  doc.execute('select.set', JSON.stringify({ range: 'A1' }))
   const bytes = Buffer.from(doc.save())
   doc.free()
   return bytes
@@ -81,7 +81,7 @@ hostMatrix({
   edit: (kit) => kit.getByTestId('sheet-add').click(),
   focus: (kit) => kit.locator('textarea.kui-text-sink').focus(),
   create: { group: 'Data', name: 'Untitled sheet.xlsx', count: 1 },
-  agent: { command: 'home.insertSheet', params: {} },
+  agent: { command: 'sheet.insert', params: {} },
   damaged: Buffer.from('PK\u0003\u0004 this is not a workbook'),
   // H16: the cell grid follows the scheme, as in the apps the kit matches (docs/parity/ui-parity.md:
   // 'Dark mode, system appearance ... done'); a workbook is not a page.

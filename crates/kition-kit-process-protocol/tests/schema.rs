@@ -144,7 +144,7 @@ fn document_shapes_match_the_schema() {
 
 /// cases/regressions/issue-command-output: a command may say what it answers (`output`, the
 /// engine's `outputSchema` as JSON Schema, KHP A1), as kition-sdk's kit server lists it in
-/// `commands.list`; the host keeps it.
+/// `command.list`; the host keeps it.
 #[test]
 fn a_command_may_say_what_it_answers() {
     let listed = json!({
@@ -197,7 +197,7 @@ fn command_and_view_shapes_match_the_schema() {
         "commandsExecuteParams",
         &CommandsExecuteParams {
             document_id: "d1".into(),
-            command: "links.retarget".into(),
+            command: "link.retarget".into(),
             params: Map::new(),
             origin: Origin::System,
             origin_label: Some("emailsync".into()),

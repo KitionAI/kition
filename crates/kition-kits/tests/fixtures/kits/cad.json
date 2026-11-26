@@ -96,7 +96,7 @@
       "noun": "CAD drawing",
       "fileTypes": ".dxf",
       "reports": "its spaces (Model and each layout) and layers with their ids and object counts, its blocks and named views, and the current layer",
-      "covers": "drawing, modifying, dimensions, layers, blocks, and AutoCAD-style commands; `commandLine` runs any command-line entry",
+      "covers": "drawing, modifying, dimensions, layers, blocks, and AutoCAD-style commands; `command.runLine` runs any command-line entry",
       "queries": "`circle`, `layer`, or `dimension`",
       "example": "circle"
     }

@@ -194,7 +194,7 @@ kition_kit::export_kit_document!(SketchDocument as "SketchDocument");
 #[test]
 fn keeps_the_kit_sdk_contract() {
     kition_kit::testing::check_contract::<SketchDocument>(&fixture(), "fixture.sketch", |doc| {
-        doc.execute("draw.line", serde_json::json!({ "from": [1, 1], "to": [20, 10] })).map(|_| ())
+        doc.execute("line.add", serde_json::json!({ "from": [1, 1], "to": [20, 10] })).map(|_| ())
     })
     .unwrap();
 }
@@ -498,7 +498,7 @@ from (`kit.json` `imports`, platform K25). The file preview offers "Edit in
 for its extension (`KitImportButtons`): a new document of the kit beside the
 file, named after it, with the file on a sequence
 (`src/features/workspace/components/kits/kitImports.ts` runs the action's two
-commands, `file.import` and `file.newSequenceFromClip`, in the new document's
+commands, `file.import` and `sequence.newFromClip`, in the new document's
 engine). Nothing here names a kit; the Film kit is the one that declares it
 today.
 
@@ -506,7 +506,7 @@ today.
 
 A kit whose documents have parts names the engine command that lists them in
 its manifest (`kit.json` `outline.command`, platform K24): a table file's
-tables and dashboards (`table.file.outline`), a deck's slides. The kit catalog
+tables and dashboards (`file.outline`), a deck's slides. The kit catalog
 reads that (`outline`), and the workspace tree lets any such file expand. The
 tree reads an expanded file's outline through `GET /v1/kits/outline?path=`
 (`contracts/runtime/kits.schema.json` `outline`; `fetchKitOutline` in

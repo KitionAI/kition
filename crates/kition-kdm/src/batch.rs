@@ -215,10 +215,11 @@ pub fn run(target: &mut dyn BatchTarget, request: &Value) -> Result<Value, Batch
     }
     let schema = target.replica()?.schema().clone();
     // Tool ids (rule OM9): objects are named as the kit's tools name them, read again before each
-    // run of operations and after the last, since the kit numbers what a batch creates.
+    // run of operations and after the last, since the kit numbers what a batch creates (the
+    // replica reads them once per state, `Replica::tool_ids`).
     let tool_ids = schema.has_tool_ids();
-    let names_of = |target: &mut dyn BatchTarget| -> Result<ToolIds, BatchError> {
-        Ok(if tool_ids { ToolIds::of_replica(target.replica()?) } else { ToolIds::default() })
+    let names_of = |target: &mut dyn BatchTarget| -> Result<std::sync::Arc<ToolIds>, BatchError> {
+        Ok(if tool_ids { target.replica()?.tool_ids() } else { std::sync::Arc::new(ToolIds::default()) })
     };
     let mut refs = Refs::new();
     let mut results = vec![Value::Null; ops.len()];
@@ -229,7 +230,7 @@ pub fn run(target: &mut dyn BatchTarget, request: &Value) -> Result<Value, Batch
         }
         let objects = target.projected_objects()?;
         let replica = target.replica()?;
-        let names = ToolIds::of_replica(replica);
+        let names = replica.tool_ids();
         let root = root_id(replica).map(|id| names.show(&id)).unwrap_or_default();
         let view = crate::projection::View::read(replica, objects)?;
         crate::projection::route(&schema, &view, &root, &resolve_values(op, refs))
@@ -300,9 +301,8 @@ pub fn run(target: &mut dyn BatchTarget, request: &Value) -> Result<Value, Batch
                     .or_else(|| result.get("id").and_then(Value::as_str))
                     .ok_or_else(|| BatchError::op(index, "a bound command must return its object id"))?;
                 let replica = target.replica()?;
-                let resolved = ToolIds::of_replica(replica)
-                    .resolve(id, |id| replica.exists(id))
-                    .map_err(|_| BatchError::op(index, "a bound command returned no live object"))?;
+                let resolved =
+                    replica.tool_ids().resolve(id, |id| replica.exists(id)).map_err(|_| BatchError::op(index, "a bound command returned no live object"))?;
                 refs.insert(reference.to_owned(), resolved);
             }
             if let Some(slot) = results.get_mut(index) {
@@ -593,7 +593,7 @@ fn show_ids(names: &ToolIds, kind: FieldKind, value: Value) -> Value {
 
 /// The root object: the first object of the schema's root type.
 pub fn root_id(replica: &Replica) -> Option<ObjectId> {
-    replica.objects_of_type(&replica.schema().root).into_iter().next()
+    replica.root_id()
 }
 
 fn str_field<'a>(index: usize, op: &'a Value, key: &str) -> Result<&'a str, BatchError> {
@@ -1403,7 +1403,7 @@ pub fn describe(replica: &Replica) -> Value {
         "kit": schema.kit,
         "schemaVersion": schema.schema_version,
         "root": schema.root,
-        "rootId": root_id(replica).map(|id| if schema.has_tool_ids() { ToolIds::of_replica(replica).show(&id) } else { id.to_string() }),
+        "rootId": root_id(replica).map(|id| if schema.has_tool_ids() { replica.tool_ids_of(&std::collections::BTreeSet::from([id.clone()])).show(&id) } else { id.to_string() }),
         "types": types,
     })
 }

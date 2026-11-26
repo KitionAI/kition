@@ -112,22 +112,86 @@ impl ActorId {
 }
 
 /// The stable identity of one object in a document, unique across all replicas.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ObjectId(String);
+///
+/// An id is text; ids compare by their UTF-8 bytes. One that is a UUID in lowercase hyphenated
+/// form (every id [`ObjectId::new`] makes) is held as its 36 bytes inline, without an allocation
+/// of its own: a document of a million objects holds a million of them, and a list of ids as
+/// many again.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct ObjectId(IdText);
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum IdText {
+    /// A UUID in lowercase hyphenated form ([`is_lower_uuid`]), its ASCII bytes. An id of that
+    /// form is always held this way, so equal ids are equal values.
+    Uuid([u8; 36]),
+    Text(Box<str>),
+}
+
+/// Whether `text` is a UUID in lowercase hyphenated form (`8-4-4-4-12` lowercase hex digits):
+/// exactly the text a UUID parser reads back as itself.
+pub(crate) fn is_lower_uuid(text: &[u8]) -> bool {
+    text.len() == 36
+        && text.iter().enumerate().all(|(at, byte)| match at {
+            8 | 13 | 18 | 23 => *byte == b'-',
+            _ => matches!(byte, b'0'..=b'9' | b'a'..=b'f'),
+        })
+}
 
 impl ObjectId {
     /// A new id. UUID v7: unique without coordination and roughly creation-ordered; counted in a
     /// reproducible build ([`reproducible`]).
     pub fn new() -> Self {
-        Self(reproducible::uuid().unwrap_or_else(Uuid::now_v7).to_string())
+        let uuid = reproducible::uuid().unwrap_or_else(Uuid::now_v7);
+        let mut text = [0_u8; 36];
+        uuid.hyphenated().encode_lower(&mut text);
+        Self(IdText::Uuid(text))
     }
 
     pub fn from_string(id: impl Into<String>) -> Self {
-        Self(id.into())
+        let id: String = id.into();
+        match <[u8; 36]>::try_from(id.as_bytes()) {
+            Ok(text) if is_lower_uuid(&text) => Self(IdText::Uuid(text)),
+            _ => Self(IdText::Text(id.into_boxed_str())),
+        }
+    }
+
+    /// [`ObjectId::from_string`] of borrowed text, allocating only for an id that is not a UUID in
+    /// lowercase hyphenated form.
+    pub(crate) fn from_text(id: &str) -> Self {
+        match <[u8; 36]>::try_from(id.as_bytes()) {
+            Ok(text) if is_lower_uuid(&text) => Self(IdText::Uuid(text)),
+            _ => Self(IdText::Text(id.into())),
+        }
     }
 
     pub fn as_str(&self) -> &str {
-        &self.0
+        match &self.0 {
+            // Always ASCII ([`is_lower_uuid`]).
+            IdText::Uuid(text) => std::str::from_utf8(text).unwrap_or_default(),
+            IdText::Text(text) => text,
+        }
+    }
+
+    /// The id's UTF-8 bytes.
+    pub(crate) fn as_bytes(&self) -> &[u8] {
+        match &self.0 {
+            IdText::Uuid(text) => text,
+            IdText::Text(text) => text.as_bytes(),
+        }
+    }
+}
+
+impl PartialOrd for ObjectId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// By the ids' UTF-8 bytes, as the content encoding orders them (data model 7.4, C3).
+impl Ord for ObjectId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_bytes().cmp(other.as_bytes())
     }
 }
 
@@ -137,9 +201,15 @@ impl Default for ObjectId {
     }
 }
 
+impl fmt::Debug for ObjectId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ObjectId").field(&self.as_str()).finish()
+    }
+}
+
 impl fmt::Display for ObjectId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(self.as_str())
     }
 }
 

@@ -77,7 +77,7 @@
       "reports": "its pages and labels, whether it can be edited, and its form fields",
       "covers": "pages, text, comments, forms, bookmarks, links, watermarks, redaction, measuring, accessibility, and more",
       "queries": "`rotate`, `comment`, or `watermark`",
-      "example": "page_rotate"
+      "example": "page.rotate"
     }
   },
   "headless": {

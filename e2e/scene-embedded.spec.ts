@@ -16,7 +16,7 @@ const missing = 'the Scene kit is not built into public/kits/scene-ui (scripts/f
 async function roomFixture() {
   const sdk = await engine.load()
   const doc = sdk.SceneDocument.create('Room.kscene', 1280, 720)
-  doc.execute('add.uvSphere', JSON.stringify({ name: 'Ball', location: [3, 0, 1] }))
+  doc.execute('object.addUvSphere', JSON.stringify({ name: 'Ball', location: [3, 0, 1] }))
   const bytes = Buffer.from(doc.save())
   doc.free()
   return bytes

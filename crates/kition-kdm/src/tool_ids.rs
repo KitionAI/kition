@@ -18,9 +18,10 @@
 //! under that object, at a path of field names, positions and map keys (`body.paragraphs.0`,
 //! `table.cells.r1:c2.body`), the way the tools' `follow` paths read.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde_json::Value;
+use uuid::Uuid;
 
 use crate::{FieldKind, ObjectId, Replica, Schema, ToolIdDef};
 
@@ -122,6 +123,48 @@ impl Source for State<'_> {
     fn exists(&self, id: &str) -> bool {
         self.objects.contains_key(id)
     }
+}
+
+/// The objects `value` names, those `exists` knows: a string, a key, or a `:`-separated part of a
+/// key that is an object id (the forms [`ToolIds::show_json`] renames). Iterative, so a value of
+/// any depth.
+pub(crate) fn named_ids(value: &Value, exists: &dyn Fn(&ObjectId) -> bool) -> BTreeSet<ObjectId> {
+    let mut out = BTreeSet::new();
+    let mut add = |text: &str| {
+        let id = ObjectId::from_text(text);
+        if exists(&id) {
+            out.insert(id);
+        }
+    };
+    let mut stack = vec![value];
+    while let Some(value) = stack.pop() {
+        match value {
+            Value::String(text) => add(text),
+            Value::Array(items) => stack.extend(items),
+            Value::Object(members) => {
+                for (key, member) in members {
+                    add(key);
+                    if key.contains(':') {
+                        key.split(':').for_each(&mut add);
+                    }
+                    stack.push(member);
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// Whether `text` is an object id in the form the KDM mints ([`crate::Tx::create`]: a UUID, in
+/// its lowercase hyphenated form), which no word of a reply spells.
+fn minted(text: &str) -> bool {
+    text.len() == 36 && Uuid::try_parse(text).is_ok_and(|uuid| uuid.hyphenated().to_string() == text)
+}
+
+/// Whether a reply member named `name` holds object references ([`ToolIds::show_reply_json`]).
+fn holds_references(name: &str) -> bool {
+    matches!(name, "id" | "ids" | "object" | "objects" | "target" | "targets" | "selection" | "parent") || name.ends_with("Id") || name.ends_with("Ids")
 }
 
 /// One object's tool id as rendered: its type, the id, and the value it ends with.
@@ -449,6 +492,120 @@ impl ToolIds {
     /// How the object is named at the tool interface: its tool id, else its object id.
     pub fn show(&self, id: &ObjectId) -> String {
         self.tool_id(id).map_or_else(|| id.to_string(), str::to_owned)
+    }
+
+    /// An agent's reply (an inspection, a check's diagnostics, a step's result) with the objects
+    /// it names shown by their tool ids ([`ToolIds::show_reply_json`]), read only at the objects
+    /// `value` may name ([`Replica::tool_ids_of`]): an agent's reply costs its own size and the
+    /// objects it names, not the document's, also right after a change. A reply naming no object
+    /// comes back as it is.
+    pub fn show_reply(replica: &Replica, value: &Value) -> Value {
+        if !replica.schema().has_tool_ids() {
+            return value.clone();
+        }
+        let named = named_ids(value, &|id| replica.exists(id));
+        if named.is_empty() {
+            return value.clone();
+        }
+        replica.tool_ids_of(&named).show_reply_json(value)
+    }
+
+    /// A reply's object references shown by their tool ids. A reply is the kit's own JSON, so what
+    /// names an object is read from the text and its place (Kition platform
+    /// `docs/platform/kits/call-context.md`, "Exact known references"):
+    ///
+    /// - a string or a member name that is an object id the KDM minted (a UUID), or a member name
+    ///   whose `:`-separated parts all are (a cell keyed `<row id>:<column id>`), wherever it is:
+    ///   such a text is no word of the reply;
+    /// - any other object id (one the kit chose, such as `project` for a singleton) only as the
+    ///   value, or an item of the value, of a member that holds references: `id`, `ids`, `object`,
+    ///   `objects`, `target`, `targets`, `selection`, `parent`, or a name ending in `Id` or `Ids`.
+    ///
+    /// So a member name is never taken for the object it spells unless it is a minted id, and a
+    /// value elsewhere that merely equals a chosen id (`"note": "project"`) stays as the kit wrote
+    /// it. Text that contains an id stays literal.
+    pub fn show_reply_json(&self, value: &Value) -> Value {
+        self.show_reply_at(value, false)
+    }
+
+    fn show_reply_at(&self, value: &Value, references: bool) -> Value {
+        match value {
+            Value::String(text) if references || minted(text) => Value::String(self.show(&ObjectId::from_string(text))),
+            Value::Array(items) => Value::Array(items.iter().map(|item| self.show_reply_at(item, references)).collect()),
+            Value::Object(members) => {
+                Value::Object(members.iter().map(|(name, member)| (self.reply_key(name), self.show_reply_at(member, holds_references(name)))).collect())
+            }
+            other => other.clone(),
+        }
+    }
+
+    /// A reply's member name: shown when it is a minted object id, or when each of its
+    /// `:`-separated parts is; otherwise as the kit wrote it.
+    fn reply_key(&self, key: &str) -> String {
+        if minted(key) {
+            return self.show(&ObjectId::from_string(key));
+        }
+        if key.contains(':') && key.split(':').all(minted) {
+            return key.split(':').map(|part| self.show(&ObjectId::from_string(part))).collect::<Vec<_>>().join(":");
+        }
+        key.to_owned()
+    }
+
+    /// The tool ids of only the objects `ids` (those of them that exist: `ty_of` answers their
+    /// type, `register` a register's value), each read from its type and its tool-id field. `None`
+    /// when one of them needs more of the document: its type's tool id names a parent (rendered
+    /// after its holder's), or it has no tool id of its own and its type can be held through an
+    /// owning field (it may be named as a part of its holder, [`ToolIds::attributed`]); then the
+    /// whole document's are read. That a tool id is the only one of its text is checked among
+    /// `ids` only (kits number their objects so that it is).
+    pub(crate) fn of_objects(
+        schema: &Schema,
+        ids: &BTreeSet<ObjectId>,
+        ty_of: &dyn Fn(&ObjectId) -> Option<String>,
+        register: &dyn Fn(&ObjectId, &str) -> Value,
+    ) -> Option<Self> {
+        if !schema.has_tool_ids() {
+            return Some(Self::default());
+        }
+        // The types an owning field may hold (`None`: any).
+        let mut held: Option<BTreeSet<&str>> = Some(BTreeSet::new());
+        for def in schema.types.values() {
+            for field in def.fields.values().filter(|field| field.owning()) {
+                match &field.of {
+                    Some(of) => {
+                        if let Some(types) = held.as_mut() {
+                            types.insert(of.as_str());
+                        }
+                    }
+                    None => held = None,
+                }
+            }
+        }
+        let mut named: BTreeMap<String, Vec<Named>> = BTreeMap::new();
+        for id in ids {
+            let Some(ty) = ty_of(id) else { continue };
+            let tool = schema.types.get(&ty).and_then(|def| def.tool_id.as_ref());
+            if let Some(tool) = tool {
+                if tool.parent.is_some() {
+                    return None;
+                }
+                if let Some(value) = value_text(&register(id, &tool.field)) {
+                    named.entry(format!("{}{value}", tool.prefix)).or_default().push(Named { id: id.clone(), ty: ty.clone(), value });
+                    continue;
+                }
+            }
+            if held.as_ref().is_none_or(|types| types.contains(ty.as_str())) {
+                return None;
+            }
+        }
+        let mut own = HashMap::new();
+        for (text, objects) in &mut named {
+            objects.sort_by(|a, b| (a.ty.as_str(), &a.id).cmp(&(b.ty.as_str(), &b.id)));
+            if let [one] = objects.as_slice() {
+                own.insert(one.id.clone(), text.clone());
+            }
+        }
+        Some(Self { active: true, own, named, owners: HashMap::new() })
     }
 
     /// References nested in JSON/maps use the same names as direct references. Only exact
